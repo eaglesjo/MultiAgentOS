@@ -17,6 +17,12 @@ class RuntimeAdapterTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             runtime.checkout_branch(".", "main")
 
+    def test_git_commit_requires_approval(self):
+        policy = ExecutionPolicy(allow_git_write=True)
+        runtime = GitRuntime(policy=policy)
+        with self.assertRaises(PermissionError):
+            runtime.commit(".", "test", approved=False)
+
     def test_git_push_requires_approval(self):
         policy = ExecutionPolicy(allow_git_write=True)
         runtime = GitRuntime(policy=policy)
