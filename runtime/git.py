@@ -24,9 +24,10 @@ class GitRuntime:
     def commit(self, cwd: str, message: str, approved: bool = False):
         self._require_git_write()
         self._require_approval("git.commit", approved)
-        return self.process.run(["git", "add", "-A"], cwd) if False else self.process.run(
-            ["git", "commit", "-am", message], cwd
-        )
+        added = self.process.run(["git", "add", "-A"], cwd)
+        if added.returncode != 0:
+            return added
+        return self.process.run(["git", "commit", "-m", message], cwd)
 
     def push(self, cwd: str, remote: str = "origin", branch: str | None = None, approved: bool = False):
         self._require_git_write()
