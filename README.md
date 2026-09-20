@@ -2,14 +2,65 @@
 
 MultiAgentOS is the foundation for VYRELON, a local-first, GitHub-native multi-agent development orchestrator.
 
-Principles:
+## Core principles
+
 - Local-first: filesystem, shell, processes and Git are first-class.
-- GitHub-native: repository, branch, commit, issue, pull request and CI lifecycle are first-class.
+- GitHub-native: repository, branch, commit, issue, pull request, review and CI lifecycle are first-class.
 - AI/Agent agnostic: no single model, vendor, IDE or agent is required.
-- Role-based orchestration: work is delegated through explicit contracts.
-- Multi-AI assignment: each agent/work unit can select providers/models with fallback and review strategies.
-- Profile-driven: React Native, Android Native and iOS Native can extend the common core.
+- Multi-AI assignment: agents can use explicit, pool/fallback, or automatic model routing.
+- Executable lifecycle: Understand -> Plan -> Delegate -> Execute -> Verify -> Review -> Handoff.
+- Profile-driven: React Native, Android Native and iOS Native extend the common core.
+- Policy-controlled writes: repository and GitHub mutations are explicit runtime capabilities.
 
-The first implementation establishes a provider-neutral GitHub gateway contract and a local GitHub CLI adapter. Authentication remains outside source control.
+## Current runtime
 
-Status: VYRELON GitHub foundation.
+VYRELON currently includes:
+
+- provider-neutral WorkUnit, Agent, Model, Runtime, Profile, and GitHub contracts
+- deterministic multi-AI routing
+- model adapters for generic CLI and HTTP JSON endpoints
+- model-backed agent execution
+- policy-controlled local process and GitHub runtimes
+- evidence-based technology profile detection
+- executable project bootstrap via the MultiAgentOS CLI
+- local stdlib unittest validation plus GitHub Actions CI
+
+## CLI
+
+After installation:
+
+    multiagentos detect .
+    multiagentos init .
+
+The initializer writes only:
+
+    .multiagentos/profile.json
+
+No provider credentials or API keys are written to the project.
+
+## Architecture
+
+    Core Orchestration
+        |
+        +-- Agent Contracts
+        +-- AI Routing
+        +-- Lifecycle
+        |
+    Runtime Adapters
+        |
+        +-- Local Process
+        +-- Model CLI
+        +-- Model HTTP
+        +-- GitHub
+        |
+    Technology Profiles
+        |
+        +-- React Native
+        +-- Android Native
+        +-- iOS Native
+
+## Validation
+
+    python -m unittest discover -s tests -v
+
+GitHub Actions runs the same test suite on pull requests and pushes.
