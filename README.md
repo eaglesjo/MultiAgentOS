@@ -28,6 +28,18 @@ VYRELON currently includes:
 - independently installable VYRELON and multi-agent project components
 - local stdlib unittest validation plus GitHub Actions CI
 
+## Installation profiles
+
+The Python distribution exposes explicit installation profiles:
+
+```bash
+pip install multiagentos[vyrelon]
+pip install multiagentos[multi-agent]
+pip install multiagentos[all]
+```
+
+These profiles are dependency-level selectors. Project-level installation is controlled separately with `multiagentos init --component ...`.
+
 ## CLI
 
 After installation:
