@@ -8,10 +8,10 @@ from core.delegation import Delegation, DelegationEngine
 from core.lifecycle import LifecycleCoordinator, LifecycleError
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.registry import AIRegistry, AgentRegistry
-from core.routing import AIRouter, Assignment
+from core.routing import AIRouter, Assignment, RoutingStrategy
 
 __all__ = [
-    "AIRegistry", "AgentRegistry", "AIRouter", "Assignment",
+    "AIRegistry", "AgentRegistry", "AIRouter", "Assignment", "RoutingStrategy",
     "AgentExecutor", "ResultVerifier", "ResultReviewer", "ReviewDecision",
     "ModelAdapter", "ModelRequest", "ModelResponse",
     "ExecutionRequest", "RuntimeExecutor",
