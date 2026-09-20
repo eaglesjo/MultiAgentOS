@@ -57,6 +57,7 @@ class ConfigLoader:
                 permissions=frozenset(agent_data.get("permissions", [])),
                 model_ids=tuple(agent_data.get("models", [])),
                 metadata=dict(agent_data.get("metadata", {})),
+                kind=agent_data.get("type", "custom"),
             )
             agent_registry.register(agent)
             routing[agent.id] = RoutingStrategy(

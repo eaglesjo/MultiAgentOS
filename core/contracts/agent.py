@@ -13,6 +13,7 @@ class AgentContract:
     permissions: frozenset[str] = frozenset()
     model_ids: tuple[str, ...] = ()
     metadata: dict[str, object] = field(default_factory=dict)
+    kind: str = "custom"
 
 
 class AgentRuntime(Protocol):
