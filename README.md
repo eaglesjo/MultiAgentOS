@@ -23,6 +23,8 @@ VYRELON currently includes:
 - policy-controlled local process and GitHub runtimes
 - evidence-based technology profile detection
 - executable project bootstrap via the MultiAgentOS CLI
+- explicit planning contracts and persistent WorkUnit state
+- unified VYRELON runtime facade for project, Git, and GitHub control
 - local stdlib unittest validation plus GitHub Actions CI
 
 ## CLI
@@ -31,6 +33,7 @@ After installation:
 
     multiagentos detect .
     multiagentos init .
+    multiagentos github probe eaglesjo/MultiAgentOS
 
 The initializer writes only:
 

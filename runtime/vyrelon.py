@@ -10,6 +10,8 @@ from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.work_unit import WorkUnit
 from core.handoff import ReviewPanel, ReviewPanelResult
+from core.planning import BasicPlanner
+from core.state import WorkStateStore
 from core.orchestrator import OrchestrationResult, Orchestrator
 from profiles.detector import ProfileDetector
 from integrations.github.gateway import GitHubGatewayClient
@@ -37,6 +39,12 @@ class VYRELONRuntime:
 
     def inspect(self, project_root: Path):
         return ProfileDetector().detect(project_root)
+
+    def plan(self, work_unit: WorkUnit, steps):
+        return BasicPlanner().plan(work_unit, steps)
+
+    def state_store(self, project_root: Path):
+        return WorkStateStore(project_root / ".multiagentos" / "state")
 
     def agents(self, project_root: Path):
         detections = self.inspect(project_root)
