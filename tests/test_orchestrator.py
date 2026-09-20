@@ -1,6 +1,7 @@
 import unittest
 
 from core.contracts import AgentContract, ModelSpec, WorkStatus, WorkUnit
+from core.lifecycle import LifecycleError
 from core.orchestrator import Orchestrator
 
 
@@ -16,6 +17,16 @@ class RecordingExecutor:
 class FailingExecutor:
     def execute(self, **kwargs):
         raise RuntimeError("execution failed")
+
+
+class PassingVerifier:
+    def verify(self, *, work_unit, output):
+        return True
+
+
+class FailingVerifier:
+    def verify(self, *, work_unit, output):
+        return False
 
 
 class OrchestratorTests(unittest.TestCase):
@@ -39,11 +50,34 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(result.delegation.assignment.model_id, "cloud-code")
         self.assertEqual(executor.calls, [("developer", "cloud-code", "wu-002")])
 
-    def test_run_marks_failure(self):
+    def test_run_verifies_before_completion(self):
+        work = WorkUnit("wu-verify", "implement feature")
+        result = Orchestrator().run(
+            work, self.agent, self.models, RecordingExecutor(), verifier=PassingVerifier()
+        )
+        self.assertEqual(result.work_unit.status, WorkStatus.COMPLETED)
+
+    def test_run_fails_when_verification_fails(self):
+        work = WorkUnit("wu-verify-fail", "implement feature")
+        with self.assertRaises(LifecycleError):
+            Orchestrator().run(
+                work, self.agent, self.models, RecordingExecutor(), verifier=FailingVerifier()
+            )
+        self.assertEqual(work.status, WorkStatus.FAILED)
+
+    def test_run_marks_execution_failure(self):
         work = WorkUnit("wu-003", "debug feature")
         with self.assertRaises(RuntimeError):
             Orchestrator().run(work, self.agent, self.models, FailingExecutor())
         self.assertEqual(work.status, WorkStatus.FAILED)
+
+    def test_routing_failure_does_not_start_execution(self):
+        work = WorkUnit("wu-route", "unroutable")
+        incompatible = [ModelSpec("text", "provider-a", frozenset({"text"}))]
+        with self.assertRaises(LookupError):
+            Orchestrator().run(work, self.agent, incompatible, RecordingExecutor())
+        self.assertEqual(work.status, WorkStatus.PENDING)
+        self.assertEqual(work.assigned_agents, [])
 
 
 if __name__ == "__main__":
