@@ -12,6 +12,7 @@ from core.contracts.work_unit import WorkUnit
 from core.handoff import ReviewPanel, ReviewPanelResult
 from core.orchestrator import OrchestrationResult, Orchestrator
 from profiles.detector import ProfileDetector
+from integrations.github.gateway import GitHubGatewayClient
 from runtime.github import GitHubRuntime
 from runtime.github_probe import probe
 from runtime.git import GitRuntime
@@ -30,9 +31,7 @@ class VYRELONRuntime:
         self.orchestrator = orchestrator or Orchestrator()
         self.git = GitRuntime(policy=self.policy)
         self.github = GitHubRuntime(
-            gateway=None if False else __import__(
-                "integrations.github.gateway", fromlist=["GitHubGatewayClient"]
-            ).GitHubGatewayClient(),
+            gateway=GitHubGatewayClient(),
             policy=self.policy,
         )
 
