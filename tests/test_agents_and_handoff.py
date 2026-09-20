@@ -45,6 +45,13 @@ class AgentsAndHandoffTests(unittest.TestCase):
         self.assertFalse(result.approved)
         self.assertEqual(result.consensus, "changes-requested")
 
+    def test_review_panel_can_run_sequentially_for_deterministic_adapters(self):
+        reviewers = [(AgentContract(id="r1", role="reviewer"), None)]
+        def runner(**kwargs):
+            return type("R", (), {"approved": True, "reviewer_id": "r1", "feedback": "ok"})()
+        result = ReviewPanel().review("wu-2", reviewers, runner, parallel=False)
+        self.assertTrue(result.approved)
+
 
 if __name__ == "__main__":
     unittest.main()
