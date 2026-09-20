@@ -25,6 +25,7 @@ VYRELON currently includes:
 - executable project bootstrap via the MultiAgentOS CLI
 - explicit planning contracts and persistent WorkUnit state
 - unified VYRELON runtime facade for project, Git, and GitHub control
+- independently installable VYRELON and multi-agent project components
 - local stdlib unittest validation plus GitHub Actions CI
 
 ## CLI
@@ -32,14 +33,16 @@ VYRELON currently includes:
 After installation:
 
     multiagentos detect .
-    multiagentos init .
+    multiagentos init . --component vyrelon
+    multiagentos init . --component multi-agent
+    multiagentos init . --component all
     multiagentos github probe eaglesjo/MultiAgentOS
 
-The initializer writes only:
-
-    .multiagentos/profile.json
+The initializer writes profile/component metadata and, when the multi-agent component is selected, `.multiagentos/agents.json`.
 
 No provider credentials or API keys are written to the project.
+
+See `docs/INSTALLATION_MODES.md` for the separation between VYRELON and the optional multi-agent layer.
 
 ## Architecture
 
