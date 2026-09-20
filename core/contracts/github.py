@@ -25,12 +25,32 @@ class GitHubFile:
 
 
 @dataclass(frozen=True)
+class GitHubIssue:
+    number: int
+    title: str
+    url: str
+
+
+@dataclass(frozen=True)
 class PullRequest:
     number: int
     title: str
     url: str
     head: str
     base: str
+
+
+@dataclass(frozen=True)
+class ReviewResult:
+    success: bool
+    action: str
+
+
+@dataclass(frozen=True)
+class MergeResult:
+    merged: bool
+    sha: str | None
+    message: str
 
 
 @dataclass(frozen=True)
@@ -47,5 +67,8 @@ class GitHubGateway(Protocol):
     def get_file(self, full_name: str, path: str, ref: str) -> GitHubFile: ...
     def create_file(self, full_name: str, path: str, content: str, branch: str, message: str) -> str: ...
     def update_file(self, full_name: str, path: str, content: str, sha: str, branch: str, message: str) -> str: ...
+    def create_issue(self, full_name: str, title: str, body: str = "") -> GitHubIssue: ...
     def create_pull_request(self, full_name: str, title: str, body: str, head: str, base: str, draft: bool = False) -> PullRequest: ...
+    def review_pull_request(self, full_name: str, number: int, action: str, body: str = "") -> ReviewResult: ...
+    def merge_pull_request(self, full_name: str, number: int, method: str = "squash") -> MergeResult: ...
     def list_workflows(self, full_name: str, ref: str) -> Sequence[WorkflowRun]: ...

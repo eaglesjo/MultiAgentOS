@@ -10,9 +10,12 @@ from typing import Any
 from core.contracts.github import (
     GitHubBranch,
     GitHubFile,
-    GitHubRepository,
     GitHubGateway,
+    GitHubIssue,
+    GitHubRepository,
+    MergeResult,
     PullRequest,
+    ReviewResult,
     WorkflowRun,
 )
 
@@ -37,7 +40,10 @@ class GitHubGatewayClient:
         return json.loads(output) if output else None
 
     def get_repository(self, full_name: str) -> GitHubRepository:
-        data = self._run("repo", "view", full_name, "--json", "nameWithOwner,defaultBranchRef,isPrivate")
+        data = self._run(
+            "repo", "view", full_name,
+            "--json", "nameWithOwner,defaultBranchRef,isPrivate",
+        )
         return GitHubRepository(
             full_name=data["nameWithOwner"],
             default_branch=data["defaultBranchRef"]["name"],
@@ -60,19 +66,29 @@ class GitHubGatewayClient:
         return GitHubBranch(name=branch, sha=base_ref.sha)
 
     def get_file(self, full_name: str, path: str, ref: str) -> GitHubFile:
-        data = self._run("api", f"repos/{full_name}/contents/{path}", "-f", f"ref={ref}")
+        data = self._run(
+            "api", f"repos/{full_name}/contents/{path}",
+            "-f", f"ref={ref}",
+        )
         content = base64.b64decode(data["content"]).decode("utf-8")
         return GitHubFile(path=data["path"], content=content, sha=data["sha"])
 
-    def create_file(self, full_name: str, path: str, content: str, branch: str, message: str) -> str:
+    def create_file(
+        self, full_name: str, path: str, content: str,
+        branch: str, message: str,
+    ) -> str:
         encoded = base64.b64encode(content.encode()).decode()
         data = self._run(
             "api", f"repos/{full_name}/contents/{path}", "--method", "PUT",
-            "-f", f"message={message}", "-f", f"content={encoded}", "-f", f"branch={branch}",
+            "-f", f"message={message}", "-f", f"content={encoded}",
+            "-f", f"branch={branch}",
         )
         return data["commit"]["sha"]
 
-    def update_file(self, full_name: str, path: str, content: str, sha: str, branch: str, message: str) -> str:
+    def update_file(
+        self, full_name: str, path: str, content: str, sha: str,
+        branch: str, message: str,
+    ) -> str:
         encoded = base64.b64encode(content.encode()).decode()
         data = self._run(
             "api", f"repos/{full_name}/contents/{path}", "--method", "PUT",
@@ -81,8 +97,22 @@ class GitHubGatewayClient:
         )
         return data["commit"]["sha"]
 
-    def create_pull_request(self, full_name: str, title: str, body: str, head: str, base: str, draft: bool = False) -> PullRequest:
-        args = ["pr", "create", "--repo", full_name, "--title", title, "--body", body, "--head", head, "--base", base]
+    def create_issue(self, full_name: str, title: str, body: str = "") -> GitHubIssue:
+        data = self._run(
+            "api", f"repos/{full_name}/issues", "--method", "POST",
+            "-f", f"title={title}", "-f", f"body={body}",
+        )
+        return GitHubIssue(number=data["number"], title=data["title"], url=data["html_url"])
+
+    def create_pull_request(
+        self, full_name: str, title: str, body: str,
+        head: str, base: str, draft: bool = False,
+    ) -> PullRequest:
+        args = [
+            "pr", "create", "--repo", full_name,
+            "--title", title, "--body", body,
+            "--head", head, "--base", base,
+        ]
         if draft:
             args.append("--draft")
         data = self._run(*args, "--json", "number,title,url,headRefName,baseRefName")
@@ -92,6 +122,35 @@ class GitHubGatewayClient:
             url=data["url"],
             head=data["headRefName"],
             base=data["baseRefName"],
+        )
+
+    def review_pull_request(
+        self, full_name: str, number: int, action: str, body: str = "",
+    ) -> ReviewResult:
+        flags = {"approve": "--approve", "comment": "--comment", "request_changes": "--request-changes"}
+        try:
+            flag = flags[action]
+        except KeyError as exc:
+            raise ValueError(f"Unsupported review action: {action}") from exc
+        args = ["pr", "review", str(number), "--repo", full_name, flag]
+        if body:
+            args.extend(["--body", body])
+        self._run(*args)
+        return ReviewResult(success=True, action=action)
+
+    def merge_pull_request(
+        self, full_name: str, number: int, method: str = "squash",
+    ) -> MergeResult:
+        if method not in {"merge", "squash", "rebase"}:
+            raise ValueError(f"Unsupported merge method: {method}")
+        data = self._run(
+            "api", f"repos/{full_name}/pulls/{number}/merge",
+            "--method", "PUT", "-f", f"merge_method={method}",
+        )
+        return MergeResult(
+            merged=bool(data.get("merged")),
+            sha=data.get("sha"),
+            message=data.get("message", ""),
         )
 
     def list_workflows(self, full_name: str, ref: str) -> list[WorkflowRun]:
