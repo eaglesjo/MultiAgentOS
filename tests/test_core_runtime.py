@@ -10,9 +10,16 @@ class CoreRuntimeTests(unittest.TestCase):
         work = WorkUnit(id="wu-001", objective="implement feature")
         work.assign("developer")
         work.transition(WorkStatus.EXECUTING)
+        work.transition(WorkStatus.VERIFYING)
+        work.transition(WorkStatus.COMPLETED)
 
-        self.assertEqual(work.status, WorkStatus.EXECUTING)
+        self.assertEqual(work.status, WorkStatus.COMPLETED)
         self.assertEqual(work.assigned_agents, ["developer"])
+
+    def test_work_unit_rejects_invalid_transition(self):
+        work = WorkUnit(id="wu-invalid", objective="invalid")
+        with self.assertRaises(ValueError):
+            work.transition(WorkStatus.COMPLETED)
 
     def test_agent_registry_rejects_duplicates(self):
         registry = AgentRegistry()
