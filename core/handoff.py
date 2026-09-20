@@ -1,5 +1,6 @@
 """Handoff and multi-review coordination."""
 
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from core.contracts.agent import AgentContract
@@ -26,11 +27,15 @@ class ReviewPanelResult:
 
 
 class ReviewPanel:
-    def review(self, work_unit_id, reviewers, reviewer_runner):
-        reviews = tuple(
-            reviewer_runner(review_work_unit_id=work_unit_id, reviewer=reviewer, context=context)
-            for reviewer, context in reviewers
-        )
+    def review(self, work_unit_id, reviewers, reviewer_runner, parallel=True):
+        def run(item):
+            reviewer, context = item
+            return reviewer_runner(review_work_unit_id=work_unit_id, reviewer=reviewer, context=context)
+        if parallel and len(reviewers) > 1:
+            with ThreadPoolExecutor(max_workers=len(reviewers)) as pool:
+                reviews = tuple(pool.map(run, reviewers))
+        else:
+            reviews = tuple(run(item) for item in reviewers)
         approved = bool(reviews) and all(review.approved for review in reviews)
         return ReviewPanelResult(
             approved=approved,
