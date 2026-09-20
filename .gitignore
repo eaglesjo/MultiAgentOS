@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local VYRELON runtime state
+.multiagentos/state/
+
+# Local credentials and environment
+.env
+.env.*
