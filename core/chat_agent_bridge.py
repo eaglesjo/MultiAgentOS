@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from uuid import uuid4
 from typing import Protocol
 
 from core.chat_agent_registry import ChatAgentRegistry
@@ -101,7 +102,7 @@ class ChatAgentBridge:
             raise ValueError("chat agent objective must not be empty")
 
         work_unit = WorkUnit(
-            id=request.work_unit_id or f"chat-{agent.id}",
+            id=request.work_unit_id or f"chat-{agent.id}-{uuid4().hex}",
             objective=request.objective,
             inputs=dict(request.inputs or {}),
         )
