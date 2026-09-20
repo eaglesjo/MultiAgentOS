@@ -1,5 +1,7 @@
 """VYRELON orchestration core."""
 
+from core.chat_agent_registry import ChatAgentRegistry, default_chat_agents
+from core.contracts.chat_agent import ChatAgentContract, ChatAgentProvider
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier, ReviewDecision
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
 from core.contracts.profile import DetectionResult, ProfileSpec
@@ -13,7 +15,7 @@ from core.registry import AIRegistry, AgentRegistry
 from core.routing import AIRouter, Assignment, RoutingStrategy
 
 __all__ = [
-    "AIRegistry", "AgentRegistry", "AIRouter", "Assignment", "RoutingStrategy",
+    "AIRegistry", "AgentRegistry", "ChatAgentRegistry", "ChatAgentContract", "ChatAgentProvider", "AIRouter", "Assignment", "RoutingStrategy",
     "AgentExecutor", "ResultVerifier", "ResultReviewer", "ReviewDecision",
     "ModelAdapter", "ModelRequest", "ModelResponse",
     "ExecutionRequest", "RuntimeExecutor",
