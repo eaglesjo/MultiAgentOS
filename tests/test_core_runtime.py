@@ -11,6 +11,8 @@ class CoreRuntimeTests(unittest.TestCase):
         work.assign("developer")
         work.transition(WorkStatus.EXECUTING)
         work.transition(WorkStatus.VERIFYING)
+        work.transition(WorkStatus.REVIEWING)
+        work.transition(WorkStatus.HANDOFF)
         work.transition(WorkStatus.COMPLETED)
 
         self.assertEqual(work.status, WorkStatus.COMPLETED)
