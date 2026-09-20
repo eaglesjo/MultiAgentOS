@@ -1,6 +1,9 @@
 """VYRELON orchestration core."""
 
-from core.contracts.execution import AgentExecutor, ResultVerifier
+from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier, ReviewDecision
+from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
+from core.contracts.profile import DetectionResult, ProfileSpec
+from core.contracts.runtime import ExecutionRequest, RuntimeExecutor
 from core.delegation import Delegation, DelegationEngine
 from core.lifecycle import LifecycleCoordinator, LifecycleError
 from core.orchestrator import OrchestrationResult, Orchestrator
@@ -9,7 +12,10 @@ from core.routing import AIRouter, Assignment
 
 __all__ = [
     "AIRegistry", "AgentRegistry", "AIRouter", "Assignment",
-    "AgentExecutor", "ResultVerifier",
+    "AgentExecutor", "ResultVerifier", "ResultReviewer", "ReviewDecision",
+    "ModelAdapter", "ModelRequest", "ModelResponse",
+    "ExecutionRequest", "RuntimeExecutor",
+    "DetectionResult", "ProfileSpec",
     "Delegation", "DelegationEngine",
     "LifecycleCoordinator", "LifecycleError",
     "OrchestrationResult", "Orchestrator",

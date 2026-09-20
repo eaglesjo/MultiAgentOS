@@ -1,5 +1,6 @@
-"""Vendor-neutral execution and verification contracts."""
+"""Vendor-neutral execution, verification, and review contracts."""
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from core.contracts.agent import AgentContract
@@ -13,4 +14,15 @@ class AgentExecutor(Protocol):
 
 class ResultVerifier(Protocol):
     def verify(self, *, work_unit: WorkUnit, output: object) -> bool:
+        ...
+
+
+@dataclass(frozen=True)
+class ReviewDecision:
+    approved: bool
+    feedback: str = ""
+
+
+class ResultReviewer(Protocol):
+    def review(self, *, work_unit: WorkUnit, output: object) -> ReviewDecision:
         ...
