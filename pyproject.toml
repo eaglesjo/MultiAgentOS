@@ -9,6 +9,11 @@ description = "Local-first, GitHub-native multi-agent orchestration foundation f
 requires-python = ">=3.10"
 dependencies = []
 
+[project.optional-dependencies]
+vyrelon = []
+multi-agent = []
+all = []
+
 [project.scripts]
 multiagentos = "multiagentos.cli:main"
 
