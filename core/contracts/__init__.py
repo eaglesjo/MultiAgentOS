@@ -1,5 +1,6 @@
 """VYRELON core contracts."""
 
+from core.contracts.chat_agent import ChatAgentContract, ChatAgentProvider
 from core.contracts.agent import AgentContract
 from core.contracts.ai import AIProvider, ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier, ReviewDecision
@@ -10,7 +11,7 @@ from core.contracts.profile import DetectionResult, ProfileSpec
 from core.contracts.planning import PlanStep, WorkPlan
 
 __all__ = [
-    "AgentContract", "AIProvider", "ModelSpec",
+    "AgentContract", "ChatAgentContract", "ChatAgentProvider", "AIProvider", "ModelSpec",
     "AgentExecutor", "ResultVerifier", "ResultReviewer", "ReviewDecision",
     "ModelAdapter", "ModelRequest", "ModelResponse",
     "ExecutionRequest", "RuntimeExecutor",
