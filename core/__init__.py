@@ -7,6 +7,8 @@ from core.contracts.runtime import ExecutionRequest, RuntimeExecutor
 from core.delegation import Delegation, DelegationEngine
 from core.lifecycle import LifecycleCoordinator, LifecycleError
 from core.orchestrator import OrchestrationResult, Orchestrator
+from core.planning import BasicPlanner
+from core.state import WorkStateStore
 from core.registry import AIRegistry, AgentRegistry
 from core.routing import AIRouter, Assignment, RoutingStrategy
 
@@ -18,5 +20,5 @@ __all__ = [
     "DetectionResult", "ProfileSpec",
     "Delegation", "DelegationEngine",
     "LifecycleCoordinator", "LifecycleError",
-    "OrchestrationResult", "Orchestrator",
+    "OrchestrationResult", "Orchestrator", "BasicPlanner", "WorkStateStore",
 ]
