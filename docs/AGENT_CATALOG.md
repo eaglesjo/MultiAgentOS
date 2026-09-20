@@ -14,3 +14,5 @@ Agents carry capabilities, tools, permissions, and model preferences without emb
 Handoff artifacts carry summary, files/artifacts, findings, and source/target identity.
 
 ReviewPanel supports multiple independent reviewers and requires all reviewers to approve before consensus is approved.
+
+ReviewPanel executes independent reviewers in parallel by default and supports sequential mode for deterministic adapters.
