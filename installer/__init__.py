@@ -1,0 +1,1 @@
+"""VYRELON project installer."""
