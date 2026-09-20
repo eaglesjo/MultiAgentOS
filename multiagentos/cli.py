@@ -20,10 +20,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     init = subparsers.add_parser("init", help="initialize VYRELON in a project")
     init.add_argument("path", nargs="?", default=".")
+    init.add_argument(
+        "--component",
+        choices=("vyrelon", "multi-agent", "all"),
+        default="all",
+        help="install VYRELON, the multi-agent layer, or both",
+    )
 
     github = subparsers.add_parser("github", help="use VYRELON GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
-    probe_parser = github_sub.add_parser("probe", help="verify GitHub access for a repository")
+    probe_parser = github_sub.add_parser(
+        "probe", help="verify GitHub access for a repository"
+    )
     probe_parser.add_argument("repository")
 
     return parser
@@ -55,8 +63,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    config = ProjectInitializer().apply(root, detections)
-    print(f"Initialized VYRELON: {config}")
+    config = ProjectInitializer().apply(
+        root,
+        detections,
+        component=args.component,
+    )
+    print(f"Initialized VYRELON ({args.component}): {config}")
     return 0
 
 
