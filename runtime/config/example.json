@@ -1,0 +1,44 @@
+{
+  "ai": {
+    "providers": [
+      {
+        "id": "ai-a",
+        "type": "generic-cli",
+        "models": [
+          {
+            "id": "model-a-code",
+            "capabilities": ["code", "review"],
+            "metadata": {"adapter_id": "ai-a"}
+          }
+        ]
+      },
+      {
+        "id": "local",
+        "type": "local-cli",
+        "models": [
+          {
+            "id": "local-code",
+            "capabilities": ["code", "test"],
+            "metadata": {"adapter_id": "local"}
+          }
+        ]
+      }
+    ]
+  },
+  "agents": [
+    {
+      "id": "developer",
+      "role": "developer",
+      "capabilities": ["code"],
+      "models": ["model-a-code", "local-code"],
+      "strategy": "pool"
+    },
+    {
+      "id": "reviewer",
+      "role": "reviewer",
+      "capabilities": ["review"],
+      "models": ["model-a-code"],
+      "strategy": "explicit"
+    }
+  ]
+}

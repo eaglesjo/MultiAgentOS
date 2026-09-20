@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 
 from core.contracts.agent import AgentContract
-from core.contracts.work_unit import WorkStatus, WorkUnit
-from core.routing import AIRouter, Assignment
 from core.contracts.ai import ModelSpec
+from core.contracts.work_unit import WorkStatus, WorkUnit
+from core.routing import AIRouter, Assignment, RoutingStrategy
 
 
 @dataclass(frozen=True)
@@ -25,10 +25,9 @@ class DelegationEngine:
         agent: AgentContract,
         models: list[ModelSpec],
         preferred_model_ids: list[str] | None = None,
+        strategy: RoutingStrategy | str = RoutingStrategy.POOL,
     ) -> Delegation:
-        # Resolve the model before mutating WorkUnit state. A routing failure
-        # must not leave a work unit pretending that execution has started.
-        assignment = self.router.assign(agent, models, preferred_model_ids)
+        assignment = self.router.assign(agent, models, preferred_model_ids, strategy)
         work_unit.assign(agent.id)
         work_unit.transition(WorkStatus.EXECUTING)
         return Delegation(work_unit.id, agent.id, assignment)

@@ -5,6 +5,7 @@ from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.delegation import Delegation, DelegationEngine
+from core.routing import RoutingStrategy
 
 
 class LifecycleError(RuntimeError):
@@ -26,9 +27,10 @@ class LifecycleCoordinator:
         verifier: ResultVerifier | None = None,
         reviewer: ResultReviewer | None = None,
         preferred_model_ids: list[str] | None = None,
+        routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
     ) -> tuple[Delegation, object]:
         delegation = self.delegation.delegate(
-            work_unit, agent, models, preferred_model_ids
+            work_unit, agent, models, preferred_model_ids, routing_strategy
         )
         try:
             output = executor.execute(
