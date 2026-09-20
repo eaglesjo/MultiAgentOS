@@ -1,6 +1,7 @@
 import unittest
 
 from core.contracts import AgentContract, ModelSpec, WorkStatus, WorkUnit
+from core.contracts.execution import ReviewDecision
 from core.lifecycle import LifecycleError
 from core.orchestrator import Orchestrator
 
@@ -29,6 +30,16 @@ class FailingVerifier:
         return False
 
 
+class PassingReviewer:
+    def review(self, *, work_unit, output):
+        return ReviewDecision(approved=True, feedback="approved")
+
+
+class FailingReviewer:
+    def review(self, *, work_unit, output):
+        return ReviewDecision(approved=False, feedback="needs changes")
+
+
 class OrchestratorTests(unittest.TestCase):
     def setUp(self):
         self.agent = AgentContract(
@@ -53,7 +64,17 @@ class OrchestratorTests(unittest.TestCase):
     def test_run_verifies_before_completion(self):
         work = WorkUnit("wu-verify", "implement feature")
         result = Orchestrator().run(
-            work, self.agent, self.models, RecordingExecutor(), verifier=PassingVerifier()
+            work, self.agent, self.models, RecordingExecutor(),
+            verifier=PassingVerifier(),
+        )
+        self.assertEqual(result.work_unit.status, WorkStatus.COMPLETED)
+
+    def test_run_reviews_before_handoff(self):
+        work = WorkUnit("wu-review", "implement feature")
+        result = Orchestrator().run(
+            work, self.agent, self.models, RecordingExecutor(),
+            verifier=PassingVerifier(),
+            reviewer=PassingReviewer(),
         )
         self.assertEqual(result.work_unit.status, WorkStatus.COMPLETED)
 
@@ -61,7 +82,18 @@ class OrchestratorTests(unittest.TestCase):
         work = WorkUnit("wu-verify-fail", "implement feature")
         with self.assertRaises(LifecycleError):
             Orchestrator().run(
-                work, self.agent, self.models, RecordingExecutor(), verifier=FailingVerifier()
+                work, self.agent, self.models, RecordingExecutor(),
+                verifier=FailingVerifier(),
+            )
+        self.assertEqual(work.status, WorkStatus.FAILED)
+
+    def test_run_fails_when_review_rejects(self):
+        work = WorkUnit("wu-review-fail", "implement feature")
+        with self.assertRaises(LifecycleError):
+            Orchestrator().run(
+                work, self.agent, self.models, RecordingExecutor(),
+                verifier=PassingVerifier(),
+                reviewer=FailingReviewer(),
             )
         self.assertEqual(work.status, WorkStatus.FAILED)
 
