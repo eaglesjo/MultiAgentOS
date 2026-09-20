@@ -6,7 +6,7 @@ MultiAgentOS is the foundation for VYRELON, a local-first, GitHub-native multi-a
 
 - Local-first: filesystem, shell, processes and Git are first-class.
 - GitHub-native: repository, branch, commit, issue, pull request, review and CI lifecycle are first-class.
-- AI/Agent agnostic: no single model, vendor, IDE or agent is required.
+- Chat-Agent agnostic with ChatGPT as the default primary conversational agent; Gemini, Claude and other providers can participate.
 - Multi-AI assignment: agents can use explicit, pool/fallback, or automatic model routing.
 - Executable lifecycle: Understand -> Plan -> Delegate -> Execute -> Verify -> Review -> Handoff.
 - Profile-driven: React Native, Android Native and iOS Native extend the common core.
@@ -25,6 +25,7 @@ VYRELON currently includes:
 - executable project bootstrap via the MultiAgentOS CLI
 - explicit planning contracts and persistent WorkUnit state
 - unified VYRELON runtime facade for project, Git, and GitHub control
+- provider-neutral Chat Agent contracts and persistent VYRELON agent rules
 - local stdlib unittest validation plus GitHub Actions CI
 
 ## CLI
