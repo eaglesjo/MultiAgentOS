@@ -13,6 +13,16 @@ class WorkStatus(str, Enum):
     FAILED = "failed"
 
 
+_ALLOWED_TRANSITIONS: dict[WorkStatus, frozenset[WorkStatus]] = {
+    WorkStatus.PENDING: frozenset({WorkStatus.PLANNING, WorkStatus.EXECUTING, WorkStatus.FAILED}),
+    WorkStatus.PLANNING: frozenset({WorkStatus.EXECUTING, WorkStatus.FAILED}),
+    WorkStatus.EXECUTING: frozenset({WorkStatus.VERIFYING, WorkStatus.COMPLETED, WorkStatus.FAILED}),
+    WorkStatus.VERIFYING: frozenset({WorkStatus.COMPLETED, WorkStatus.FAILED}),
+    WorkStatus.COMPLETED: frozenset(),
+    WorkStatus.FAILED: frozenset(),
+}
+
+
 @dataclass
 class WorkUnit:
     id: str
@@ -28,4 +38,10 @@ class WorkUnit:
             self.assigned_agents.append(agent_id)
 
     def transition(self, status: WorkStatus) -> None:
+        if status == self.status:
+            return
+        if status not in _ALLOWED_TRANSITIONS[self.status]:
+            raise ValueError(
+                f"Invalid WorkUnit transition: {self.status.value} -> {status.value}"
+            )
         self.status = status
