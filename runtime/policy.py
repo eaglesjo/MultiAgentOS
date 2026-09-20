@@ -10,7 +10,7 @@ class ExecutionPolicy:
     allow_git_write: bool = False
     allow_network: bool = False
     allow_github_write: bool = False
-    require_approval_for: frozenset[str] = frozenset({"git.push", "github.pr", "github.merge"})
+    require_approval_for: frozenset[str] = frozenset({"git.commit", "git.push", "github.pr", "github.merge"})
 
     def permits(self, capability: str) -> bool:
         mapping = {

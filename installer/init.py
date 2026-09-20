@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from core.contracts.profile import DetectionResult
+from agents.catalog import build_agent_catalog
 
 
 class ProjectInitializer:
@@ -25,4 +26,23 @@ class ProjectInitializer:
         }
         config = target / "profile.json"
         config.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        agents = build_agent_catalog(tuple(result.profile_id for result in detections))
+        agent_payload = {
+            "version": 1,
+            "agents": [
+                {
+                    "id": agent.id,
+                    "role": agent.role,
+                    "kind": agent.kind,
+                    "capabilities": sorted(agent.capabilities),
+                    "tools": sorted(agent.tools),
+                    "permissions": sorted(agent.permissions),
+                    "models": list(agent.model_ids),
+                }
+                for agent in agents
+            ],
+        }
+        (target / "agents.json").write_text(
+            json.dumps(agent_payload, indent=2) + "\n", encoding="utf-8"
+        )
         return config

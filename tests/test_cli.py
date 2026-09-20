@@ -20,6 +20,7 @@ class CLITests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             self.assertEqual(main(["init", temp]), 0)
             self.assertTrue((Path(temp) / ".multiagentos" / "profile.json").exists())
+            self.assertTrue((Path(temp) / ".multiagentos" / "agents.json").exists())
 
 
 if __name__ == "__main__":
