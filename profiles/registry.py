@@ -26,8 +26,8 @@ PROFILES = (
     ProfileSpec(
         id="ios-native",
         display_name="iOS Native",
-        detect_files=frozenset(),
-        detect_markers=frozenset({".xcodeproj", ".xcworkspace", "Package.swift"}),
+        detect_files=frozenset({"Package.swift"}),
+        detect_markers=frozenset({".xcodeproj", ".xcworkspace"}),
         roles=COMMON_ROLES + (
             "ios-architect", "swift-developer", "swiftui", "xcode",
         ),
