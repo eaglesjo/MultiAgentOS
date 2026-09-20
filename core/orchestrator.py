@@ -8,6 +8,7 @@ from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifi
 from core.contracts.work_unit import WorkUnit
 from core.delegation import Delegation
 from core.lifecycle import LifecycleCoordinator
+from core.routing import RoutingStrategy
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,7 @@ class Orchestrator:
         preferred_model_ids: list[str] | None = None,
         verifier: ResultVerifier | None = None,
         reviewer: ResultReviewer | None = None,
+        routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
     ) -> OrchestrationResult:
         delegation, output = self.lifecycle.run(
             work_unit,
@@ -41,5 +43,6 @@ class Orchestrator:
             verifier,
             reviewer,
             preferred_model_ids,
+            routing_strategy,
         )
         return OrchestrationResult(work_unit, delegation, output)
