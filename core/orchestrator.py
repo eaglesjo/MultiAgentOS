@@ -4,8 +4,10 @@ from dataclasses import dataclass
 
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
-from core.contracts.work_unit import WorkStatus, WorkUnit
-from core.delegation import Delegation, DelegationEngine
+from core.contracts.execution import AgentExecutor, ResultVerifier
+from core.contracts.work_unit import WorkUnit
+from core.delegation import Delegation
+from core.lifecycle import LifecycleCoordinator
 
 
 @dataclass(frozen=True)
@@ -16,25 +18,26 @@ class OrchestrationResult:
 
 
 class Orchestrator:
-    """Coordinate work assignment without coupling to a model vendor."""
+    """Coordinate delegation, execution, verification, and completion."""
 
-    def __init__(self, delegation: DelegationEngine | None = None) -> None:
-        self.delegation = delegation or DelegationEngine()
+    def __init__(self, lifecycle: LifecycleCoordinator | None = None) -> None:
+        self.lifecycle = lifecycle or LifecycleCoordinator()
 
-    def run(self, work_unit: WorkUnit, agent: AgentContract,
-            models: list[ModelSpec], executor,
-            preferred_model_ids: list[str] | None = None) -> OrchestrationResult:
-        delegation = self.delegation.delegate(
-            work_unit, agent, models, preferred_model_ids
+    def run(
+        self,
+        work_unit: WorkUnit,
+        agent: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        preferred_model_ids: list[str] | None = None,
+        verifier: ResultVerifier | None = None,
+    ) -> OrchestrationResult:
+        delegation, output = self.lifecycle.run(
+            work_unit,
+            agent,
+            models,
+            executor,
+            verifier,
+            preferred_model_ids,
         )
-        try:
-            output = executor.execute(
-                agent=agent,
-                model_id=delegation.assignment.model_id,
-                work_unit=work_unit,
-            )
-        except Exception:
-            work_unit.transition(WorkStatus.FAILED)
-            raise
-        work_unit.transition(WorkStatus.COMPLETED)
         return OrchestrationResult(work_unit, delegation, output)
