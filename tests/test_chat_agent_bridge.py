@@ -133,9 +133,11 @@ if __name__ == "__main__":
         from core.contracts.agent import AgentContract
         from core.contracts.ai import ModelSpec
 
+        from core.lifecycle import ExecutionInterrupted
+
         class InterruptingExecutor:
             def execute(self, *, agent, model_id, work_unit):
-                raise RuntimeError("simulated interruption")
+                raise ExecutionInterrupted("simulated interruption")
 
         class PassingExecutor:
             def execute(self, *, agent, model_id, work_unit):
@@ -162,9 +164,14 @@ if __name__ == "__main__":
                 )
 
             saved = store.load("chat-resume-001")
-            self.assertEqual(saved.status.value, "failed")
+            self.assertEqual(saved.status.value, "executing")
+            self.assertEqual(saved.metadata["checkpoint"]["status"], "executing")
 
-            # A failed work unit intentionally requires an explicit retry policy.
-            # This test verifies the checkpoint is durable rather than silently
-            # retrying a failed task.
-            self.assertEqual(saved.metadata["checkpoint"]["status"], "failed")
+            result = bridge.resume(
+                "chat-resume-001",
+                state_store=store,
+                agent=agent,
+                models=models,
+                executor=PassingExecutor(),
+            )
+            self.assertEqual(result.work_unit.status.value, "completed")
