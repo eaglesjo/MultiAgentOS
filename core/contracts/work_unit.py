@@ -20,7 +20,7 @@ _ALLOWED_TRANSITIONS: dict[WorkStatus, frozenset[WorkStatus]] = {
     WorkStatus.PLANNING: frozenset({WorkStatus.EXECUTING, WorkStatus.FAILED}),
     WorkStatus.EXECUTING: frozenset({WorkStatus.VERIFYING, WorkStatus.COMPLETED, WorkStatus.FAILED}),
     WorkStatus.VERIFYING: frozenset({WorkStatus.EXECUTING, WorkStatus.REVIEWING, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED}),
-    WorkStatus.REVIEWING: frozenset({WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED}),
+    WorkStatus.REVIEWING: frozenset({WorkStatus.EXECUTING, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED}),
     WorkStatus.HANDOFF: frozenset({WorkStatus.EXECUTING, WorkStatus.COMPLETED, WorkStatus.FAILED}),
     WorkStatus.COMPLETED: frozenset(),
     WorkStatus.FAILED: frozenset(),
