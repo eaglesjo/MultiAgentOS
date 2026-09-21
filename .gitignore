@@ -10,3 +10,5 @@ venv/
 # Local credentials and environment
 .env
 .env.*
+
+.multiagentos/sessions/
