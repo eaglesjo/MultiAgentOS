@@ -7,6 +7,8 @@ from pathlib import Path
 from agents.registry import build_registry
 from core.chat_agent_bridge import ChatAgentBridge, ChatAgentExecutionResult, ChatAgentRequest, ChatAgentResponse
 from core.chat_agent_registry import default_chat_agents
+from core.chat_agent_router import ChatAgentAssignment, ChatAgentRouter, ChatAgentRoutingStrategy
+from core.chat_session import ChatSession, ChatSessionStore
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
@@ -62,9 +64,48 @@ class VYRELONRuntime:
 
         return OpenAIChatAgentAdapter(model=model)
 
+    def chat_agent_registry(self):
+        """Return the default provider-neutral Chat Agent registry."""
+        return default_chat_agents()
+
+    def chat_agent_router(self) -> ChatAgentRouter:
+        """Return the policy-neutral Chat Agent router."""
+        return ChatAgentRouter(self.chat_agent_registry())
+
+    def route_chat_agent(
+        self,
+        *,
+        preferred_agent_id: str | None = None,
+        fallback_agent_ids: tuple[str, ...] = (),
+        required_capabilities: frozenset[str] = frozenset(),
+        strategy: ChatAgentRoutingStrategy | str = ChatAgentRoutingStrategy.AUTO,
+    ) -> ChatAgentAssignment:
+        return self.chat_agent_router().route(
+            preferred_agent_id=preferred_agent_id,
+            fallback_agent_ids=fallback_agent_ids,
+            required_capabilities=required_capabilities,
+            strategy=strategy,
+        )
+
     def chat_agent_bridge(self) -> ChatAgentBridge:
         """Return the provider-neutral bridge for conversational AI agents."""
-        return ChatAgentBridge(default_chat_agents())
+        return ChatAgentBridge(self.chat_agent_registry())
+
+    def chat_session_store(self, project_root: Path) -> ChatSessionStore:
+        """Return persistent Chat Agent session storage for a project."""
+        return ChatSessionStore(project_root / ".multiagentos" / "sessions")
+
+    def create_chat_session(
+        self,
+        session_id: str,
+        chat_agent_id: str = "chatgpt",
+        work_unit_id: str | None = None,
+    ) -> ChatSession:
+        return ChatSession(
+            id=session_id,
+            chat_agent_id=chat_agent_id,
+            work_unit_id=work_unit_id,
+        )
 
     def chat_request(
         self,
