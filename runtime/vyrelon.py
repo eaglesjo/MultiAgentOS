@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from agents.registry import build_registry
+from core.chat_agent_bridge import ChatAgentBridge, ChatAgentRequest, ChatAgentResponse
+from core.chat_agent_registry import default_chat_agents
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
@@ -53,6 +55,25 @@ class VYRELONRuntime:
 
     def github_probe(self, repository: str) -> dict:
         return probe(repository)
+
+    def openai_chat_agent(self, model: str | None = None):
+        """Create the optional OpenAI Chat Agent adapter."""
+        from integrations.openai.chat_agent import OpenAIChatAgentAdapter
+
+        return OpenAIChatAgentAdapter(model=model)
+
+    def chat_agent_bridge(self) -> ChatAgentBridge:
+        """Return the provider-neutral bridge for conversational AI agents."""
+        return ChatAgentBridge(default_chat_agents())
+
+    def chat_request(
+        self,
+        request: ChatAgentRequest,
+        adapter,
+        agent_id: str | None = None,
+    ) -> tuple[object, object, ChatAgentResponse]:
+        """Translate a Chat Agent turn into a VYRELON WorkUnit and Plan."""
+        return self.chat_agent_bridge().request(request, adapter, agent_id=agent_id)
 
     def run(
         self,
