@@ -130,8 +130,10 @@ class VYRELONRuntime:
         reviewer: ResultReviewer | None = None,
         routing_strategy="pool",
         session: ChatSession | None = None,
+        project_root: Path | None = None,
     ) -> ChatAgentExecutionResult:
         """Execute a Chat Agent turn through the VYRELON lifecycle."""
+        root = project_root or Path.cwd()
         return self.chat_agent_bridge().execute(
             request=request,
             adapter=adapter,
@@ -143,8 +145,8 @@ class VYRELONRuntime:
             verifier=verifier,
             reviewer=reviewer,
             routing_strategy=routing_strategy,
-            state_store=self.state_store(Path.cwd()),
-            session_store=self.chat_session_store(Path.cwd()),
+            state_store=self.state_store(root),
+            session_store=self.chat_session_store(root),
             session=session,
         )
 
