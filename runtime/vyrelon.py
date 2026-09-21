@@ -56,6 +56,12 @@ class VYRELONRuntime:
     def github_probe(self, repository: str) -> dict:
         return probe(repository)
 
+    def openai_chat_agent(self, model: str | None = None):
+        """Create the optional OpenAI Chat Agent adapter."""
+        from integrations.openai.chat_agent import OpenAIChatAgentAdapter
+
+        return OpenAIChatAgentAdapter(model=model)
+
     def chat_agent_bridge(self) -> ChatAgentBridge:
         """Return the provider-neutral bridge for conversational AI agents."""
         return ChatAgentBridge(default_chat_agents())
