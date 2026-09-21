@@ -18,6 +18,7 @@ from core.planning import BasicPlanner
 from core.state import WorkStateStore
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.multi_agent_workflow import MultiAgentWorkflow, MultiAgentWorkflowResult
+from core.artifacts import ArtifactStore
 from profiles.detector import ProfileDetector
 from integrations.github.gateway import GitHubGatewayClient
 from runtime.github import GitHubRuntime
@@ -50,6 +51,10 @@ class VYRELONRuntime:
 
     def state_store(self, project_root: Path):
         return WorkStateStore(project_root / ".multiagentos" / "state")
+
+    def artifact_store(self, project_root: Path):
+        """Return persistent artifact metadata storage for a project."""
+        return ArtifactStore(project_root / ".multiagentos" / "artifacts")
 
     def agents(self, project_root: Path):
         detections = self.inspect(project_root)
@@ -216,8 +221,10 @@ class VYRELONRuntime:
         reviewer_runner=None,
         preferred_model_ids: list[str] | None = None,
         routing_strategy="pool",
+        project_root: Path | None = None,
     ) -> MultiAgentWorkflowResult:
         """Run a WorkUnit through multiple agents without transferring authority."""
+        root = project_root or Path.cwd()
         return self.multi_agent_workflow().run(
             work_unit=work_unit,
             stages=stages,
@@ -228,6 +235,7 @@ class VYRELONRuntime:
             reviewer_runner=reviewer_runner,
             preferred_model_ids=preferred_model_ids,
             routing_strategy=routing_strategy,
+            artifact_store=self.artifact_store(root),
         )
 
     def review_panel(
