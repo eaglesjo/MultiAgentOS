@@ -122,3 +122,17 @@ Example lifecycle:
       -> ChatGPT
 
 Each transition produces a handoff artifact. Reviewers run through the existing ReviewPanel, whose approval is conjunctive: all required reviewers must approve before completion.
+
+
+## Artifact-first handoff
+
+Agent output is not treated as durable state by itself. A workflow can register `ArtifactContract` records containing an artifact ID, kind, producing agent, content reference, summary, and metadata. VYRELON persists artifact metadata under `.multiagentos/artifacts/` and passes artifact IDs through the WorkUnit and handoff records.
+
+This separates:
+
+- model output: transient execution result
+- artifact: durable work product or evidence reference
+- finding: observation used by a later stage
+- handoff: explicit transfer record between VYRELON-selected stages
+
+The artifact content itself remains in the project or external storage referenced by `content_ref`; secrets must not be embedded in artifact metadata.
