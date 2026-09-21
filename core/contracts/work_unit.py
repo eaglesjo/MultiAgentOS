@@ -10,6 +10,7 @@ class WorkStatus(str, Enum):
     EXECUTING = "executing"
     VERIFYING = "verifying"
     REVIEWING = "reviewing"
+    WAITING_HUMAN_APPROVAL = "waiting_human_approval"
     HANDOFF = "handoff"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -20,7 +21,8 @@ _ALLOWED_TRANSITIONS: dict[WorkStatus, frozenset[WorkStatus]] = {
     WorkStatus.PLANNING: frozenset({WorkStatus.EXECUTING, WorkStatus.FAILED}),
     WorkStatus.EXECUTING: frozenset({WorkStatus.VERIFYING, WorkStatus.COMPLETED, WorkStatus.FAILED}),
     WorkStatus.VERIFYING: frozenset({WorkStatus.EXECUTING, WorkStatus.REVIEWING, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED}),
-    WorkStatus.REVIEWING: frozenset({WorkStatus.EXECUTING, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED}),
+    WorkStatus.REVIEWING: frozenset({WorkStatus.EXECUTING, WorkStatus.WAITING_HUMAN_APPROVAL, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED}),
+    WorkStatus.WAITING_HUMAN_APPROVAL: frozenset({WorkStatus.EXECUTING, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED}),
     WorkStatus.HANDOFF: frozenset({WorkStatus.EXECUTING, WorkStatus.COMPLETED, WorkStatus.FAILED}),
     WorkStatus.COMPLETED: frozenset(),
     WorkStatus.FAILED: frozenset(),

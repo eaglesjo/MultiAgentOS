@@ -252,12 +252,47 @@ class MultiAgentWorkflow:
             work_unit.metadata["review_cycle_count"] = cycle + 1
             work_unit.metadata["review_consensus"] = panel.consensus
             work_unit.metadata["rework_required"] = True
-            work_unit.transition(WorkStatus.FAILED)
-            raise RuntimeError(
-                f"review rejected after {cycle + 1} cycles for work unit: {work_unit.id}"
+            work_unit.metadata["human_review_required"] = True
+            work_unit.metadata["human_review_reason"] = (
+                f"review rejected after {cycle + 1} cycles"
+            )
+            work_unit.transition(WorkStatus.WAITING_HUMAN_APPROVAL)
+            return MultiAgentWorkflowResult(
+                work_unit, tuple(stages), previous_output, tuple(reviews)
             )
 
         raise RuntimeError("review rework loop exited without a terminal result")
+
+    def resolve_human_review(
+        self,
+        *,
+        work_unit: WorkUnit,
+        approved: bool,
+        notes: str = "",
+    ) -> MultiAgentWorkflowResult:
+        """Resolve a bounded-workflow escalation with an explicit human decision."""
+        if work_unit.status is not WorkStatus.WAITING_HUMAN_APPROVAL:
+            raise ValueError("work unit is not waiting for human approval")
+
+        work_unit.metadata["human_review_required"] = False
+        work_unit.metadata["human_review_decision"] = "approved" if approved else "rejected"
+        if notes.strip():
+            work_unit.metadata["human_review_notes"] = notes
+
+        if approved:
+            work_unit.metadata["rework_required"] = False
+            work_unit.transition(WorkStatus.HANDOFF)
+            work_unit.transition(WorkStatus.COMPLETED)
+        else:
+            work_unit.metadata["rework_required"] = False
+            work_unit.transition(WorkStatus.FAILED)
+
+        return MultiAgentWorkflowResult(
+            work_unit=work_unit,
+            stages=(),
+            final_output=None,
+            reviews=(),
+        )
 
     def run(
         self,

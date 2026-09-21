@@ -307,3 +307,17 @@ class VYRELONRuntime:
             routing_strategy=routing_strategy,
             artifact_store=self.artifact_store(root),
         )
+
+    def resolve_human_review(
+        self,
+        *,
+        work_unit: WorkUnit,
+        approved: bool,
+        notes: str = "",
+    ) -> MultiAgentWorkflowResult:
+        """Apply an explicit human decision to an escalated WorkUnit."""
+        return self.multi_agent_workflow().resolve_human_review(
+            work_unit=work_unit,
+            approved=approved,
+            notes=notes,
+        )
