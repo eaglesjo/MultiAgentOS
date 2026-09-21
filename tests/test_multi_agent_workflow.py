@@ -96,6 +96,42 @@ class MultiAgentWorkflowTests(unittest.TestCase):
         self.assertEqual(executor.inputs[1]["from_agent"], "planner")
         self.assertEqual(executor.inputs[1]["artifacts"], ("plan-001",))
         self.assertEqual(executor.inputs[1]["findings"], ("plan is ready",))
+    def test_debug_retry_is_bounded_and_can_recover(self):
+        class Verifier:
+            def __init__(self):
+                self.calls = 0
+
+            def verify(self, *, work_unit, output):
+                self.calls += 1
+                return self.calls == 2
+
+        executor = FakeExecutor()
+        verifier = Verifier()
+        models = [ModelSpec("local", "local", frozenset())]
+        work_unit = WorkUnit("wu-retry", "fix failing tests")
+        agents = [
+            AgentContract(id="developer", role="developer"),
+            AgentContract(id="tester", role="tester"),
+            AgentContract(id="debugger", role="debugger"),
+        ]
+
+        result = MultiAgentWorkflow().run_with_debug_retry(
+            work_unit=work_unit,
+            developer=agents[0],
+            tester=agents[1],
+            debugger=agents[2],
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            max_retries=2,
+        )
+
+        self.assertEqual(result.work_unit.status, WorkStatus.COMPLETED)
+        self.assertEqual(work_unit.metadata["retry_count"], 1)
+        self.assertEqual(
+            [stage.agent_id for stage in result.stages],
+            ["developer", "tester", "debugger", "tester"],
+        )
     def test_review_panel_requires_all_reviewers(self):
         executor = FakeExecutor()
         agents = [AgentContract(id="developer", role="developer")]
