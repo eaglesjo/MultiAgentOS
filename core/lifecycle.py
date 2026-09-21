@@ -13,6 +13,10 @@ class LifecycleError(RuntimeError):
     """Raised when execution, verification, or review cannot complete successfully."""
 
 
+class ExecutionInterrupted(LifecycleError):
+    """Raised when execution stops before completion and may be resumed."""
+
+
 class LifecycleCoordinator:
     """Run delegated work through execution, verification, review, and completion."""
 
@@ -69,6 +73,10 @@ class LifecycleCoordinator:
             if checkpoint is not None:
                 checkpoint(work_unit)
             return delegation, output
+        except ExecutionInterrupted:
+            if checkpoint is not None:
+                checkpoint(work_unit)
+            raise
         except Exception:
             if work_unit.status not in {WorkStatus.FAILED, WorkStatus.COMPLETED}:
                 work_unit.transition(WorkStatus.FAILED)
