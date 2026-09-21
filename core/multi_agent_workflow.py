@@ -93,6 +93,9 @@ class MultiAgentWorkflow:
             work_unit.metadata.setdefault("artifact_ids", []).extend(
                 artifact.id for artifact in stage_artifacts
             )
+            work_unit.artifacts.extend(
+                artifact.id for artifact in stage_artifacts if artifact.id not in work_unit.artifacts
+            )
             handoff = None
             if previous_agent is not None:
                 handoff = self.handoffs.create(
