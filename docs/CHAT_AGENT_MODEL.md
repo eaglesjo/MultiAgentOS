@@ -56,3 +56,24 @@ Every Chat Agent participating in VYRELON must follow the common rules:
 12. **Do not bypass reviewers.** Required independent review/review gates remain active regardless of which Chat Agent initiated the work.
 
 These rules belong to VYRELON, so they apply equally when ChatGPT is primary and when another Chat Agent takes over.
+
+
+## Routing
+
+VYRELON supports three provider-neutral Chat Agent routing modes:
+
+- **explicit** — use the requested Chat Agent.
+- **fallback** — try the requested candidate list in order until a compatible agent is found.
+- **auto** — select from the registered pool; the primary ChatGPT Agent is preferred when it satisfies the requested capabilities.
+
+Routing chooses the conversational interface only. It does not grant that provider filesystem, shell, Git, GitHub, or merge authority.
+
+## Sessions
+
+Chat conversation state is persisted separately under:
+
+    .multiagentos/sessions/
+
+Session state contains the Chat Agent identity, optional WorkUnit identity, turns, metadata, and timestamps. Provider credentials remain outside this state.
+
+This gives VYRELON a stable session boundary even when the provider changes or a provider-specific runtime is restarted. The session model also aligns with modern agent systems that treat sessions as persistent conversation/task state. 
