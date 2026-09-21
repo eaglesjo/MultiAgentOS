@@ -52,6 +52,9 @@ class HumanReviewPersistenceTests(unittest.TestCase):
             loaded = fresh.state_store(root).load("wu-persisted-gate")
             self.assertEqual(loaded.status, WorkStatus.WAITING_HUMAN_APPROVAL)
             self.assertTrue(loaded.metadata["human_review_required"])
+            self.assertEqual(loaded.metadata["resume_context"]["workflow"], "review_rework")
+            self.assertEqual(loaded.metadata["resume_context"]["developer_id"], "developer")
+            self.assertEqual(loaded.metadata["resume_context"]["reviewer_ids"], ["reviewer"])
 
             resolved = fresh.resolve_persisted_human_review(
                 "wu-persisted-gate",
@@ -129,6 +132,35 @@ class HumanReviewPersistenceTests(unittest.TestCase):
                     work_unit=work_unit,
                     decision=HumanReviewDecision.APPROVE_REWORK,
                     project_root=Path(directory),
+                )
+
+    def test_resume_rejects_mismatched_agent_context(self):
+        work_unit = WorkUnit("wu-context-mismatch", "reject mismatched resume")
+        def reject(*, review_work_unit_id, reviewer, context):
+            return ReviewDecision(approved=False, feedback="needs human")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.runtime.run_review_rework_workflow(
+                work_unit=work_unit,
+                developer=self.developer,
+                tester=self.tester,
+                reviewers=self.reviewer,
+                models=self.models,
+                executor=FakeExecutor(),
+                reviewer_runner=reject,
+                max_review_cycles=1,
+                project_root=root,
+            )
+            with self.assertRaises(ValueError):
+                self.runtime.resume_human_review_rework(
+                    "wu-context-mismatch",
+                    developer=AgentContract(id="different-developer", role="developer"),
+                    tester=self.tester,
+                    reviewers=self.reviewer,
+                    models=self.models,
+                    executor=FakeExecutor(),
+                    reviewer_runner=reject,
+                    project_root=root,
                 )
 
 
