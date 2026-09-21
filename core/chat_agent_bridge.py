@@ -15,6 +15,8 @@ from core.contracts.planning import PlanStep, WorkPlan
 from core.contracts.work_unit import WorkUnit
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.planning import BasicPlanner
+from core.state import WorkStateStore
+from core.chat_session import ChatSession, ChatSessionStore
 
 
 VYRELON_AGENT_RULES: tuple[str, ...] = (
@@ -148,6 +150,9 @@ class ChatAgentBridge:
         verifier: ResultVerifier | None = None,
         reviewer: ResultReviewer | None = None,
         routing_strategy="pool",
+        state_store: WorkStateStore | None = None,
+        session_store: ChatSessionStore | None = None,
+        session: ChatSession | None = None,
     ) -> ChatAgentExecutionResult:
         """Run a Chat Agent request through the VYRELON execution lifecycle.
 
@@ -159,6 +164,18 @@ class ChatAgentBridge:
         )
         work_unit.metadata["execution_authority"] = "vyrelon"
         work_unit.metadata["execution_agent_id"] = agent.id
+        if session is not None:
+            session.work_unit_id = work_unit.id
+            session.metadata["execution_agent_id"] = agent.id
+        def checkpoint(unit: WorkUnit) -> None:
+            unit.metadata["checkpoint"] = {"status": unit.status.value}
+            if state_store is not None:
+                state_store.save(unit)
+            if session is not None:
+                session.metadata["lifecycle_status"] = unit.status.value
+                if session_store is not None:
+                    session_store.save(session)
+        checkpoint(work_unit)
         orchestration = self.orchestrator.run(
             work_unit=work_unit,
             agent=agent,
@@ -168,6 +185,7 @@ class ChatAgentBridge:
             verifier=verifier,
             reviewer=reviewer,
             routing_strategy=routing_strategy,
+            checkpoint=checkpoint,
         )
         work_unit.metadata["execution_evidence"] = [
             f"VYRELON execution completed with agent {agent.id}",
@@ -182,4 +200,41 @@ class ChatAgentBridge:
             plan=plan,
             chat_response=response,
             orchestration=orchestration,
+        )
+
+    
+    def resume(
+        self,
+        work_unit_id: str,
+        *,
+        state_store: WorkStateStore,
+        agent: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        verifier: ResultVerifier | None = None,
+        reviewer: ResultReviewer | None = None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+    ) -> OrchestrationResult:
+        """Resume a persisted WorkUnit after interruption."""
+        work_unit = state_store.load(work_unit_id)
+        if work_unit.status.value == "completed":
+            raise ValueError(f"work unit is already completed: {work_unit_id}")
+        if work_unit.status.value == "failed":
+            raise ValueError(f"failed work unit requires explicit retry policy: {work_unit_id}")
+
+        def checkpoint(unit: WorkUnit) -> None:
+            unit.metadata["checkpoint"] = {"status": unit.status.value}
+            state_store.save(unit)
+
+        return self.orchestrator.run(
+            work_unit=work_unit,
+            agent=agent,
+            models=models,
+            executor=executor,
+            preferred_model_ids=preferred_model_ids,
+            verifier=verifier,
+            reviewer=reviewer,
+            routing_strategy=routing_strategy,
+            checkpoint=checkpoint,
         )
