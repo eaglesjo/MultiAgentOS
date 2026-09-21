@@ -76,3 +76,31 @@ The execution result keeps the planning response and runtime result together in 
 - verification/review evidence: the configured runtime checks accepted the result
 
 A Chat Agent must never use its own textual response as proof that an external action happened.
+
+
+## Long-running and resumable execution
+
+Chat Agent execution now checkpoints the WorkUnit lifecycle into the project's VYRELON state store.
+
+A normal lifecycle records:
+
+    planning -> executing -> verifying -> reviewing -> handoff -> completed
+
+If an executor raises ExecutionInterrupted, VYRELON preserves the executing checkpoint instead of converting it into a terminal failure. The persisted WorkUnit can then be resumed explicitly.
+
+Resume is intentionally explicit and uses the same VYRELON execution boundary:
+
+    persisted WorkUnit
+        |
+        v
+    VYRELON resume
+        |
+        v
+    Agent + Model routing
+        |
+        v
+    Execute -> Verify -> Review -> Complete
+
+Executors used with resumable WorkUnits should be idempotent for the relevant operation. A normal failure remains terminal until an explicit retry policy is introduced; VYRELON does not silently retry failed work.
+
+Chat Session state stores the associated WorkUnit ID and lifecycle status, allowing a conversational client to reconnect to an ongoing task without making the provider itself the execution authority.
