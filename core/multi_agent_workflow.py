@@ -21,6 +21,7 @@ class AgentStageResult:
     output: object
     handoff: HandoffArtifact | None = None
     artifacts: tuple[ArtifactContract, ...] = ()
+    findings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -68,8 +69,15 @@ class MultiAgentWorkflow:
         results: list[AgentStageResult] = []
         previous_agent: AgentContract | None = None
         previous_output: object = None
+        previous_artifacts: tuple[ArtifactContract, ...] = ()
+        previous_findings: tuple[str, ...] = tuple(work_unit.metadata.get("findings", ()))
 
         for agent in stages:
+            work_unit.metadata["stage_input"] = {
+                "from_agent": previous_agent.id if previous_agent else None,
+                "artifacts": tuple(a.id for a in previous_artifacts),
+                "findings": previous_findings,
+            }
             delegation = self.delegation.delegate(
                 work_unit,
                 agent,
@@ -82,6 +90,8 @@ class MultiAgentWorkflow:
                 model_id=delegation.assignment.model_id,
                 work_unit=work_unit,
             )
+            stage_findings = tuple(work_unit.metadata.get("stage_findings", ()))
+            previous_findings = stage_findings
             stage_artifacts = tuple(
                 artifact for artifact in work_unit.metadata.get("artifacts", ())
                 if isinstance(artifact, ArtifactContract)
@@ -96,6 +106,7 @@ class MultiAgentWorkflow:
             work_unit.artifacts.extend(
                 artifact.id for artifact in stage_artifacts if artifact.id not in work_unit.artifacts
             )
+            previous_artifacts = stage_artifacts
             handoff = None
             if previous_agent is not None:
                 handoff = self.handoffs.create(
@@ -111,7 +122,7 @@ class MultiAgentWorkflow:
                     "to_agent": handoff.to_agent,
                     "summary": handoff.summary,
                 })
-            results.append(AgentStageResult(agent.id, delegation, output, handoff, stage_artifacts))
+            results.append(AgentStageResult(agent.id, delegation, output, handoff, stage_artifacts, stage_findings))
             previous_agent = agent
             previous_output = output
 
