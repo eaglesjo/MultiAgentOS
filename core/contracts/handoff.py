@@ -15,6 +15,18 @@ class HandoffArtifact:
 
 
 @dataclass(frozen=True)
+class ReviewContext:
+    """Structured input presented to a reviewer by VYRELON."""
+
+    work_unit_id: str
+    artifact_ids: tuple[str, ...] = ()
+    findings: tuple[str, ...] = ()
+    last_agent_id: str | None = None
+    review_cycle: int = 0
+    metadata: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class ReviewResult:
     approved: bool
     reviewer_id: str
