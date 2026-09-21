@@ -2,6 +2,8 @@
 
 from core.chat_agent_bridge import ChatAgentBridge, ChatAgentExecutionResult, ChatAgentRequest, ChatAgentResponse
 from core.chat_agent_registry import ChatAgentRegistry, default_chat_agents
+from core.chat_agent_router import ChatAgentAssignment, ChatAgentRouter, ChatAgentRoutingStrategy
+from core.chat_session import ChatSession, ChatSessionStore
 from core.contracts.chat_agent import ChatAgentContract, ChatAgentProvider
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier, ReviewDecision
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
@@ -16,7 +18,7 @@ from core.registry import AIRegistry, AgentRegistry
 from core.routing import AIRouter, Assignment, RoutingStrategy
 
 __all__ = [
-    "AIRegistry", "AgentRegistry", "ChatAgentBridge", "ChatAgentExecutionResult", "ChatAgentRequest", "ChatAgentResponse", "ChatAgentRegistry", "ChatAgentContract", "ChatAgentProvider", "AIRouter", "Assignment", "RoutingStrategy",
+    "AIRegistry", "AgentRegistry", "ChatAgentAssignment", "ChatAgentBridge", "ChatAgentRouter", "ChatAgentRoutingStrategy", "ChatSession", "ChatSessionStore", "ChatAgentExecutionResult", "ChatAgentRequest", "ChatAgentResponse", "ChatAgentRegistry", "ChatAgentContract", "ChatAgentProvider", "AIRouter", "Assignment", "RoutingStrategy",
     "AgentExecutor", "ResultVerifier", "ResultReviewer", "ReviewDecision",
     "ModelAdapter", "ModelRequest", "ModelResponse",
     "ExecutionRequest", "RuntimeExecutor",
