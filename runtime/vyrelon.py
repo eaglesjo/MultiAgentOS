@@ -238,6 +238,35 @@ class VYRELONRuntime:
             artifact_store=self.artifact_store(root),
         )
 
+    def run_debug_retry_workflow(
+        self,
+        *,
+        work_unit: WorkUnit,
+        developer: AgentContract,
+        tester: AgentContract,
+        debugger: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        verifier: ResultVerifier,
+        max_retries: int = 2,
+        project_root: Path | None = None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+    ) -> MultiAgentWorkflowResult:
+        root = project_root or Path.cwd()
+        return self.multi_agent_workflow().run_with_debug_retry(
+            work_unit=work_unit,
+            developer=developer,
+            tester=tester,
+            debugger=debugger,
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            max_retries=max_retries,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            artifact_store=self.artifact_store(root),
+        )
     def review_panel(
         self,
         work_unit_id: str,
