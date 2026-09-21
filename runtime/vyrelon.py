@@ -17,6 +17,7 @@ from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import WorkStateStore
 from core.orchestrator import OrchestrationResult, Orchestrator
+from core.multi_agent_workflow import MultiAgentWorkflow, MultiAgentWorkflowResult
 from profiles.detector import ProfileDetector
 from integrations.github.gateway import GitHubGatewayClient
 from runtime.github import GitHubRuntime
@@ -196,6 +197,36 @@ class VYRELONRuntime:
             preferred_model_ids=preferred_model_ids,
             verifier=verifier,
             reviewer=reviewer,
+            routing_strategy=routing_strategy,
+        )
+
+    def multi_agent_workflow(self) -> MultiAgentWorkflow:
+        """Return the VYRELON-controlled multi-agent handoff workflow."""
+        return MultiAgentWorkflow()
+
+    def run_multi_agent_workflow(
+        self,
+        *,
+        work_unit: WorkUnit,
+        stages: list[AgentContract],
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        verifier: ResultVerifier | None = None,
+        reviewers=None,
+        reviewer_runner=None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+    ) -> MultiAgentWorkflowResult:
+        """Run a WorkUnit through multiple agents without transferring authority."""
+        return self.multi_agent_workflow().run(
+            work_unit=work_unit,
+            stages=stages,
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            reviewers=reviewers,
+            reviewer_runner=reviewer_runner,
+            preferred_model_ids=preferred_model_ids,
             routing_strategy=routing_strategy,
         )
 
