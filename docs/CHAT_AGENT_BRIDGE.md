@@ -43,3 +43,36 @@ This makes the rule set part of the integration boundary rather than an informal
 Provider-specific implementations belong outside the core contracts. A ChatGPT adapter can later use an OpenAI agent/SDK integration; Gemini and Claude adapters can use their respective APIs or agent runtimes. The bridge only depends on the provider-neutral ChatAgentAdapter protocol.
 
 The OpenAI Agents stack currently supports explicit instructions, tools, environments, and agent handoffs, which maps naturally to this adapter boundary. VYRELON should still retain authority over its own WorkUnit, policy, verification, and Git/GitHub lifecycle.
+
+
+## Full execution
+
+The bridge now exposes a full lifecycle entry point:
+
+    Chat Agent
+      |
+      | structured intent + plan
+      v
+    ChatAgentBridge.execute()
+      |
+      v
+    VYRELON Orchestrator
+      |
+      +--> Delegation / model routing
+      +--> AgentExecutor
+      +--> Verification
+      +--> Review
+      +--> Completion
+      |
+      v
+    WorkUnit execution evidence
+
+The caller supplies the execution AgentContract, model pool, and AgentExecutor. This is deliberate: a conversational provider does not automatically gain filesystem, process, Git, or GitHub authority merely because it is the primary Chat Agent.
+
+The execution result keeps the planning response and runtime result together in ChatAgentExecutionResult. This separates three kinds of evidence:
+
+- chat evidence: the provider accepted/generated the request
+- execution evidence: VYRELON actually ran the assigned agent/model
+- verification/review evidence: the configured runtime checks accepted the result
+
+A Chat Agent must never use its own textual response as proof that an external action happened.

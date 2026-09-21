@@ -7,7 +7,11 @@ from core.chat_agent_bridge import (
     VYRELON_AGENT_RULES,
 )
 from core.chat_agent_registry import default_chat_agents
+from core.contracts.agent import AgentContract
+from core.contracts.ai import ModelSpec
 from core.contracts.planning import PlanStep
+from core.contracts.work_unit import WorkStatus
+from core.contracts.execution import ReviewDecision
 
 
 class FakeChatAgent:
@@ -22,6 +26,25 @@ class FakeChatAgent:
             findings=("repository state must be inspected first",),
             evidence=("request accepted by adapter",),
         )
+
+
+class RecordingExecutor:
+    def __init__(self):
+        self.calls = []
+
+    def execute(self, *, agent, model_id, work_unit):
+        self.calls.append((agent.id, model_id, work_unit.id))
+        return {"status": "ok"}
+
+
+class PassingVerifier:
+    def verify(self, *, work_unit, output):
+        return True
+
+
+class PassingReviewer:
+    def review(self, *, work_unit, output):
+        return ReviewDecision(approved=True, feedback="approved")
 
 
 class TestChatAgentBridge(unittest.TestCase):
@@ -56,6 +79,47 @@ class TestChatAgentBridge(unittest.TestCase):
     def test_instruction_lookup_uses_primary_by_default(self):
         bridge = ChatAgentBridge(default_chat_agents())
         self.assertIn("ChatGPT Agent", bridge.instructions())
+
+    def test_chat_agent_request_can_enter_full_vyrelon_execution(self):
+        adapter = FakeChatAgent()
+        executor = RecordingExecutor()
+        agent = AgentContract(
+            id="developer",
+            role="developer",
+            capabilities=frozenset({"code"}),
+        )
+        models = [
+            ModelSpec("cloud-code", "provider-a", frozenset({"code"})),
+        ]
+        bridge = ChatAgentBridge(default_chat_agents())
+
+        result = bridge.execute(
+            ChatAgentRequest(objective="Implement the requested change."),
+            adapter,
+            agent,
+            models,
+            executor,
+            verifier=PassingVerifier(),
+            reviewer=PassingReviewer(),
+        )
+
+        self.assertEqual(result.work_unit.status, WorkStatus.COMPLETED)
+        self.assertEqual(
+            executor.calls,
+            [("developer", "cloud-code", result.work_unit.id)],
+        )
+        self.assertEqual(
+            result.work_unit.metadata["execution_authority"],
+            "vyrelon",
+        )
+        self.assertEqual(
+            result.work_unit.metadata["verification_evidence"],
+            ["VYRELON verifier accepted output"],
+        )
+        self.assertEqual(
+            result.work_unit.metadata["review_evidence"],
+            ["VYRELON reviewer approved output"],
+        )
 
 
 if __name__ == "__main__":

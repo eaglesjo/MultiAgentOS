@@ -7,9 +7,13 @@ from uuid import uuid4
 from typing import Protocol
 
 from core.chat_agent_registry import ChatAgentRegistry
+from core.contracts.agent import AgentContract
+from core.contracts.ai import ModelSpec
 from core.contracts.chat_agent import ChatAgentContract
+from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.planning import PlanStep, WorkPlan
 from core.contracts.work_unit import WorkUnit
+from core.orchestrator import OrchestrationResult, Orchestrator
 from core.planning import BasicPlanner
 
 
@@ -63,6 +67,16 @@ class ChatAgentResponse:
     evidence: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class ChatAgentExecutionResult:
+    """The complete result of turning a Chat Agent turn into VYRELON execution."""
+
+    work_unit: WorkUnit
+    plan: WorkPlan
+    chat_response: ChatAgentResponse
+    orchestration: OrchestrationResult
+
+
 class ChatAgentAdapter(Protocol):
     """Provider adapter implemented by a connected Chat Agent."""
 
@@ -77,15 +91,17 @@ class ChatAgentAdapter(Protocol):
 
 
 class ChatAgentBridge:
-    """Translate Chat Agent turns into VYRELON WorkUnits and Plans."""
+    """Translate Chat Agent turns into VYRELON WorkUnits, Plans, and execution."""
 
     def __init__(
         self,
         registry: ChatAgentRegistry,
         planner: BasicPlanner | None = None,
+        orchestrator: Orchestrator | None = None,
     ) -> None:
         self.registry = registry
         self.planner = planner or BasicPlanner()
+        self.orchestrator = orchestrator or Orchestrator()
 
     def instructions(self, agent_id: str | None = None) -> str:
         agent = self.registry.get(agent_id) if agent_id else self.registry.primary()
@@ -118,3 +134,52 @@ class ChatAgentBridge:
         work_unit.metadata["chat_agent_evidence"] = list(response.evidence)
         work_unit.artifacts.extend(response.artifacts)
         return work_unit, plan, response
+
+    def execute(
+        self,
+        request: ChatAgentRequest,
+        adapter: ChatAgentAdapter,
+        agent: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        *,
+        chat_agent_id: str | None = None,
+        preferred_model_ids: list[str] | None = None,
+        verifier: ResultVerifier | None = None,
+        reviewer: ResultReviewer | None = None,
+        routing_strategy="pool",
+    ) -> ChatAgentExecutionResult:
+        """Run a Chat Agent request through the VYRELON execution lifecycle.
+
+        The Chat Agent supplies intent and planning. The supplied AgentContract,
+        model pool, executor, verifier, and reviewer determine actual execution.
+        """
+        work_unit, plan, response = self.request(
+            request, adapter, agent_id=chat_agent_id
+        )
+        work_unit.metadata["execution_authority"] = "vyrelon"
+        work_unit.metadata["execution_agent_id"] = agent.id
+        orchestration = self.orchestrator.run(
+            work_unit=work_unit,
+            agent=agent,
+            models=models,
+            executor=executor,
+            preferred_model_ids=preferred_model_ids,
+            verifier=verifier,
+            reviewer=reviewer,
+            routing_strategy=routing_strategy,
+        )
+        work_unit.metadata["execution_evidence"] = [
+            f"VYRELON execution completed with agent {agent.id}",
+            f"assigned model: {orchestration.delegation.assignment.model_id}",
+        ]
+        if verifier is not None:
+            work_unit.metadata["verification_evidence"] = ["VYRELON verifier accepted output"]
+        if reviewer is not None:
+            work_unit.metadata["review_evidence"] = ["VYRELON reviewer approved output"]
+        return ChatAgentExecutionResult(
+            work_unit=work_unit,
+            plan=plan,
+            chat_response=response,
+            orchestration=orchestration,
+        )

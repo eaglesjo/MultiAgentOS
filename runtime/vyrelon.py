@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from agents.registry import build_registry
-from core.chat_agent_bridge import ChatAgentBridge, ChatAgentRequest, ChatAgentResponse
+from core.chat_agent_bridge import ChatAgentBridge, ChatAgentExecutionResult, ChatAgentRequest, ChatAgentResponse
 from core.chat_agent_registry import default_chat_agents
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
@@ -74,6 +74,34 @@ class VYRELONRuntime:
     ) -> tuple[object, object, ChatAgentResponse]:
         """Translate a Chat Agent turn into a VYRELON WorkUnit and Plan."""
         return self.chat_agent_bridge().request(request, adapter, agent_id=agent_id)
+
+    def execute_chat_request(
+        self,
+        request: ChatAgentRequest,
+        adapter,
+        agent: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        *,
+        chat_agent_id: str | None = None,
+        preferred_model_ids: list[str] | None = None,
+        verifier: ResultVerifier | None = None,
+        reviewer: ResultReviewer | None = None,
+        routing_strategy="pool",
+    ) -> ChatAgentExecutionResult:
+        """Execute a Chat Agent turn through the VYRELON lifecycle."""
+        return self.chat_agent_bridge().execute(
+            request=request,
+            adapter=adapter,
+            agent=agent,
+            models=models,
+            executor=executor,
+            chat_agent_id=chat_agent_id,
+            preferred_model_ids=preferred_model_ids,
+            verifier=verifier,
+            reviewer=reviewer,
+            routing_strategy=routing_strategy,
+        )
 
     def run(
         self,
