@@ -166,3 +166,24 @@ Reviewers receive a structured review context containing the WorkUnit ID, artifa
 All required reviewers must approve. A review rejection does not directly transfer execution to another agent: VYRELON moves the WorkUnit back to EXECUTING and performs the next delegation itself.
 
 The cycle is bounded by `max_review_cycles`. When the limit is reached without approval, the WorkUnit transitions to FAILED and retains review history and feedback for human intervention. This prevents unbounded autonomous correction loops.
+
+
+## Human review gate
+
+A bounded autonomous review/rework loop does not have to end in an opaque failure. When the configured review-cycle limit is reached without unanimous reviewer approval, VYRELON transitions the WorkUnit to `WAITING_HUMAN_APPROVAL`.
+
+    Reviewer rejection
+          |
+          v
+    max_review_cycles reached
+          |
+          v
+    WAITING_HUMAN_APPROVAL
+          |
+          +-- human approves --> HANDOFF -> COMPLETED
+          |
+          +-- human rejects  --> FAILED
+
+The escalation records the reason, review-cycle count, review history, and reviewer feedback in WorkUnit metadata. The human decision is explicit and is applied through VYRELON; the reviewer or Chat Agent cannot silently resolve the gate.
+
+This creates a clear boundary between autonomous execution and human judgment while keeping the WorkUnit as the durable unit of state.
