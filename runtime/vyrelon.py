@@ -129,6 +129,7 @@ class VYRELONRuntime:
         verifier: ResultVerifier | None = None,
         reviewer: ResultReviewer | None = None,
         routing_strategy="pool",
+        session: ChatSession | None = None,
     ) -> ChatAgentExecutionResult:
         """Execute a Chat Agent turn through the VYRELON lifecycle."""
         return self.chat_agent_bridge().execute(
@@ -141,6 +142,36 @@ class VYRELONRuntime:
             preferred_model_ids=preferred_model_ids,
             verifier=verifier,
             reviewer=reviewer,
+            routing_strategy=routing_strategy,
+            state_store=self.state_store(Path.cwd()),
+            session_store=self.chat_session_store(Path.cwd()),
+            session=session,
+        )
+
+    def resume_chat_request(
+        self,
+        work_unit_id: str,
+        agent: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        *,
+        verifier: ResultVerifier | None = None,
+        reviewer: ResultReviewer | None = None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+        project_root: Path | None = None,
+    ) -> OrchestrationResult:
+        """Resume an interrupted Chat Agent WorkUnit from persisted state."""
+        root = project_root or Path.cwd()
+        return self.chat_agent_bridge().resume(
+            work_unit_id,
+            state_store=self.state_store(root),
+            agent=agent,
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            reviewer=reviewer,
+            preferred_model_ids=preferred_model_ids,
             routing_strategy=routing_strategy,
         )
 
