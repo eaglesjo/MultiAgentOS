@@ -136,3 +136,9 @@ This separates:
 - handoff: explicit transfer record between VYRELON-selected stages
 
 The artifact content itself remains in the project or external storage referenced by `content_ref`; secrets must not be embedded in artifact metadata.
+
+## Bounded debug retry
+
+VYRELON can execute a bounded Developer → Tester → Debugger → Tester cycle. A failed verification produces a finding, the Debugger receives the current WorkUnit context, and the workflow retries verification up to `max_retries`. Exceeding the limit transitions the WorkUnit to FAILED instead of looping indefinitely.
+
+Successful verification exits the retry loop and continues to the normal completion/review path. The retry count is persisted in WorkUnit metadata.
