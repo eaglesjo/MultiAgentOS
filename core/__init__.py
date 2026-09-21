@@ -27,3 +27,5 @@ __all__ = [
     "ExecutionInterrupted", "LifecycleCoordinator", "LifecycleError",
     "OrchestrationResult", "Orchestrator", "BasicPlanner", "WorkStateStore",
 ]
+
+from core.multi_agent_workflow import AgentStageResult, MultiAgentWorkflow, MultiAgentWorkflowResult
