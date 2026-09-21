@@ -49,6 +49,49 @@ class MultiAgentWorkflow:
         self.handoffs = handoffs or HandoffManager()
         self.review_panel = review_panel or ReviewPanel()
 
+    def run_with_debug_retry(
+        self,
+        *,
+        work_unit: WorkUnit,
+        developer: AgentContract,
+        tester: AgentContract,
+        debugger: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        verifier: ResultVerifier,
+        max_retries: int = 2,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
+        artifact_store=None,
+    ) -> MultiAgentWorkflowResult:
+        if max_retries < 0:
+            raise ValueError("max_retries must be >= 0")
+        stages: list[AgentStageResult] = []
+        previous_output = None
+        for attempt in range(max_retries + 1):
+            agent = developer if attempt == 0 else debugger
+            delegation = self.delegation.delegate(work_unit, agent, models, preferred_model_ids, routing_strategy)
+            output = executor.execute(agent=agent, model_id=delegation.assignment.model_id, work_unit=work_unit)
+            stages.append(AgentStageResult(agent.id, delegation, output))
+            work_unit.transition(WorkStatus.VERIFYING)
+            previous_output = executor.execute(agent=tester, model_id=self.delegation.router.assign(tester, models, preferred_model_ids, routing_strategy).model_id, work_unit=work_unit)
+            stages.append(AgentStageResult(tester.id, self.delegation.delegate(work_unit, tester, models, preferred_model_ids, routing_strategy), previous_output))
+            if verifier.verify(work_unit=work_unit, output=previous_output):
+                work_unit.transition(WorkStatus.HANDOFF)
+                work_unit.transition(WorkStatus.COMPLETED)
+                work_unit.metadata["retry_count"] = attempt
+                return MultiAgentWorkflowResult(work_unit, tuple(stages), previous_output)
+            work_unit.metadata.setdefault("findings", []).append(f"verification failed on attempt {attempt + 1}")
+            if attempt < max_retries:
+                work_unit.transition(WorkStatus.EXECUTING)
+                work_unit.metadata["stage_input"] = {
+                    "from_agent": tester.id,
+                    "artifacts": tuple(work_unit.artifacts),
+                    "findings": tuple(work_unit.metadata.get("findings", ())),
+                }
+        work_unit.transition(WorkStatus.FAILED)
+        work_unit.metadata["retry_count"] = max_retries + 1
+        raise RuntimeError(f"verification failed after {max_retries + 1} attempts for work unit: {work_unit.id}")
     def run(
         self,
         *,
