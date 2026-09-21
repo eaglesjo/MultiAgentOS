@@ -9,6 +9,7 @@ from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.handoff import ArtifactContract, HandoffArtifact, ReviewContext, ReviewResult
 from core.contracts.work_unit import WorkStatus, WorkUnit
+from core.contracts.resume import WorkflowResumeContext
 from core.delegation import Delegation, DelegationEngine
 from core.handoff import HandoffManager, ReviewPanel
 from core.routing import RoutingStrategy
@@ -256,6 +257,19 @@ class MultiAgentWorkflow:
             work_unit.metadata["human_review_reason"] = (
                 f"review rejected after {cycle + 1} cycles"
             )
+            work_unit.metadata["resume_context"] = WorkflowResumeContext(
+                workflow="review_rework",
+                work_unit_id=work_unit.id,
+                review_cycle=cycle + 1,
+                max_review_cycles=max_review_cycles,
+                developer_id=developer.id,
+                tester_id=tester.id,
+                reviewer_ids=tuple(agent.id for agent, _ in reviewers),
+                model_ids=tuple(model.id for model in models),
+                artifact_ids=tuple(work_unit.artifacts),
+                findings=tuple(work_unit.metadata.get("findings", ())),
+                last_agent_id=previous_agent.id if previous_agent else None,
+            ).to_metadata()
             work_unit.transition(WorkStatus.WAITING_HUMAN_APPROVAL)
             return MultiAgentWorkflowResult(
                 work_unit, tuple(stages), previous_output, tuple(reviews)

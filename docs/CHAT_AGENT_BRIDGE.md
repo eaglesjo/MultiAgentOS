@@ -187,3 +187,31 @@ A bounded autonomous review/rework loop does not have to end in an opaque failur
 The escalation records the reason, review-cycle count, review history, and reviewer feedback in WorkUnit metadata. The human decision is explicit and is applied through VYRELON; the reviewer or Chat Agent cannot silently resolve the gate.
 
 This creates a clear boundary between autonomous execution and human judgment while keeping the WorkUnit as the durable unit of state.
+
+
+## Persistent human-gate resolution
+
+The human gate is persisted through the VYRELON `WorkStateStore`, so a process restart does not discard a `WAITING_HUMAN_APPROVAL` WorkUnit.
+
+Human decisions are explicit:
+
+- `APPROVE_COMPLETION` — accept the retained evidence and complete the WorkUnit.
+- `APPROVE_REWORK` — authorize one new bounded Review -> Rework -> Review execution cycle through VYRELON.
+- `REJECT` — terminate the WorkUnit as `FAILED`.
+
+The persisted path is:
+
+    autonomous review/rework
+            |
+            v
+    WAITING_HUMAN_APPROVAL
+            |
+            +-- persisted state
+            |
+            +-- APPROVE_COMPLETION -> HANDOFF -> COMPLETED
+            |
+            +-- APPROVE_REWORK -> EXECUTING -> Review/Rework cycle
+            |
+            +-- REJECT -> FAILED
+
+`APPROVE_REWORK` is deliberately not accepted by the simple completion resolver. It must go through the VYRELON resume path with the required agents, models, executor, reviewer, and bounded cycle configuration. This prevents a Chat Agent or reviewer from silently granting additional execution authority.

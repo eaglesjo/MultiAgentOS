@@ -12,7 +12,9 @@ from core.chat_session import ChatSession, ChatSessionStore
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
-from core.contracts.work_unit import WorkUnit
+from core.contracts.work_unit import WorkStatus, WorkUnit
+from core.contracts.human_review import HumanReviewDecision
+from core.contracts.resume import WorkflowResumeContext
 from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import WorkStateStore
@@ -293,7 +295,7 @@ class VYRELONRuntime:
     ) -> MultiAgentWorkflowResult:
         """Run bounded Review -> Rework -> Review under VYRELON authority."""
         root = project_root or Path.cwd()
-        return self.multi_agent_workflow().run_with_review_rework(
+        result = self.multi_agent_workflow().run_with_review_rework(
             work_unit=work_unit,
             developer=developer,
             tester=tester,
@@ -307,17 +309,116 @@ class VYRELONRuntime:
             routing_strategy=routing_strategy,
             artifact_store=self.artifact_store(root),
         )
+        self.state_store(root).save(result.work_unit)
+        return result
 
     def resolve_human_review(
         self,
         *,
         work_unit: WorkUnit,
-        approved: bool,
+        decision: HumanReviewDecision | str | None = None,
+        approved: bool | None = None,
         notes: str = "",
+        project_root: Path | None = None,
     ) -> MultiAgentWorkflowResult:
-        """Apply an explicit human decision to an escalated WorkUnit."""
-        return self.multi_agent_workflow().resolve_human_review(
+        """Resolve a persisted human gate and save the resulting WorkUnit."""
+        root = project_root or Path.cwd()
+        if decision is None:
+            if approved is None:
+                raise ValueError("decision or approved must be provided")
+            decision = (
+                HumanReviewDecision.APPROVE_COMPLETION
+                if approved
+                else HumanReviewDecision.REJECT
+            )
+        decision = HumanReviewDecision.coerce(decision)
+        if decision is HumanReviewDecision.APPROVE_REWORK:
+            raise ValueError("APPROVE_REWORK requires resume_human_review_rework()")
+        result = self.multi_agent_workflow().resolve_human_review(
             work_unit=work_unit,
-            approved=approved,
+            approved=decision is HumanReviewDecision.APPROVE_COMPLETION,
             notes=notes,
         )
+        work_unit.metadata["human_review_decision"] = decision.value
+        self.state_store(root).save(result.work_unit)
+        return result
+
+    def resolve_persisted_human_review(
+        self,
+        work_unit_id: str,
+        *,
+        decision: HumanReviewDecision | str,
+        notes: str = "",
+        project_root: Path | None = None,
+    ) -> MultiAgentWorkflowResult:
+        """Load a waiting human gate, resolve it, and persist the decision."""
+        root = project_root or Path.cwd()
+        work_unit = self.state_store(root).load(work_unit_id)
+        if work_unit.status is not WorkStatus.WAITING_HUMAN_APPROVAL:
+            raise ValueError("work unit is not waiting for human approval")
+        raw_context = work_unit.metadata.get("resume_context")
+        if not isinstance(raw_context, dict):
+            raise ValueError("work unit has no resumable workflow context")
+        context = WorkflowResumeContext.from_metadata(raw_context)
+        if context.workflow != "review_rework" or context.work_unit_id != work_unit.id:
+            raise ValueError("work unit has incompatible resume context")
+        if context.developer_id != developer.id or context.tester_id != tester.id:
+            raise ValueError("resume agents do not match persisted workflow context")
+        reviewer_ids = tuple(agent.id for agent, _ in reviewers)
+        if reviewer_ids != context.reviewer_ids:
+            raise ValueError("resume reviewers do not match persisted workflow context")
+        available_models = {model.id for model in models}
+        if context.model_ids and not set(context.model_ids).issubset(available_models):
+            raise ValueError("resume models do not match persisted workflow context")
+        return self.resolve_human_review(
+            work_unit=work_unit,
+            decision=decision,
+            notes=notes,
+            project_root=root,
+        )
+
+    def resume_human_review_rework(
+        self,
+        work_unit_id: str,
+        *,
+        developer: AgentContract,
+        tester: AgentContract,
+        reviewers,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        reviewer_runner,
+        verifier: ResultVerifier | None = None,
+        max_review_cycles: int = 1,
+        project_root: Path | None = None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+        notes: str = "",
+    ) -> MultiAgentWorkflowResult:
+        """Load a human-approved gate and authorize a fresh bounded rework cycle."""
+        root = project_root or Path.cwd()
+        work_unit = self.state_store(root).load(work_unit_id)
+        if work_unit.status is not WorkStatus.WAITING_HUMAN_APPROVAL:
+            raise ValueError("work unit is not waiting for human approval")
+        work_unit.metadata["human_review_required"] = False
+        work_unit.metadata["human_review_decision"] = HumanReviewDecision.APPROVE_REWORK.value
+        if notes.strip():
+            work_unit.metadata["human_review_notes"] = notes
+        work_unit.metadata["rework_required"] = True
+        work_unit.transition(WorkStatus.EXECUTING)
+        self.state_store(root).save(work_unit)
+        result = self.multi_agent_workflow().run_with_review_rework(
+            work_unit=work_unit,
+            developer=developer,
+            tester=tester,
+            reviewers=reviewers,
+            models=models,
+            executor=executor,
+            reviewer_runner=reviewer_runner,
+            verifier=verifier,
+            max_review_cycles=max_review_cycles,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            artifact_store=self.artifact_store(root),
+        )
+        self.state_store(root).save(result.work_unit)
+        return result
