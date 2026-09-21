@@ -14,6 +14,7 @@ from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.human_review import HumanReviewDecision
+from core.contracts.resume import WorkflowResumeContext
 from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import WorkStateStore
@@ -355,6 +356,20 @@ class VYRELONRuntime:
         work_unit = self.state_store(root).load(work_unit_id)
         if work_unit.status is not WorkStatus.WAITING_HUMAN_APPROVAL:
             raise ValueError("work unit is not waiting for human approval")
+        raw_context = work_unit.metadata.get("resume_context")
+        if not isinstance(raw_context, dict):
+            raise ValueError("work unit has no resumable workflow context")
+        context = WorkflowResumeContext.from_metadata(raw_context)
+        if context.workflow != "review_rework" or context.work_unit_id != work_unit.id:
+            raise ValueError("work unit has incompatible resume context")
+        if context.developer_id != developer.id or context.tester_id != tester.id:
+            raise ValueError("resume agents do not match persisted workflow context")
+        reviewer_ids = tuple(agent.id for agent, _ in reviewers)
+        if reviewer_ids != context.reviewer_ids:
+            raise ValueError("resume reviewers do not match persisted workflow context")
+        available_models = {model.id for model in models}
+        if context.model_ids and not set(context.model_ids).issubset(available_models):
+            raise ValueError("resume models do not match persisted workflow context")
         return self.resolve_human_review(
             work_unit=work_unit,
             decision=decision,
