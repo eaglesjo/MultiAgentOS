@@ -14,9 +14,11 @@ from core.multi_agent_workflow import MultiAgentWorkflow
 class FakeExecutor:
     def __init__(self):
         self.calls = []
+        self.inputs = []
 
     def execute(self, *, agent, model_id, work_unit):
         self.calls.append((agent.id, model_id))
+        self.inputs.append(dict(work_unit.metadata.get("stage_input", {})))
         return {"agent": agent.id}
 
 
@@ -79,6 +81,21 @@ class MultiAgentWorkflowTests(unittest.TestCase):
         self.assertIn("artifact-001", work_unit.artifacts)
         self.assertEqual(loaded.content_ref, "workspace/output.py")
 
+    def test_stage_context_contains_previous_artifacts_and_findings(self):
+        executor = FakeExecutor()
+        agents = [AgentContract(id="planner", role="planner"), AgentContract(id="developer", role="developer")]
+        models = [ModelSpec("local", "local", frozenset())]
+        work_unit = WorkUnit("wu-context", "pass stage context")
+        artifact = ArtifactContract("plan-001", "plan", "planner", "plan.json")
+        work_unit.metadata["artifacts"] = [artifact]
+        work_unit.metadata["stage_findings"] = ["plan is ready"]
+
+        result = MultiAgentWorkflow().run(work_unit=work_unit, stages=agents, models=models, executor=executor)
+
+        self.assertEqual(result.stages[1].findings, ("plan is ready",))
+        self.assertEqual(executor.inputs[1]["from_agent"], "planner")
+        self.assertEqual(executor.inputs[1]["artifacts"], ("plan-001",))
+        self.assertEqual(executor.inputs[1]["findings"], ("plan is ready",))
     def test_review_panel_requires_all_reviewers(self):
         executor = FakeExecutor()
         agents = [AgentContract(id="developer", role="developer")]
