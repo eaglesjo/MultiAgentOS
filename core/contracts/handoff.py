@@ -19,3 +19,26 @@ class ReviewResult:
     approved: bool
     reviewer_id: str
     feedback: str
+
+
+@dataclass(frozen=True)
+class ArtifactContract:
+    """Durable artifact passed between VYRELON workflow stages."""
+
+    id: str
+    kind: str
+    producer_agent_id: str
+    content_ref: str
+    summary: str = ""
+    media_type: str = "text/plain"
+    metadata: dict[str, object] = field(default_factory=dict)
+
+    def validate(self) -> None:
+        for name, value in (
+            ("id", self.id),
+            ("kind", self.kind),
+            ("producer_agent_id", self.producer_agent_id),
+            ("content_ref", self.content_ref),
+        ):
+            if not value.strip():
+                raise ValueError(f"artifact {name} must not be empty")
