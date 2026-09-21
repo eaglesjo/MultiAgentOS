@@ -10,7 +10,7 @@ from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelRespon
 from core.contracts.profile import DetectionResult, ProfileSpec
 from core.contracts.runtime import ExecutionRequest, RuntimeExecutor
 from core.delegation import Delegation, DelegationEngine
-from core.lifecycle import LifecycleCoordinator, LifecycleError
+from core.lifecycle import ExecutionInterrupted, LifecycleCoordinator, LifecycleError
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.planning import BasicPlanner
 from core.state import WorkStateStore
@@ -24,6 +24,6 @@ __all__ = [
     "ExecutionRequest", "RuntimeExecutor",
     "DetectionResult", "ProfileSpec",
     "Delegation", "DelegationEngine",
-    "LifecycleCoordinator", "LifecycleError",
+    "ExecutionInterrupted", "LifecycleCoordinator", "LifecycleError",
     "OrchestrationResult", "Orchestrator", "BasicPlanner", "WorkStateStore",
 ]
