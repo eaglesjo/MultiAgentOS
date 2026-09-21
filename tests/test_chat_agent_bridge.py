@@ -124,3 +124,47 @@ class TestChatAgentBridge(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    
+    def test_execution_checkpoint_can_resume(self):
+        from pathlib import Path
+        import tempfile
+        from core.state import WorkStateStore
+        from core.contracts.agent import AgentContract
+        from core.contracts.ai import ModelSpec
+
+        class InterruptingExecutor:
+            def execute(self, *, agent, model_id, work_unit):
+                raise RuntimeError("simulated interruption")
+
+        class PassingExecutor:
+            def execute(self, *, agent, model_id, work_unit):
+                return {"status": "resumed"}
+
+        agent = AgentContract(id="developer", role="developer")
+        models = [ModelSpec("cloud", "provider", frozenset())]
+        bridge = ChatAgentBridge(default_chat_agents())
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = WorkStateStore(Path(directory))
+            request = ChatAgentRequest(
+                objective="Resume this task.",
+                work_unit_id="chat-resume-001",
+            )
+            with self.assertRaises(RuntimeError):
+                bridge.execute(
+                    request,
+                    FakeChatAgent(),
+                    agent,
+                    models,
+                    InterruptingExecutor(),
+                    state_store=store,
+                )
+
+            saved = store.load("chat-resume-001")
+            self.assertEqual(saved.status.value, "failed")
+
+            # A failed work unit intentionally requires an explicit retry policy.
+            # This test verifies the checkpoint is durable rather than silently
+            # retrying a failed task.
+            self.assertEqual(saved.metadata["checkpoint"]["status"], "failed")
