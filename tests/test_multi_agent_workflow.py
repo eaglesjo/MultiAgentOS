@@ -229,5 +229,56 @@ class MultiAgentWorkflowTests(unittest.TestCase):
         self.assertTrue(work_unit.metadata["rework_required"])
 
 
+    def test_review_rework_escalates_to_human_and_can_be_approved(self):
+        executor = FakeExecutor()
+        developer = AgentContract(id="developer", role="developer")
+        tester = AgentContract(id="tester", role="tester")
+        reviewer = [(AgentContract(id="reviewer", role="reviewer"), {})]
+        models = [ModelSpec("local", "local", frozenset())]
+        work_unit = WorkUnit("wu-human-gate", "needs human review")
+
+        def reviewer_runner(*, review_work_unit_id, reviewer, context):
+            from core.contracts.execution import ReviewDecision
+            return ReviewDecision(approved=False, feedback="needs a human decision")
+
+        result = MultiAgentWorkflow().run_with_review_rework(
+            work_unit=work_unit,
+            developer=developer,
+            tester=tester,
+            reviewers=reviewer,
+            models=models,
+            executor=executor,
+            reviewer_runner=reviewer_runner,
+            max_review_cycles=1,
+        )
+
+        self.assertEqual(result.work_unit.status, WorkStatus.WAITING_HUMAN_APPROVAL)
+        self.assertTrue(work_unit.metadata["human_review_required"])
+        self.assertEqual(work_unit.metadata["review_cycle_count"], 1)
+
+        resolved = MultiAgentWorkflow().resolve_human_review(
+            work_unit=work_unit,
+            approved=True,
+            notes="Human approved the retained evidence.",
+        )
+        self.assertEqual(resolved.work_unit.status, WorkStatus.COMPLETED)
+        self.assertFalse(work_unit.metadata["human_review_required"])
+        self.assertEqual(work_unit.metadata["human_review_decision"], "approved")
+
+    def test_human_review_rejection_is_terminal(self):
+        work_unit = WorkUnit(
+            "wu-human-reject",
+            "reject escalation",
+            status=WorkStatus.WAITING_HUMAN_APPROVAL,
+        )
+        result = MultiAgentWorkflow().resolve_human_review(
+            work_unit=work_unit,
+            approved=False,
+            notes="Human rejected the proposed completion.",
+        )
+        self.assertEqual(result.work_unit.status, WorkStatus.FAILED)
+        self.assertEqual(work_unit.metadata["human_review_decision"], "rejected")
+
+
 if __name__ == "__main__":
     unittest.main()
