@@ -17,6 +17,8 @@ from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import WorkStateStore
 from core.orchestrator import OrchestrationResult, Orchestrator
+from core.multi_agent_workflow import MultiAgentWorkflow, MultiAgentWorkflowResult
+from core.artifacts import ArtifactStore
 from profiles.detector import ProfileDetector
 from integrations.github.gateway import GitHubGatewayClient
 from runtime.github import GitHubRuntime
@@ -49,6 +51,10 @@ class VYRELONRuntime:
 
     def state_store(self, project_root: Path):
         return WorkStateStore(project_root / ".multiagentos" / "state")
+
+    def artifact_store(self, project_root: Path):
+        """Return persistent artifact metadata storage for a project."""
+        return ArtifactStore(project_root / ".multiagentos" / "artifacts")
 
     def agents(self, project_root: Path):
         detections = self.inspect(project_root)
@@ -199,6 +205,68 @@ class VYRELONRuntime:
             routing_strategy=routing_strategy,
         )
 
+    def multi_agent_workflow(self) -> MultiAgentWorkflow:
+        """Return the VYRELON-controlled multi-agent handoff workflow."""
+        return MultiAgentWorkflow()
+
+    def run_multi_agent_workflow(
+        self,
+        *,
+        work_unit: WorkUnit,
+        stages: list[AgentContract],
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        verifier: ResultVerifier | None = None,
+        reviewers=None,
+        reviewer_runner=None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+        project_root: Path | None = None,
+    ) -> MultiAgentWorkflowResult:
+        """Run a WorkUnit through multiple agents without transferring authority."""
+        root = project_root or Path.cwd()
+        return self.multi_agent_workflow().run(
+            work_unit=work_unit,
+            stages=stages,
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            reviewers=reviewers,
+            reviewer_runner=reviewer_runner,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            artifact_store=self.artifact_store(root),
+        )
+
+    def run_debug_retry_workflow(
+        self,
+        *,
+        work_unit: WorkUnit,
+        developer: AgentContract,
+        tester: AgentContract,
+        debugger: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        verifier: ResultVerifier,
+        max_retries: int = 2,
+        project_root: Path | None = None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+    ) -> MultiAgentWorkflowResult:
+        root = project_root or Path.cwd()
+        return self.multi_agent_workflow().run_with_debug_retry(
+            work_unit=work_unit,
+            developer=developer,
+            tester=tester,
+            debugger=debugger,
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            max_retries=max_retries,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            artifact_store=self.artifact_store(root),
+        )
     def review_panel(
         self,
         work_unit_id: str,

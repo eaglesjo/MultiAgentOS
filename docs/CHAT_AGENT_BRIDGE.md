@@ -104,3 +104,41 @@ Resume is intentionally explicit and uses the same VYRELON execution boundary:
 Executors used with resumable WorkUnits should be idempotent for the relevant operation. A normal failure remains terminal until an explicit retry policy is introduced; VYRELON does not silently retry failed work.
 
 Chat Session state stores the associated WorkUnit ID and lifecycle status, allowing a conversational client to reconnect to an ongoing task without making the provider itself the execution authority.
+
+
+## Multi-Agent handoff execution
+
+A Chat Agent can now submit work to a VYRELON-controlled multi-agent workflow. The provider does not hand execution directly from one model to another. VYRELON delegates each stage, records the handoff, and retains execution authority.
+
+Example lifecycle:
+
+    ChatGPT
+      -> VYRELON
+      -> Planner
+      -> Developer
+      -> Tester
+      -> Reviewer A + Reviewer B
+      -> VYRELON
+      -> ChatGPT
+
+Each transition produces a handoff artifact. Reviewers run through the existing ReviewPanel, whose approval is conjunctive: all required reviewers must approve before completion.
+
+
+## Artifact-first handoff
+
+Agent output is not treated as durable state by itself. A workflow can register `ArtifactContract` records containing an artifact ID, kind, producing agent, content reference, summary, and metadata. VYRELON persists artifact metadata under `.multiagentos/artifacts/` and passes artifact IDs through the WorkUnit and handoff records.
+
+This separates:
+
+- model output: transient execution result
+- artifact: durable work product or evidence reference
+- finding: observation used by a later stage
+- handoff: explicit transfer record between VYRELON-selected stages
+
+The artifact content itself remains in the project or external storage referenced by `content_ref`; secrets must not be embedded in artifact metadata.
+
+## Bounded debug retry
+
+VYRELON can execute a bounded Developer → Tester → Debugger → Tester cycle. A failed verification produces a finding, the Debugger receives the current WorkUnit context, and the workflow retries verification up to `max_retries`. Exceeding the limit transitions the WorkUnit to FAILED instead of looping indefinitely.
+
+Successful verification exits the retry loop and continues to the normal completion/review path. The retry count is persisted in WorkUnit metadata.
