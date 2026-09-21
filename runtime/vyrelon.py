@@ -274,3 +274,36 @@ class VYRELONRuntime:
         reviewer_runner,
     ) -> ReviewPanelResult:
         return ReviewPanel().review(work_unit_id, reviewers, reviewer_runner)
+
+    def run_review_rework_workflow(
+        self,
+        *,
+        work_unit: WorkUnit,
+        developer: AgentContract,
+        tester: AgentContract,
+        reviewers,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        reviewer_runner,
+        verifier: ResultVerifier | None = None,
+        max_review_cycles: int = 2,
+        project_root: Path | None = None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+    ) -> MultiAgentWorkflowResult:
+        """Run bounded Review -> Rework -> Review under VYRELON authority."""
+        root = project_root or Path.cwd()
+        return self.multi_agent_workflow().run_with_review_rework(
+            work_unit=work_unit,
+            developer=developer,
+            tester=tester,
+            reviewers=reviewers,
+            models=models,
+            executor=executor,
+            reviewer_runner=reviewer_runner,
+            verifier=verifier,
+            max_review_cycles=max_review_cycles,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            artifact_store=self.artifact_store(root),
+        )

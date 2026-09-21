@@ -142,3 +142,27 @@ The artifact content itself remains in the project or external storage reference
 VYRELON can execute a bounded Developer → Tester → Debugger → Tester cycle. A failed verification produces a finding, the Debugger receives the current WorkUnit context, and the workflow retries verification up to `max_retries`. Exceeding the limit transitions the WorkUnit to FAILED instead of looping indefinitely.
 
 Successful verification exits the retry loop and continues to the normal completion/review path. The retry count is persisted in WorkUnit metadata.
+
+## Review -> Rework -> Review
+
+VYRELON can now run a bounded reviewer-driven correction cycle:
+
+    Developer
+      -> Tester
+      -> Reviewer A + Reviewer B
+           |
+           +-- approved --> Handoff -> Completed
+           |
+           +-- changes requested
+                    |
+                    v
+                 Developer
+                    -> Tester
+                    -> Reviewer A + Reviewer B
+                    -> ...
+
+Reviewers receive a structured review context containing the WorkUnit ID, artifact IDs, accumulated findings, the last execution agent, and the current review cycle. Reviewer feedback is recorded as findings and becomes input to the next rework stage.
+
+All required reviewers must approve. A review rejection does not directly transfer execution to another agent: VYRELON moves the WorkUnit back to EXECUTING and performs the next delegation itself.
+
+The cycle is bounded by `max_review_cycles`. When the limit is reached without approval, the WorkUnit transitions to FAILED and retains review history and feedback for human intervention. This prevents unbounded autonomous correction loops.

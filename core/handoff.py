@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from core.contracts.agent import AgentContract
-from core.contracts.handoff import HandoffArtifact, ReviewResult
+from core.contracts.handoff import HandoffArtifact, ReviewContext, ReviewResult
 
 
 class HandoffManager:
@@ -27,10 +27,27 @@ class ReviewPanelResult:
 
 
 class ReviewPanel:
-    def review(self, work_unit_id, reviewers, reviewer_runner, parallel=True):
+    def review(self, work_unit_id, reviewers, reviewer_runner, parallel=True, context=None):
         def run(item):
-            reviewer, context = item
-            return reviewer_runner(review_work_unit_id=work_unit_id, reviewer=reviewer, context=context)
+            reviewer, reviewer_context = item
+            merged_context = dict(reviewer_context or {})
+            if context is not None:
+                if isinstance(context, ReviewContext):
+                    merged_context.update({
+                        "work_unit_id": context.work_unit_id,
+                        "artifact_ids": context.artifact_ids,
+                        "findings": context.findings,
+                        "last_agent_id": context.last_agent_id,
+                        "review_cycle": context.review_cycle,
+                        "metadata": context.metadata,
+                    })
+                else:
+                    merged_context.update(dict(context))
+            return reviewer_runner(
+                review_work_unit_id=work_unit_id,
+                reviewer=reviewer,
+                context=merged_context,
+            )
         if parallel and len(reviewers) > 1:
             with ThreadPoolExecutor(max_workers=len(reviewers)) as pool:
                 reviews = tuple(pool.map(run, reviewers))

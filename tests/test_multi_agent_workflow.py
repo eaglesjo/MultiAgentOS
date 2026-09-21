@@ -160,5 +160,74 @@ class MultiAgentWorkflowTests(unittest.TestCase):
         self.assertEqual(work_unit.metadata["review_consensus"], "approved")
 
 
+    def test_review_rework_cycle_retries_after_reviewer_feedback(self):
+        executor = FakeExecutor()
+        developer = AgentContract(id="developer", role="developer")
+        tester = AgentContract(id="tester", role="tester")
+        reviewers = [
+            (AgentContract(id="reviewer-a", role="reviewer"), {}),
+            (AgentContract(id="reviewer-b", role="reviewer"), {}),
+        ]
+        models = [ModelSpec("local", "local", frozenset())]
+        work_unit = WorkUnit("wu-review-rework", "review and fix feature")
+        calls = []
+
+        def reviewer_runner(*, review_work_unit_id, reviewer, context):
+            calls.append((reviewer.id, context))
+            approved = context["review_cycle"] == 2
+            feedback = "" if approved else "please fix the implementation"
+            from core.contracts.execution import ReviewDecision
+            return ReviewDecision(approved=approved, feedback=feedback)
+
+        result = MultiAgentWorkflow().run_with_review_rework(
+            work_unit=work_unit,
+            developer=developer,
+            tester=tester,
+            reviewers=reviewers,
+            models=models,
+            executor=executor,
+            reviewer_runner=reviewer_runner,
+            max_review_cycles=2,
+        )
+
+        self.assertEqual(result.work_unit.status, WorkStatus.COMPLETED)
+        self.assertEqual(work_unit.metadata["review_cycle_count"], 2)
+        self.assertEqual([stage.agent_id for stage in result.stages], [
+            "developer", "tester", "developer", "tester"
+        ])
+        self.assertEqual(len(result.reviews), 4)
+        self.assertEqual(calls[0][1]["artifact_ids"], ())
+        self.assertIn("please fix the implementation", calls[2][1]["findings"])
+        self.assertEqual(calls[2][1]["review_cycle"], 2)
+
+    def test_review_rework_cycle_is_bounded(self):
+        executor = FakeExecutor()
+        developer = AgentContract(id="developer", role="developer")
+        tester = AgentContract(id="tester", role="tester")
+        reviewer = [(AgentContract(id="reviewer", role="reviewer"), {})]
+        models = [ModelSpec("local", "local", frozenset())]
+        work_unit = WorkUnit("wu-review-limit", "never approved")
+
+        def reviewer_runner(*, review_work_unit_id, reviewer, context):
+            from core.contracts.execution import ReviewDecision
+            return ReviewDecision(approved=False, feedback="still needs work")
+
+        with self.assertRaises(RuntimeError):
+            MultiAgentWorkflow().run_with_review_rework(
+                work_unit=work_unit,
+                developer=developer,
+                tester=tester,
+                reviewers=reviewer,
+                models=models,
+                executor=executor,
+                reviewer_runner=reviewer_runner,
+                max_review_cycles=2,
+            )
+
+        self.assertEqual(work_unit.status, WorkStatus.FAILED)
+        self.assertEqual(work_unit.metadata["review_cycle_count"], 2)
+        self.assertTrue(work_unit.metadata["rework_required"])
+
+
 if __name__ == "__main__":
     unittest.main()
