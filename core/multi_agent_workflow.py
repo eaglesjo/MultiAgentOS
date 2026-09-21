@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
-from core.contracts.handoff import HandoffArtifact, ReviewResult
+from core.contracts.handoff import ArtifactContract, HandoffArtifact, ReviewResult
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.delegation import Delegation, DelegationEngine
 from core.handoff import HandoffManager, ReviewPanel
@@ -20,6 +20,7 @@ class AgentStageResult:
     delegation: Delegation
     output: object
     handoff: HandoffArtifact | None = None
+    artifacts: tuple[ArtifactContract, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,7 @@ class MultiAgentWorkflow:
         reviewer_runner=None,
         preferred_model_ids: list[str] | None = None,
         routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
+        artifact_store=None,
     ) -> MultiAgentWorkflowResult:
         if not stages:
             raise ValueError("multi-agent workflow requires at least one stage")
@@ -80,6 +82,17 @@ class MultiAgentWorkflow:
                 model_id=delegation.assignment.model_id,
                 work_unit=work_unit,
             )
+            stage_artifacts = tuple(
+                artifact for artifact in work_unit.metadata.get("artifacts", ())
+                if isinstance(artifact, ArtifactContract)
+            )
+            for artifact in stage_artifacts:
+                artifact.validate()
+                if artifact_store is not None:
+                    artifact_store.save(artifact)
+            work_unit.metadata.setdefault("artifact_ids", []).extend(
+                artifact.id for artifact in stage_artifacts
+            )
             handoff = None
             if previous_agent is not None:
                 handoff = self.handoffs.create(
@@ -95,7 +108,7 @@ class MultiAgentWorkflow:
                     "to_agent": handoff.to_agent,
                     "summary": handoff.summary,
                 })
-            results.append(AgentStageResult(agent.id, delegation, output, handoff))
+            results.append(AgentStageResult(agent.id, delegation, output, handoff, stage_artifacts))
             previous_agent = agent
             previous_output = output
 
