@@ -104,3 +104,21 @@ Resume is intentionally explicit and uses the same VYRELON execution boundary:
 Executors used with resumable WorkUnits should be idempotent for the relevant operation. A normal failure remains terminal until an explicit retry policy is introduced; VYRELON does not silently retry failed work.
 
 Chat Session state stores the associated WorkUnit ID and lifecycle status, allowing a conversational client to reconnect to an ongoing task without making the provider itself the execution authority.
+
+
+## Multi-Agent handoff execution
+
+A Chat Agent can now submit work to a VYRELON-controlled multi-agent workflow. The provider does not hand execution directly from one model to another. VYRELON delegates each stage, records the handoff, and retains execution authority.
+
+Example lifecycle:
+
+    ChatGPT
+      -> VYRELON
+      -> Planner
+      -> Developer
+      -> Tester
+      -> Reviewer A + Reviewer B
+      -> VYRELON
+      -> ChatGPT
+
+Each transition produces a handoff artifact. Reviewers run through the existing ReviewPanel, whose approval is conjunctive: all required reviewers must approve before completion.
