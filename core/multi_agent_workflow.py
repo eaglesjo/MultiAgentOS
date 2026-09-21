@@ -73,9 +73,18 @@ class MultiAgentWorkflow:
             delegation = self.delegation.delegate(work_unit, agent, models, preferred_model_ids, routing_strategy)
             output = executor.execute(agent=agent, model_id=delegation.assignment.model_id, work_unit=work_unit)
             stages.append(AgentStageResult(agent.id, delegation, output))
+            tester_delegation = self.delegation.delegate(
+                work_unit, tester, models, preferred_model_ids, routing_strategy
+            )
+            previous_output = executor.execute(
+                agent=tester,
+                model_id=tester_delegation.assignment.model_id,
+                work_unit=work_unit,
+            )
+            stages.append(
+                AgentStageResult(tester.id, tester_delegation, previous_output)
+            )
             work_unit.transition(WorkStatus.VERIFYING)
-            previous_output = executor.execute(agent=tester, model_id=self.delegation.router.assign(tester, models, preferred_model_ids, routing_strategy).model_id, work_unit=work_unit)
-            stages.append(AgentStageResult(tester.id, self.delegation.delegate(work_unit, tester, models, preferred_model_ids, routing_strategy), previous_output))
             if verifier.verify(work_unit=work_unit, output=previous_output):
                 work_unit.transition(WorkStatus.HANDOFF)
                 work_unit.transition(WorkStatus.COMPLETED)
