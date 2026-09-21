@@ -1,4 +1,9 @@
 import unittest
+from pathlib import Path
+import tempfile
+
+from core.artifacts import ArtifactStore
+from core.contracts.handoff import ArtifactContract
 
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
@@ -44,6 +49,35 @@ class MultiAgentWorkflowTests(unittest.TestCase):
             [("planner", "developer"), ("developer", "tester")],
         )
         self.assertEqual(work_unit.metadata["execution_agent_ids"], ["planner", "developer", "tester"])
+
+    def test_artifacts_are_persisted_and_linked_to_work_unit(self):
+        executor = FakeExecutor()
+        agent = AgentContract(id="developer", role="developer")
+        models = [ModelSpec("local", "local", frozenset())]
+        work_unit = WorkUnit("wu-artifact", "produce evidence")
+        artifact = ArtifactContract(
+            id="artifact-001",
+            kind="source",
+            producer_agent_id="developer",
+            content_ref="workspace/output.py",
+            summary="Generated source file",
+        )
+        work_unit.metadata["artifacts"] = [artifact]
+
+        with tempfile.TemporaryDirectory() as directory:
+            store = ArtifactStore(Path(directory))
+            result = MultiAgentWorkflow().run(
+                work_unit=work_unit,
+                stages=[agent],
+                models=models,
+                executor=executor,
+                artifact_store=store,
+            )
+            loaded = store.load("artifact-001")
+
+        self.assertEqual(result.work_unit.status, WorkStatus.COMPLETED)
+        self.assertIn("artifact-001", work_unit.artifacts)
+        self.assertEqual(loaded.content_ref, "workspace/output.py")
 
     def test_review_panel_requires_all_reviewers(self):
         executor = FakeExecutor()
