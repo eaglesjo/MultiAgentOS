@@ -175,6 +175,52 @@ class CLITests(unittest.TestCase):
             session = json.loads(session_path.read_text(encoding="utf-8"))
             self.assertEqual([turn["role"] for turn in session["turns"]], ["user", "assistant"])
 
+    def test_chat_execute_runs_explicit_command_through_vyrelon(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+
+            import multiagentos.cli as cli_module
+            from core.chat_agent_bridge import ChatAgentResponse
+
+            class FakeAdapter:
+                def respond(self, *, agent, instructions, request):
+                    return ChatAgentResponse(
+                        summary="execution plan prepared",
+                        evidence=("fake chat response",),
+                    )
+
+            original = cli_module.VYRELONRuntime.project_chat_adapter
+            cli_module.VYRELONRuntime.project_chat_adapter = lambda self, project_root: FakeAdapter()
+            try:
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    self.assertEqual(
+                        main([
+                            "chat", "--path", temp, "--execute",
+                            "--objective", "run the smoke command",
+                            "--session", "exec-1",
+                            "--", "python", "-c", "print('chat-executed')",
+                        ]),
+                        0,
+                    )
+            finally:
+                cli_module.VYRELONRuntime.project_chat_adapter = original
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(payload["mode"], "execute")
+            self.assertEqual(payload["status"], "completed")
+            self.assertEqual(payload["execution_agent_id"], "cli-executor")
+            self.assertEqual(payload["execution_model_id"], "local-process")
+            self.assertTrue(payload["execution_evidence"])
+            state = project_status(root)
+            self.assertEqual(len(state["work_units"]), 1)
+            self.assertEqual(state["work_units"][0]["status"], "completed")
+            session = json.loads(
+                (root / ".multiagentos" / "sessions" / "exec-1.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(session["work_unit_id"], state["work_units"][0]["id"])
+
     def test_init(self):
         with tempfile.TemporaryDirectory() as temp:
             self.assertEqual(main(["init", temp]), 0)
