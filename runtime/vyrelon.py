@@ -512,6 +512,8 @@ class VYRELONRuntime:
         context = WorkflowResumeContext.from_metadata(raw_context)
         if context.workflow != "review_rework" or context.work_unit_id != work_unit.id:
             raise ValueError("work unit has incompatible resume context")
+        if context.max_review_cycles != max_review_cycles:
+            raise ValueError("resume max_review_cycles does not match persisted workflow context")
         if context.developer_id != developer.id or context.tester_id != tester.id:
             raise ValueError("resume agents do not match persisted workflow context")
         reviewer_ids = tuple(agent.id for agent, _ in reviewers)
