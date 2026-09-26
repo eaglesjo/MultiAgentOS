@@ -45,6 +45,7 @@ After installation:
     multiagentos run --path . --agent custom-executor --model custom-process --objective "run tests" -- python -m unittest discover -s tests -v
     multiagentos resume <work-unit-id> --path .
     multiagentos chat --path . --objective "inspect the current project"
+    multiagentos chat --path . --execute --objective "run the smoke test" -- python -m unittest discover -s tests -v
     multiagentos chat --path . --objective "continue our conversation" --session project-1
     multiagentos github probe eaglesjo/MultiAgentOS
 
@@ -80,7 +81,7 @@ Multi-agent installation additionally writes:
 
 The project Chat Agent defaults to ChatGPT and is resolved through VYRELON's provider-neutral Chat Agent registry. Gemini, Claude, and other registered providers can be selected by changing `chat.json`; the selected Chat Agent still has no execution authority above VYRELON.
 
-The `chat` command sends a conversational request through the configured Chat Agent and returns its summary, proposed plan steps, findings, artifacts, and provider evidence as JSON. It does not execute filesystem, Git, GitHub, process, verification, or review actions. Use `--session <id>` to persist conversation turns under `.multiagentos/sessions/`; credentials are never stored there. Provider SDKs remain optional and CI tests use injected adapters.
+The `chat` command sends a conversational request through the configured Chat Agent and returns its summary, proposed plan steps, findings, artifacts, and provider evidence as JSON. It does not execute filesystem, Git, GitHub, process, verification, or review actions unless --execute is explicitly supplied with a user-provided command. In execution mode, the Chat Agent still only supplies intent/plan; VYRELON's configured execution Agent/Model owns the explicit command and lifecycle. Use `--session <id>` to persist conversation turns under `.multiagentos/sessions/`; credentials are never stored there. Provider SDKs remain optional and CI tests use injected adapters.
 
 No provider credentials or API keys are written to the project.
 
