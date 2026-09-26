@@ -58,6 +58,7 @@ The selected mode is recorded in:
 VYRELON installation also writes:
 
     .multiagentos/execution.json
+    .multiagentos/chat.json
 
 The default execution configuration is:
 
@@ -73,6 +74,8 @@ The `run` and `resume` commands load Agent/Model IDs from this project configura
 Multi-agent installation additionally writes:
 
     .multiagentos/agents.json
+
+The project Chat Agent defaults to ChatGPT and is resolved through VYRELON's provider-neutral Chat Agent registry. Gemini, Claude, and other registered providers can be selected by changing `chat.json`; the selected Chat Agent still has no execution authority above VYRELON.
 
 No provider credentials or API keys are written to the project.
 
