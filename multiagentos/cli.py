@@ -85,6 +85,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     providers_validate.add_argument("path", nargs="?", default=".")
 
+    models = subparsers.add_parser("models", help="execute configured AI models")
+    model_sub = models.add_subparsers(dest="models_command", required=True)
+    models_run = model_sub.add_parser("run", help="run a configured model through VYRELON")
+    models_run.add_argument("path", nargs="?", default=".")
+    models_run.add_argument("--model", required=True)
+    models_run.add_argument("--objective", required=True)
+    models_run.add_argument("--agent", default="executor")
+
     run = subparsers.add_parser("run", help="create and execute a persistent WorkUnit")
     run.add_argument("path", nargs="?", default=".")
     run.add_argument("--objective", required=True)
@@ -136,6 +144,32 @@ def _provider_list(root: Path) -> int:
     return 0
 
 
+def _model_run(root: Path, model_id: str, objective: str, agent_id: str) -> int:
+    from runtime.vyrelon import VYRELONRuntime
+
+    runtime = _provider_runtime(root)
+    if not runtime.providers.list_model_ids():
+        raise ValueError("No configured models found")
+    runtime.configure_model_adapters()
+    agent = AgentContract(
+        id=agent_id,
+        role=agent_id,
+        capabilities=frozenset({"execution"}),
+        model_ids=(model_id,),
+    )
+    work = WorkUnit(
+        id=uuid.uuid4().hex,
+        objective=objective,
+    )
+    result = runtime.run_registered_model(
+        work_unit=work,
+        agent=agent,
+        preferred_model_ids=[model_id],
+    )
+    print(result.output.text, end="")
+    return 0
+
+
 def _provider_validate(root: Path) -> int:
     runtime = _provider_runtime(root)
     payload = []
@@ -177,6 +211,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.providers_command == "list":
             return _provider_list(root)
         return _provider_validate(root)
+
+    if args.command == "models":
+        root = Path(args.path).expanduser().resolve()
+        if args.models_command == "run":
+            return _model_run(
+                root,
+                args.model,
+                args.objective,
+                args.agent,
+            )
 
     root = Path(args.path).expanduser().resolve()
 
