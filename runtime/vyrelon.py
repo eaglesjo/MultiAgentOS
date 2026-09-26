@@ -85,7 +85,11 @@ class VYRELONRuntime:
                 preferred_model_ids=preferred_model_ids,
                 routing_strategy=routing_strategy,
             )
-            work_unit.metadata["output"] = str(result.output)
+            output = result.output
+            work_unit.metadata["output"] = str(output)
+            for field in ("returncode", "stdout", "stderr"):
+                if hasattr(output, field):
+                    work_unit.metadata[field] = getattr(output, field)
             store.save(work_unit)
             return result
         except Exception as exc:
