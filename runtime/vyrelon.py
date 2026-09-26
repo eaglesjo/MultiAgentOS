@@ -160,6 +160,51 @@ class VYRELONRuntime:
             routing_strategy=routing_strategy,
         )
 
+    def run_persistent_registered_model(
+        self,
+        project_root: Path,
+        work_unit: WorkUnit,
+        agent: AgentContract,
+        preferred_model_ids: list[str] | None = None,
+        system_prompt: str | None = None,
+        verifier: ResultVerifier | None = None,
+        reviewer: ResultReviewer | None = None,
+        routing_strategy="pool",
+    ) -> OrchestrationResult:
+        """Run a configured model through the persistent WorkUnit lifecycle."""
+        self.load_project_provider_config(project_root)
+        models = self.configured_models()
+        if not models:
+            raise ValueError("No configured models found")
+        self.configure_model_adapters()
+        if preferred_model_ids:
+            for model_id in preferred_model_ids:
+                self.providers.get_model(model_id)
+        from runtime.agent.model import ModelAgentExecutor
+        executor = ModelAgentExecutor(
+            adapters={
+                adapter_id: self.model_adapters.get(adapter_id)
+                for adapter_id in self.model_adapters.list()
+            },
+            models=models,
+            system_prompt=system_prompt,
+        )
+        work_unit.metadata["runtime"] = "configured-model"
+        if preferred_model_ids:
+            work_unit.metadata["model_id"] = preferred_model_ids[0]
+        work_unit.metadata["agent_id"] = agent.id
+        return self.run_persistent(
+            project_root=project_root,
+            work_unit=work_unit,
+            agent=agent,
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            reviewer=reviewer,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+        )
+
     def run_persistent(
         self,
         project_root: Path,
