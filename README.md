@@ -34,11 +34,24 @@ After installation:
 
     multiagentos detect .
     multiagentos init .
+    multiagentos init . --component vyrelon
+    multiagentos init . --component multi-agent
+    multiagentos init . --component all
     multiagentos github probe eaglesjo/MultiAgentOS
 
-The initializer writes only:
+The initializer supports independent installation:
 
-    .multiagentos/profile.json
+- `vyrelon`: VYRELON runtime, policy, lifecycle, planning/state and project profile.
+- `multi-agent`: role catalog and profile-specific multi-agent definitions.
+- `all`: both components.
+
+The selected mode is recorded in:
+
+    .multiagentos/components.json
+
+Multi-agent installation additionally writes:
+
+    .multiagentos/agents.json
 
 No provider credentials or API keys are written to the project.
 
