@@ -18,9 +18,8 @@ from integrations.github.gateway import GitHubGatewayClient
 from runtime.github import GitHubRuntime
 from runtime.github_probe import probe
 from runtime.git import GitRuntime
-from runtime.model.providers import AIProviderRegistry
-from runtime.model.registry import ModelAdapterRegistry
 from runtime.model.config import DEFAULT_CONFIG_PATH, ProviderConfigLoader
+from runtime.model.credentials import EnvironmentCredentialResolver
 from runtime.model.providers import AIProviderRegistry
 from runtime.model.registry import ModelAdapterRegistry
 from runtime.policy import ExecutionPolicy
@@ -44,8 +43,7 @@ class VYRELONRuntime:
         self.providers = AIProviderRegistry()
         self.model_adapters = ModelAdapterRegistry()
         self.provider_config = ProviderConfigLoader()
-        self.providers = AIProviderRegistry()
-        self.model_adapters = ModelAdapterRegistry()
+        self.credentials = EnvironmentCredentialResolver()
 
     def inspect(self, project_root: Path):
         return ProfileDetector().detect(project_root)
@@ -76,6 +74,27 @@ class VYRELONRuntime:
         self.load_provider_config(path)
         return True
 
+    def credential_checks(self) -> dict[str, tuple[object, ...]]:
+        """Check configured environment-variable credentials without exposing values."""
+        result: dict[str, tuple[object, ...]] = {}
+        for model in self.configured_models():
+            environment_variables: list[str] = []
+            configured = model.metadata.get("credential_env", [])
+            if isinstance(configured, list):
+                environment_variables.extend(
+                    item for item in configured if isinstance(item, str) and item
+                )
+            header_env = model.metadata.get("header_env", {})
+            if isinstance(header_env, dict):
+                environment_variables.extend(
+                    item
+                    for item in header_env.values()
+                    if isinstance(item, str) and item
+                )
+            checks = self.credentials.check(list(dict.fromkeys(environment_variables)))
+            result[model.id] = checks
+        return result
+
     def register_provider(self, provider: AIProvider) -> None:
         """Register provider/model configuration for later model execution."""
         self.providers.register(provider)
@@ -84,9 +103,7 @@ class VYRELONRuntime:
         """Register a runtime adapter referenced by model metadata."""
         self.model_adapters.register(adapter_id, adapter)
 
-    def configured_models(
-        self, provider_id: str | None = None
-    ) -> list[ModelSpec]:
+    def configured_models(self, provider_id: str | None = None) -> list[ModelSpec]:
         """Return registered models, optionally scoped to one provider."""
         return list(self.providers.models(provider_id))
 

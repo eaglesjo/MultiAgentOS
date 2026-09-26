@@ -21,6 +21,7 @@ VYRELON currently includes:
 - model adapters for generic CLI and HTTP JSON endpoints
 - model-backed agent execution
 - declarative provider/model configuration loaded by VYRELON
+- environment-backed credential validation without storing secrets
 - policy-controlled local process and GitHub runtimes
 - evidence-based technology profile detection
 - executable project bootstrap via the MultiAgentOS CLI
@@ -34,9 +35,15 @@ After installation:
 
     multiagentos detect .
     multiagentos init .
+    multiagentos providers list .
+    multiagentos providers validate .
     multiagentos github probe eaglesjo/MultiAgentOS
 
 Optional provider/model definitions can be placed at `.multiagentos/providers.json` and loaded through `VYRELONRuntime.load_project_provider_config(...)`. See `.multiagentos/providers.example.json` for the provider-neutral schema.
+
+`multiagentos providers list` shows configured providers/models without exposing credential values.
+
+`multiagentos providers validate` checks environment-variable-backed credentials declared by a model using `credential_env` or `header_env`. Only variable names and presence state are reported; secret values are never printed or persisted.
 
 The initializer writes only:
 

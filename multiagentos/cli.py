@@ -23,6 +23,14 @@ def _work_state(root: Path):
     return VYRELONRuntime().state_store(root)
 
 
+def _provider_runtime(root: Path):
+    from runtime.vyrelon import VYRELONRuntime
+
+    runtime = VYRELONRuntime()
+    runtime.load_project_provider_config(root)
+    return runtime
+
+
 def _run_process(root: Path, work: WorkUnit, command: list[str]) -> int:
     store = _work_state(root)
     work.metadata["command"] = command
@@ -66,12 +74,28 @@ def build_parser() -> argparse.ArgumentParser:
     init = subparsers.add_parser("init", help="initialize VYRELON in a project")
     init.add_argument("path", nargs="?", default=".")
 
+    providers = subparsers.add_parser(
+        "providers", help="inspect configured AI providers and models"
+    )
+    provider_sub = providers.add_subparsers(dest="providers_command", required=True)
+    providers_list = provider_sub.add_parser("list", help="list configured providers/models")
+    providers_list.add_argument("path", nargs="?", default=".")
+    providers_validate = provider_sub.add_parser(
+        "validate", help="validate provider configuration and environment credentials"
+    )
+    providers_validate.add_argument("path", nargs="?", default=".")
+
     run = subparsers.add_parser("run", help="create and execute a persistent WorkUnit")
     run.add_argument("path", nargs="?", default=".")
     run.add_argument("--objective", required=True)
     run.add_argument("--agent", default="executor")
     run.add_argument("--id", dest="work_unit_id")
-    run.add_argument("--command", dest="process_command", nargs=argparse.REMAINDER, required=True)
+    run.add_argument(
+        "--command",
+        dest="process_command",
+        nargs=argparse.REMAINDER,
+        required=True,
+    )
 
     resume = subparsers.add_parser("resume", help="resume a persisted WorkUnit")
     resume.add_argument("work_unit_id")
@@ -83,10 +107,62 @@ def build_parser() -> argparse.ArgumentParser:
 
     github = subparsers.add_parser("github", help="use VYRELON GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
-    probe_parser = github_sub.add_parser("probe", help="verify GitHub access for a repository")
+    probe_parser = github_sub.add_parser(
+        "probe", help="verify GitHub access for a repository"
+    )
     probe_parser.add_argument("repository")
 
     return parser
+
+
+def _provider_list(root: Path) -> int:
+    runtime = _provider_runtime(root)
+    payload = [
+        {
+            "id": provider.id,
+            "kind": provider.kind,
+            "models": [
+                {
+                    "id": model.id,
+                    "capabilities": sorted(model.capabilities),
+                    "adapter_id": model.metadata.get("adapter_id"),
+                }
+                for model in provider.models
+            ],
+        }
+        for provider in runtime.providers.providers()
+    ]
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _provider_validate(root: Path) -> int:
+    runtime = _provider_runtime(root)
+    payload = []
+    valid = True
+    for model in runtime.configured_models():
+        checks = runtime.credential_checks().get(model.id, ())
+        missing = [check.environment_variable for check in checks if not check.present]
+        if missing:
+            valid = False
+        payload.append(
+            {
+                "model": model.id,
+                "provider": model.provider_id,
+                "adapter_id": model.metadata.get("adapter_id"),
+                "credential_environment_variables": [
+                    {
+                        "name": check.environment_variable,
+                        "present": check.present,
+                    }
+                    for check in checks
+                ],
+                "valid": not missing,
+            }
+        )
+
+    print(json.dumps({"valid": valid, "models": payload}, indent=2))
+    return 0 if valid else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -95,6 +171,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "github" and args.github_command == "probe":
         print(json.dumps(probe(args.repository), indent=2))
         return 0
+
+    if args.command == "providers":
+        root = Path(args.path).expanduser().resolve()
+        if args.providers_command == "list":
+            return _provider_list(root)
+        return _provider_validate(root)
 
     root = Path(args.path).expanduser().resolve()
 

@@ -11,7 +11,11 @@
           "id": "example-model",
           "capabilities": ["execution"],
           "metadata": {
-            "adapter_id": "http"
+            "adapter_id": "http",
+            "credential_env": ["EXAMPLE_MODEL_API_KEY"],
+            "header_env": {
+              "Authorization": "EXAMPLE_MODEL_API_KEY"
+            }
           }
         }
       ]
