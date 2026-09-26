@@ -14,6 +14,7 @@ from core.planning import BasicPlanner
 from core.state import WorkStateStore
 from core.orchestrator import OrchestrationResult, Orchestrator
 from profiles.detector import ProfileDetector
+from profiles.resolver import ProfileResolver
 from integrations.github.gateway import GitHubGatewayClient
 from runtime.github import GitHubRuntime
 from runtime.github_probe import probe
@@ -57,9 +58,22 @@ class VYRELONRuntime:
         return WorkStateStore(project_root / ".multiagentos" / "state")
 
     def agents(self, project_root: Path):
+        """Return the legacy AgentRegistry for compatibility."""
         detections = self.inspect(project_root)
         profile_ids = tuple(result.profile_id for result in detections)
         return build_registry(profile_ids)
+
+    def profiles(self, project_root: Path):
+        """Resolve one ProjectProfile and its deterministic AgentProfiles."""
+        return ProfileResolver().resolve(project_root)
+
+    def agent_profile(self, project_root: Path, agent_id: str):
+        """Resolve one project-scoped AgentProfile as an AgentContract."""
+        _, agent_profiles = self.profiles(project_root)
+        for profile in agent_profiles:
+            if profile.id == agent_id:
+                return profile.to_contract()
+        raise LookupError(f"Agent profile not found: {agent_id}")
 
     def github_probe(self, repository: str) -> dict:
         return probe(repository)
