@@ -71,6 +71,9 @@ def build_parser() -> argparse.ArgumentParser:
     detect = subparsers.add_parser("detect", help="detect technology profiles")
     detect.add_argument("path", nargs="?", default=".")
 
+    profile = subparsers.add_parser("profile", help="show resolved VYRELON project/agent profiles")
+    profile.add_argument("path", nargs="?", default=".")
+
     init = subparsers.add_parser("init", help="initialize VYRELON in a project")
     init.add_argument("path", nargs="?", default=".")
 
@@ -204,6 +207,38 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "github" and args.github_command == "probe":
         print(json.dumps(probe(args.repository), indent=2))
+        return 0
+
+    if args.command == "profile":
+        root = Path(args.path).expanduser().resolve()
+        from runtime.vyrelon import VYRELONRuntime
+        project, agents = VYRELONRuntime().profiles(root)
+        print(
+            json.dumps(
+                {
+                    "project": {
+                        "id": project.id,
+                        "root": project.root,
+                        "technology_profiles": list(project.technology_profile_ids),
+                        "agent_profiles": list(project.agent_profile_ids),
+                        "metadata": project.metadata,
+                    },
+                    "agents": [
+                        {
+                            "id": agent.id,
+                            "role": agent.role,
+                            "profiles": list(agent.profile_ids),
+                            "capabilities": sorted(agent.capabilities),
+                            "tools": sorted(agent.tools),
+                            "permissions": sorted(agent.permissions),
+                            "model_ids": list(agent.model_ids),
+                        }
+                        for agent in agents
+                    ],
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.command == "providers":
