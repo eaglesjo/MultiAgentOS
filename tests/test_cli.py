@@ -61,6 +61,23 @@ class CLITests(unittest.TestCase):
             self.assertEqual(status["work_units"][0]["id"], "wu-1")
             self.assertEqual(status["checkpoints"][0]["next_action"], "resume_execution")
 
+    def test_run_executes_command_and_persists_state(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertEqual(
+                main(["run", temp, "--objective", "echo smoke test", "--", "python", "-c", "print('ok')"]),
+                0,
+            )
+            status = project_status(root)
+            self.assertEqual(len(status["work_units"]), 1)
+            self.assertEqual(status["work_units"][0]["status"], "completed")
+            self.assertEqual(status["checkpoints"][0]["resumable"], False)
+
+    def test_resume_rejects_terminal_work_unit(self):
+        with tempfile.TemporaryDirectory() as temp:
+            with self.assertRaises(ValueError):
+                main(["resume", "missing-work-unit", "--path", temp])
+
     def test_init(self):
         with tempfile.TemporaryDirectory() as temp:
             self.assertEqual(main(["init", temp]), 0)
