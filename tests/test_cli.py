@@ -31,6 +31,7 @@ class CLITests(unittest.TestCase):
             self.assertTrue(status["initialized"])
             self.assertEqual(status["components"], ["vyrelon"])
             self.assertEqual(status["agents"], [])
+            self.assertEqual(status["chat"], {"agent_id": "chatgpt", "model": None})
             self.assertEqual(
                 status["execution"],
                 {"runtime": "process", "agent_id": "cli-executor", "model_id": "local-process"},
@@ -135,6 +136,7 @@ class CLITests(unittest.TestCase):
             self.assertTrue((Path(temp) / ".multiagentos" / "profile.json").exists())
             self.assertTrue((Path(temp) / ".multiagentos" / "agents.json").exists())
             self.assertTrue((Path(temp) / ".multiagentos" / "execution.json").exists())
+            self.assertTrue((Path(temp) / ".multiagentos" / "chat.json").exists())
 
 
 if __name__ == "__main__":
