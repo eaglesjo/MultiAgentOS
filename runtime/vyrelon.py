@@ -6,7 +6,7 @@ from pathlib import Path
 
 from agents.registry import build_registry
 from core.contracts.agent import AgentContract
-from core.contracts.ai import ModelSpec
+from core.contracts.ai import AIProvider, ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.handoff import ReviewPanel, ReviewPanelResult
@@ -18,6 +18,8 @@ from integrations.github.gateway import GitHubGatewayClient
 from runtime.github import GitHubRuntime
 from runtime.github_probe import probe
 from runtime.git import GitRuntime
+from runtime.model.providers import AIProviderRegistry
+from runtime.model.registry import ModelAdapterRegistry
 from runtime.policy import ExecutionPolicy
 
 
@@ -36,6 +38,8 @@ class VYRELONRuntime:
             gateway=GitHubGatewayClient(),
             policy=self.policy,
         )
+        self.providers = AIProviderRegistry()
+        self.model_adapters = ModelAdapterRegistry()
 
     def inspect(self, project_root: Path):
         return ProfileDetector().detect(project_root)
@@ -53,6 +57,56 @@ class VYRELONRuntime:
 
     def github_probe(self, repository: str) -> dict:
         return probe(repository)
+
+    def register_provider(self, provider: AIProvider) -> None:
+        """Register provider/model configuration for later model execution."""
+        self.providers.register(provider)
+
+    def register_model_adapter(self, adapter_id: str, adapter) -> None:
+        """Register a runtime adapter referenced by model metadata."""
+        self.model_adapters.register(adapter_id, adapter)
+
+    def configured_models(
+        self, provider_id: str | None = None
+    ) -> list[ModelSpec]:
+        """Return registered models, optionally scoped to one provider."""
+        return list(self.providers.models(provider_id))
+
+    def run_registered_model(
+        self,
+        work_unit: WorkUnit,
+        agent: AgentContract,
+        preferred_model_ids: list[str] | None = None,
+        system_prompt: str | None = None,
+        verifier: ResultVerifier | None = None,
+        reviewer: ResultReviewer | None = None,
+        routing_strategy="pool",
+    ) -> OrchestrationResult:
+        """Execute using provider/model and adapter configuration registered in VYRELON."""
+        from runtime.agent.model import ModelAgentExecutor
+
+        models = self.configured_models()
+        if preferred_model_ids:
+            for model_id in preferred_model_ids:
+                self.providers.get_model(model_id)
+
+        return self.run(
+            work_unit=work_unit,
+            agent=agent,
+            models=models,
+            executor=ModelAgentExecutor(
+                adapters={
+                    adapter_id: self.model_adapters.get(adapter_id)
+                    for adapter_id in self.model_adapters.list()
+                },
+                models=models,
+                system_prompt=system_prompt,
+            ),
+            preferred_model_ids=preferred_model_ids,
+            verifier=verifier,
+            reviewer=reviewer,
+            routing_strategy=routing_strategy,
+        )
 
     def run_persistent(
         self,
@@ -124,6 +178,7 @@ class VYRELONRuntime:
             verifier=verifier,
             reviewer=reviewer,
         )
+
     def run(
         self,
         work_unit: WorkUnit,
