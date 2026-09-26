@@ -23,7 +23,10 @@ def _work_state(root: Path):
 def _run_process(root: Path, work: WorkUnit, command: list[str]) -> int:
     store = _work_state(root)
     work.metadata["command"] = command
-    work.transition(WorkStatus.EXECUTING)
+    if work.status == WorkStatus.FAILED:
+        work.status = WorkStatus.EXECUTING
+    elif work.status != WorkStatus.EXECUTING:
+        work.transition(WorkStatus.EXECUTING)
     store.save(work)
 
     try:
@@ -64,7 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("path", nargs="?", default=".")
     run.add_argument("--objective", required=True)
     run.add_argument("--id", dest="work_unit_id")
-    run.add_argument("--command", nargs="+", required=True)
+    run.add_argument("--command", dest="process_command", nargs="+", required=True)
 
     resume = subparsers.add_parser("resume", help="resume a persisted WorkUnit")
     resume.add_argument("work_unit_id")
@@ -97,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
             objective=args.objective,
         )
         print(f"WorkUnit: {work.id}")
-        return _run_process(root, work, args.command)
+        return _run_process(root, work, args.process_command)
 
     if args.command == "resume":
         work = _work_state(root).load(args.work_unit_id)
@@ -105,8 +108,6 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError(
                 f"WorkUnit {work.id} is not resumable from status {work.status.value}"
             )
-        if work.status == WorkStatus.FAILED:
-            work.status = WorkStatus.EXECUTING
         command = list(work.metadata.get("command", []))
         if not command:
             raise ValueError(f"WorkUnit {work.id} has no persisted command")
