@@ -191,7 +191,7 @@ class CLITests(unittest.TestCase):
                     )
 
             original = cli_module.VYRELONRuntime.project_chat_adapter
-            cli_module.VYRELONRuntime.project_chat_adapter = lambda self, project_root: FakeAdapter()
+            cli_module.VYRELONRuntime.project_chat_adapter = lambda self, project_root: (self.chat_agent_registry().get("chatgpt"), FakeAdapter())
             try:
                 output = io.StringIO()
                 with contextlib.redirect_stdout(output):
