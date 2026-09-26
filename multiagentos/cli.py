@@ -35,7 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("path", nargs="?", default=".")
 
     run = subparsers.add_parser("run", help="execute a local command through the VYRELON lifecycle")
-    run.add_argument("path", nargs="?", default=".")
+    run.add_argument("--path", default=".")
     run.add_argument("--objective", required=True, help="WorkUnit objective")
     run.add_argument("exec_command", nargs=argparse.REMAINDER, help="command after --")
 
