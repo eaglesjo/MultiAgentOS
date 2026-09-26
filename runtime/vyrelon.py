@@ -20,6 +20,9 @@ from runtime.github_probe import probe
 from runtime.git import GitRuntime
 from runtime.model.providers import AIProviderRegistry
 from runtime.model.registry import ModelAdapterRegistry
+from runtime.model.config import DEFAULT_CONFIG_PATH, ProviderConfigLoader
+from runtime.model.providers import AIProviderRegistry
+from runtime.model.registry import ModelAdapterRegistry
 from runtime.policy import ExecutionPolicy
 
 
@@ -40,6 +43,9 @@ class VYRELONRuntime:
         )
         self.providers = AIProviderRegistry()
         self.model_adapters = ModelAdapterRegistry()
+        self.provider_config = ProviderConfigLoader()
+        self.providers = AIProviderRegistry()
+        self.model_adapters = ModelAdapterRegistry()
 
     def inspect(self, project_root: Path):
         return ProfileDetector().detect(project_root)
@@ -57,6 +63,18 @@ class VYRELONRuntime:
 
     def github_probe(self, repository: str) -> dict:
         return probe(repository)
+
+    def load_provider_config(self, path: Path) -> None:
+        """Load provider/model definitions from a project JSON configuration."""
+        self.provider_config.load(path, self.providers)
+
+    def load_project_provider_config(self, project_root: Path) -> bool:
+        """Load the optional project provider configuration if present."""
+        path = project_root / DEFAULT_CONFIG_PATH
+        if not path.exists():
+            return False
+        self.load_provider_config(path)
+        return True
 
     def register_provider(self, provider: AIProvider) -> None:
         """Register provider/model configuration for later model execution."""

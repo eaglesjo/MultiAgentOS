@@ -1,0 +1,20 @@
+{
+  "providers": [
+    {
+      "id": "example-provider",
+      "kind": "http",
+      "metadata": {
+        "description": "Example configuration; replace with your provider."
+      },
+      "models": [
+        {
+          "id": "example-model",
+          "capabilities": ["execution"],
+          "metadata": {
+            "adapter_id": "http"
+          }
+        }
+      ]
+    }
+  ]
+}
