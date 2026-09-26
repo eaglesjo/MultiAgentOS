@@ -27,6 +27,7 @@ VYRELON currently includes:
 - unified VYRELON runtime facade for project, Git, and GitHub control
 - provider-neutral Chat Agent contracts and persistent VYRELON agent rules
 - local stdlib unittest validation plus GitHub Actions CI
+- read-only project status and durable checkpoint inspection
 
 ## CLI
 
@@ -37,6 +38,7 @@ After installation:
     multiagentos init . --component vyrelon
     multiagentos init . --component multi-agent
     multiagentos init . --component all
+    multiagentos status .
     multiagentos github probe eaglesjo/MultiAgentOS
 
 The initializer supports independent installation:
@@ -54,6 +56,8 @@ Multi-agent installation additionally writes:
     .multiagentos/agents.json
 
 No provider credentials or API keys are written to the project.
+
+The read-only `status` command reports installed components, detected profiles, agent catalog entries, WorkUnits, and durable workflow checkpoints. It makes interrupted or resumable work visible without granting the CLI any additional execution authority.
 
 ## Architecture
 
