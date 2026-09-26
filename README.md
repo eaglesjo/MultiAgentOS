@@ -68,7 +68,7 @@ The default execution configuration is:
       "model_id": "local-process"
     }
 
-The `run` and `resume` commands load Agent/Model IDs from this project configuration. `--agent` and `--model` are explicit per-invocation overrides. The runtime and process capability remain controlled by VYRELON; the configuration does not contain credentials or executable command definitions.
+The `run` and `resume` commands load Agent/Model IDs from this project configuration and resolve them through VYRELON's provider-neutral Agent/AI registries. `--agent` and `--model` are explicit per-invocation overrides. An unknown or incompatible Agent/Model pair is rejected instead of silently constructing a new execution contract. The runtime and process capability remain controlled by VYRELON; the configuration does not contain credentials or executable command definitions.
 
 Multi-agent installation additionally writes:
 
