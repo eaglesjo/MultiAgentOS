@@ -25,6 +25,7 @@ VYRELON currently includes:
 - declarative CLI/HTTP model adapter materialization and model execution
 - policy-controlled local process and GitHub runtimes
 - evidence-based technology profile detection
+- deterministic ProjectProfile and AgentProfile resolution shared by integrations
 - executable project bootstrap via the MultiAgentOS CLI
 - explicit planning contracts and persistent WorkUnit state
 - unified VYRELON runtime facade for project, Git, and GitHub control
@@ -35,6 +36,7 @@ VYRELON currently includes:
 After installation:
 
     multiagentos detect .
+    multiagentos profile .
     multiagentos init .
     multiagentos providers list .
     multiagentos providers validate .
@@ -68,7 +70,11 @@ No provider credentials or API keys are written to the project.
         +-- Model HTTP
         +-- GitHub
         |
-    Technology Profiles
+    Project Profile
+        |
+        +-- Technology Profiles
+        +-- Agent Profiles -> Agent Contracts
+        |
         |
         +-- React Native
         +-- Android Native
