@@ -7,9 +7,11 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
+from core.chat_agent_bridge import ChatAgentRequest
 from core.contracts import WorkUnit
 from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
+from runtime.chat_config import load_chat_config
 from runtime.execution_config import load_execution_config
 from runtime.execution_registry import resolve_execution_contracts
 from runtime.github_probe import probe
@@ -50,6 +52,13 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("--agent", help="override the project execution agent id")
     resume.add_argument("--model", help="override the project execution model id")
 
+    chat = subparsers.add_parser("chat", help="send a request to the project's configured Chat Agent")
+    chat.add_argument("--path", default=".")
+    chat.add_argument("--objective", required=True, help="request for the Chat Agent")
+    chat.add_argument("--agent", help="override the configured Chat Agent id")
+    chat.add_argument("--model", help="override the configured Chat Agent model")
+    chat.add_argument("--session", help="persist conversation turns in this session id")
+
     github = subparsers.add_parser("github", help="use VYRELON GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
     probe_parser = github_sub.add_parser("probe", help="verify GitHub access for a repository")
@@ -68,11 +77,93 @@ def _execution_contracts(root: Path, agent_override: str | None, model_override:
     return config, agent, [model]
 
 
+def _chat_request(root: Path, objective: str, session_id: str | None) -> ChatAgentRequest:
+    inputs: dict[str, object] = {}
+    if session_id:
+        store = VYRELONRuntime().chat_session_store(root)
+        try:
+            session = store.load(session_id)
+        except FileNotFoundError:
+            session = None
+        if session is not None:
+            inputs["conversation"] = tuple(
+                {"role": turn.get("role"), "content": turn.get("content")}
+                for turn in session.turns
+            )
+    return ChatAgentRequest(objective=objective, inputs=inputs)
+
+
+def _run_chat(root: Path, objective: str, agent_override: str | None, model_override: str | None, session_id: str | None) -> int:
+    runtime = VYRELONRuntime()
+    configured_agent, configured_model = runtime.project_chat_agent(root)
+    agent_id = agent_override or configured_agent.id
+    if agent_id != configured_agent.id:
+        agent = runtime.chat_agent_registry().get(agent_id)
+        model = model_override
+        adapter = runtime.chat_agent_router().route(preferred_agent_id=agent_id).agent
+        del adapter
+    else:
+        agent = configured_agent
+        model = model_override or configured_model
+
+    if agent_id != configured_agent.id:
+        from runtime.chat_adapter_registry import resolve_project_chat_adapter
+        adapter = resolve_project_chat_adapter(agent, model=model)
+    else:
+        _, adapter = runtime.project_chat_adapter(root)
+        if model_override and model_override != configured_model:
+            from runtime.chat_adapter_registry import resolve_project_chat_adapter
+            adapter = resolve_project_chat_adapter(agent, model=model_override)
+
+    session = None
+    if session_id:
+        store = runtime.chat_session_store(root)
+        try:
+            session = store.load(session_id)
+        except FileNotFoundError:
+            session = runtime.create_chat_session(session_id, chat_agent_id=agent.id)
+
+    request = _chat_request(root, objective, session_id)
+    _, plan, response = runtime.chat_request(request, adapter, agent_id=agent.id)
+
+    if session is None and session_id:
+        session = runtime.create_chat_session(session_id, chat_agent_id=agent.id)
+    if session is not None:
+        session.add_turn("user", objective)
+        session.add_turn("assistant", response.summary)
+        session.metadata["last_plan_steps"] = [step.id for step in plan.steps]
+        runtime.chat_session_store(root).save(session)
+
+    print(json.dumps({
+        "chat_agent_id": agent.id,
+        "provider": agent.provider.value,
+        "summary": response.summary,
+        "steps": [
+            {
+                "id": step.id,
+                "objective": step.objective,
+                "agent_id": step.agent_id,
+                "depends_on": list(step.depends_on),
+            }
+            for step in plan.steps
+        ],
+        "findings": list(response.findings),
+        "artifacts": list(response.artifacts),
+        "evidence": list(response.evidence),
+        "session_id": session.id if session is not None else None,
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "status":
         print(json.dumps(project_status(Path(args.path)), indent=2, ensure_ascii=False))
         return 0
+
+    if args.command == "chat":
+        root = Path(args.path).expanduser().resolve()
+        return _run_chat(root, args.objective, args.agent, args.model, args.session)
 
     if args.command in {"run", "resume"}:
         root = Path(args.path).expanduser().resolve()
