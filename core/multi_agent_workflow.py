@@ -15,6 +15,17 @@ from core.handoff import HandoffManager, ReviewPanel
 from core.routing import RoutingStrategy
 
 
+def _checkpoint_value(value: object) -> object:
+    """Return a JSON-safe execution snapshot for durable recovery."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, dict):
+        return {str(key): _checkpoint_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_checkpoint_value(item) for item in value]
+    return {"repr": repr(value), "type": type(value).__name__}
+
+
 @dataclass(frozen=True)
 class AgentStageResult:
     agent_id: str
@@ -117,6 +128,7 @@ class MultiAgentWorkflow:
         preferred_model_ids: list[str] | None = None,
         routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
         artifact_store=None,
+        checkpoint=None,
     ) -> MultiAgentWorkflowResult:
         """Run Developer -> Tester -> Review and bounded reviewer-requested rework."""
         if max_review_cycles < 1:
@@ -133,6 +145,11 @@ class MultiAgentWorkflow:
 
         for cycle in range(max_review_cycles):
             work_unit.metadata["review_cycle"] = cycle + 1
+            work_unit.metadata["checkpoint_next_action"] = "rework"
+            if checkpoint is not None:
+                checkpoint(work_unit, stage="rework", sequence=cycle,
+                           next_action="rework", agent_ids=(developer.id, tester.id, *[agent.id for agent, _ in reviewers]),
+                           model_ids=tuple(model.id for model in models))
             for agent in (developer, tester):
                 work_unit.metadata["stage_input"] = {
                     "from_agent": previous_agent.id if previous_agent else None,
@@ -190,6 +207,12 @@ class MultiAgentWorkflow:
                 previous_output = output
 
             if verifier is not None:
+                work_unit.metadata["checkpoint_output"] = _checkpoint_value(previous_output)
+                work_unit.metadata["checkpoint_next_action"] = "verify"
+                if checkpoint is not None:
+                    checkpoint(work_unit, stage="verification", sequence=cycle + 1,
+                               next_action="verify", agent_ids=(developer.id, tester.id, *[agent.id for agent, _ in reviewers]),
+                               model_ids=tuple(model.id for model in models))
                 work_unit.transition(WorkStatus.VERIFYING)
                 if not verifier.verify(work_unit=work_unit, output=previous_output):
                     work_unit.metadata.setdefault("findings", []).append(
@@ -206,6 +229,11 @@ class MultiAgentWorkflow:
             elif work_unit.status == WorkStatus.EXECUTING:
                 work_unit.transition(WorkStatus.VERIFYING)
 
+            work_unit.metadata["checkpoint_next_action"] = "review"
+            if checkpoint is not None:
+                checkpoint(work_unit, stage="review", sequence=cycle + 1,
+                           next_action="review", agent_ids=(developer.id, tester.id, *[agent.id for agent, _ in reviewers]),
+                           model_ids=tuple(model.id for model in models))
             work_unit.transition(WorkStatus.REVIEWING)
             review_context = ReviewContext(
                 work_unit_id=work_unit.id,
@@ -248,6 +276,10 @@ class MultiAgentWorkflow:
             if cycle + 1 < max_review_cycles:
                 work_unit.metadata["rework_required"] = True
                 work_unit.transition(WorkStatus.EXECUTING)
+                if checkpoint is not None:
+                    checkpoint(work_unit, stage="rework", sequence=cycle + 1,
+                               next_action="rework", agent_ids=(developer.id, tester.id, *[agent.id for agent, _ in reviewers]),
+                               model_ids=tuple(model.id for model in models))
                 continue
 
             work_unit.metadata["review_cycle_count"] = cycle + 1
@@ -271,6 +303,10 @@ class MultiAgentWorkflow:
                 last_agent_id=previous_agent.id if previous_agent else None,
             ).to_metadata()
             work_unit.transition(WorkStatus.WAITING_HUMAN_APPROVAL)
+            if checkpoint is not None:
+                checkpoint(work_unit, stage="human_gate", sequence=cycle + 1,
+                           next_action="human_review", agent_ids=(developer.id, tester.id, *[agent.id for agent, _ in reviewers]),
+                           model_ids=tuple(model.id for model in models), resumable=True)
             return MultiAgentWorkflowResult(
                 work_unit, tuple(stages), previous_output, tuple(reviews)
             )
@@ -361,6 +397,7 @@ class MultiAgentWorkflow:
                 model_id=delegation.assignment.model_id,
                 work_unit=work_unit,
             )
+            work_unit.metadata["checkpoint_output"] = _checkpoint_value(output)
             work_unit.metadata["checkpoint_stage_index"] = stage_index + 1
             work_unit.metadata["checkpoint_next_action"] = (
                 "execute_stage" if stage_index + 1 < len(stages) else "verify"
@@ -408,6 +445,7 @@ class MultiAgentWorkflow:
 
         if verifier is not None:
             work_unit.metadata["checkpoint_next_action"] = "verify"
+            work_unit.metadata["checkpoint_output"] = _checkpoint_value(previous_output)
             if checkpoint is not None:
                 checkpoint(work_unit, stage="verification", sequence=len(stages),
                            next_action="verify", agent_ids=tuple(a.id for a in stages),
@@ -415,12 +453,21 @@ class MultiAgentWorkflow:
             work_unit.transition(WorkStatus.VERIFYING)
             if not verifier.verify(work_unit=work_unit, output=previous_output):
                 work_unit.transition(WorkStatus.FAILED)
+                if checkpoint is not None:
+                    checkpoint(work_unit, stage="verification", sequence=len(stages),
+                               next_action=None, agent_ids=tuple(a.id for a in stages),
+                               model_ids=tuple(model.id for model in models), resumable=False)
                 raise RuntimeError(f"verification failed for work unit: {work_unit.id}")
 
         reviews: tuple[ReviewResult, ...] = ()
         if reviewers:
             if reviewer_runner is None:
                 raise ValueError("reviewer_runner is required when reviewers are provided")
+            work_unit.metadata["checkpoint_next_action"] = "review"
+            if checkpoint is not None:
+                checkpoint(work_unit, stage="review", sequence=len(stages),
+                           next_action="review", agent_ids=tuple(a.id for a in stages),
+                           model_ids=tuple(model.id for model in models))
             if work_unit.status != WorkStatus.VERIFYING:
                 work_unit.transition(WorkStatus.VERIFYING)
             work_unit.transition(WorkStatus.REVIEWING)
@@ -432,7 +479,15 @@ class MultiAgentWorkflow:
             reviews = panel.reviews
             work_unit.metadata["review_consensus"] = panel.consensus
             if not panel.approved:
+                work_unit.metadata["findings"] = [
+                    *work_unit.metadata.get("findings", []),
+                    *[review.feedback for review in panel.reviews if review.feedback.strip()],
+                ]
                 work_unit.transition(WorkStatus.FAILED)
+                if checkpoint is not None:
+                    checkpoint(work_unit, stage="review", sequence=len(stages),
+                               next_action=None, agent_ids=tuple(a.id for a in stages),
+                               model_ids=tuple(model.id for model in models), resumable=False)
                 raise RuntimeError(f"review rejected work unit: {work_unit.id}")
 
         if verifier is not None or reviewers:
