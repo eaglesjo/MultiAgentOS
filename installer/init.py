@@ -8,6 +8,7 @@ from pathlib import Path
 from agents.catalog import build_agent_catalog
 from core.contracts.profile import DetectionResult
 from runtime.execution_config import write_default_execution_config
+from runtime.chat_config import write_default_chat_config
 
 
 class ProjectInitializer:
@@ -43,6 +44,7 @@ class ProjectInitializer:
 
         if component in {"vyrelon", "all"}:
             write_default_execution_config(project_root)
+            write_default_chat_config(project_root)
 
         if component == "vyrelon":
             return config
