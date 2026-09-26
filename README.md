@@ -28,6 +28,8 @@ VYRELON currently includes:
 - provider-neutral Chat Agent contracts and persistent VYRELON agent rules
 - local stdlib unittest validation plus GitHub Actions CI
 - read-only project status and durable checkpoint inspection
+- project-scoped execution configuration for selecting the CLI Agent/Model
+- direct project Chat Agent CLI with optional persistent conversation sessions
 
 ## CLI
 
@@ -40,12 +42,16 @@ After installation:
     multiagentos init . --component all
     multiagentos status .
     multiagentos run --path . --objective "run tests" -- python -m unittest discover -s tests -v
+    multiagentos run --path . --agent custom-executor --model custom-process --objective "run tests" -- python -m unittest discover -s tests -v
     multiagentos resume <work-unit-id> --path .
+    multiagentos chat --path . --objective "inspect the current project"
+    multiagentos chat --path . --execute --objective "run the smoke test" -- python -m unittest discover -s tests -v
+    multiagentos chat --path . --objective "continue our conversation" --session project-1
     multiagentos github probe eaglesjo/MultiAgentOS
 
 The initializer supports independent installation:
 
-- `vyrelon`: VYRELON runtime, policy, lifecycle, planning/state and project profile.
+- `vyrelon`: VYRELON runtime, policy, lifecycle, planning/state, project profile and execution configuration.
 - `multi-agent`: role catalog and profile-specific multi-agent definitions.
 - `all`: both components.
 
@@ -53,13 +59,33 @@ The selected mode is recorded in:
 
     .multiagentos/components.json
 
+VYRELON installation also writes:
+
+    .multiagentos/execution.json
+    .multiagentos/chat.json
+
+The default execution configuration is:
+
+    {
+      "version": 1,
+      "runtime": "process",
+      "agent_id": "cli-executor",
+      "model_id": "local-process"
+    }
+
+The `run` and `resume` commands load Agent/Model IDs from this project configuration and resolve them through VYRELON's provider-neutral Agent/AI registries. `--agent` and `--model` are explicit per-invocation overrides. An unknown or incompatible Agent/Model pair is rejected instead of silently constructing a new execution contract. The runtime and process capability remain controlled by VYRELON; the configuration does not contain credentials or executable command definitions.
+
 Multi-agent installation additionally writes:
 
     .multiagentos/agents.json
 
+The project Chat Agent defaults to ChatGPT and is resolved through VYRELON's provider-neutral Chat Agent registry. Gemini, Claude, and other registered providers can be selected by changing `chat.json`; the selected Chat Agent still has no execution authority above VYRELON.
+
+The `chat` command sends a conversational request through the configured Chat Agent and returns its summary, proposed plan steps, findings, artifacts, and provider evidence as JSON. It does not execute filesystem, Git, GitHub, process, verification, or review actions unless --execute is explicitly supplied with a user-provided command. In execution mode, the Chat Agent still only supplies intent/plan; VYRELON's configured execution Agent/Model owns the explicit command and lifecycle. Use `--session <id>` to persist conversation turns under `.multiagentos/sessions/`; credentials are never stored there. Provider SDKs remain optional and CI tests use injected adapters.
+
 No provider credentials or API keys are written to the project.
 
-The read-only `status` command reports installed components, detected profiles, agent catalog entries, WorkUnits, and durable workflow checkpoints. The `run` command executes a local command through the VYRELON WorkUnit lifecycle, while `resume` reloads a durable orchestration checkpoint and continues it. It makes interrupted or resumable work visible without granting the CLI any additional execution authority.
+The read-only `status` command reports installed components, detected profiles, execution configuration, agent catalog entries, WorkUnits, and durable workflow checkpoints. The `run` command executes a local command through the VYRELON WorkUnit lifecycle, while `resume` reloads a durable orchestration checkpoint and continues it. It makes interrupted or resumable work visible without granting the CLI any additional execution authority.
 
 ## Architecture
 
@@ -87,3 +113,22 @@ The read-only `status` command reports installed components, detected profiles, 
     python -m unittest discover -s tests -v
 
 GitHub Actions runs the same test suite on pull requests and pushes.
+
+
+### Chat Agent adapter resolution
+
+VYRELON resolves the configured Chat Agent through a provider-neutral adapter registry:
+
+    .multiagentos/chat.json
+            |
+            v
+    ChatAgentRegistry
+            |
+            v
+    ChatAdapterRegistry
+            |
+            +-- ChatGPT -> OpenAI adapter
+            +-- Gemini -> provider adapter when registered
+            +-- Claude -> provider adapter when registered
+
+The core does not require a provider SDK. The OpenAI/ChatGPT adapter remains optional and obtains credentials from the provider's normal environment/authentication mechanism. A Chat Agent can propose intent and plans, but actual filesystem, Git, GitHub, process, verification, review, and approval actions remain VYRELON responsibilities.

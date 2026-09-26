@@ -24,6 +24,8 @@ from core.artifacts import ArtifactStore
 from profiles.detector import ProfileDetector
 from integrations.github.gateway import GitHubGatewayClient
 from runtime.github import GitHubRuntime
+from runtime.chat_config import load_chat_config
+from runtime.chat_adapter_registry import resolve_project_chat_adapter
 from runtime.github_probe import probe
 from runtime.git import GitRuntime
 from runtime.policy import ExecutionPolicy
@@ -80,6 +82,19 @@ class VYRELONRuntime:
     def chat_agent_registry(self):
         """Return the default provider-neutral Chat Agent registry."""
         return default_chat_agents()
+
+    def project_chat_agent(self, project_root: Path):
+        """Resolve the configured project Chat Agent from the provider-neutral registry."""
+        config = load_chat_config(project_root)
+        registry = self.chat_agent_registry()
+        agent = registry.get(config.agent_id)
+        return agent, config.model
+
+    def project_chat_adapter(self, project_root: Path):
+        """Resolve the configured Chat Agent to its provider adapter."""
+        agent, model = self.project_chat_agent(project_root)
+        return agent, resolve_project_chat_adapter(agent, model=model)
+
 
     def chat_agent_router(self) -> ChatAgentRouter:
         """Return the policy-neutral Chat Agent router."""
