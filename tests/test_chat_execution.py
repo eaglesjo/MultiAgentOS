@@ -34,7 +34,7 @@ class ProjectChatExecutionTests(unittest.TestCase):
     def test_project_chat_request_uses_vyrelon_lifecycle(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            ProjectInitializer().apply(root, component="vyrelon")
+            ProjectInitializer().apply(root, [], component="vyrelon")
             # Replace the provider adapter resolution with a deterministic fake
             # while retaining the real project Chat Agent configuration.
             import runtime.chat_execution as module
