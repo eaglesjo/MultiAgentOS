@@ -39,6 +39,8 @@ After installation:
     multiagentos init . --component multi-agent
     multiagentos init . --component all
     multiagentos status .
+    multiagentos run . --objective "run tests" -- python -m unittest discover -s tests -v
+    multiagentos resume <work-unit-id> --path .
     multiagentos github probe eaglesjo/MultiAgentOS
 
 The initializer supports independent installation:
@@ -57,7 +59,7 @@ Multi-agent installation additionally writes:
 
 No provider credentials or API keys are written to the project.
 
-The read-only `status` command reports installed components, detected profiles, agent catalog entries, WorkUnits, and durable workflow checkpoints. It makes interrupted or resumable work visible without granting the CLI any additional execution authority.
+The read-only `status` command reports installed components, detected profiles, agent catalog entries, WorkUnits, and durable workflow checkpoints. The `run` command executes a local command through the VYRELON WorkUnit lifecycle, while `resume` reloads a durable orchestration checkpoint and continues it. It makes interrupted or resumable work visible without granting the CLI any additional execution authority.
 
 ## Architecture
 
