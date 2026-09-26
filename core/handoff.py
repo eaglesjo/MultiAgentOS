@@ -43,10 +43,17 @@ class ReviewPanel:
                     })
                 else:
                     merged_context.update(dict(context))
-            return reviewer_runner(
+            result = reviewer_runner(
                 review_work_unit_id=work_unit_id,
                 reviewer=reviewer,
                 context=merged_context,
+            )
+            if hasattr(result, "reviewer_id"):
+                return result
+            return ReviewResult(
+                reviewer_id=reviewer.id,
+                approved=bool(result.approved),
+                feedback=str(getattr(result, "feedback", "")),
             )
         if parallel and len(reviewers) > 1:
             with ThreadPoolExecutor(max_workers=len(reviewers)) as pool:
