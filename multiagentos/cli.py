@@ -11,7 +11,6 @@ from core.chat_agent_bridge import ChatAgentRequest
 from core.contracts import WorkUnit
 from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
-from runtime.chat_config import load_chat_config
 from runtime.execution_config import load_execution_config
 from runtime.execution_registry import resolve_execution_contracts
 from runtime.github_probe import probe
@@ -97,23 +96,14 @@ def _run_chat(root: Path, objective: str, agent_override: str | None, model_over
     runtime = VYRELONRuntime()
     configured_agent, configured_model = runtime.project_chat_agent(root)
     agent_id = agent_override or configured_agent.id
-    if agent_id != configured_agent.id:
-        agent = runtime.chat_agent_registry().get(agent_id)
-        model = model_override
-        adapter = runtime.chat_agent_router().route(preferred_agent_id=agent_id).agent
-        del adapter
-    else:
-        agent = configured_agent
-        model = model_override or configured_model
+    agent = runtime.chat_agent_registry().get(agent_id)
+    model = model_override or (configured_model if agent_id == configured_agent.id else None)
 
-    if agent_id != configured_agent.id:
+    if agent_id == configured_agent.id and model == configured_model:
+        _, adapter = runtime.project_chat_adapter(root)
+    else:
         from runtime.chat_adapter_registry import resolve_project_chat_adapter
         adapter = resolve_project_chat_adapter(agent, model=model)
-    else:
-        _, adapter = runtime.project_chat_adapter(root)
-        if model_override and model_override != configured_model:
-            from runtime.chat_adapter_registry import resolve_project_chat_adapter
-            adapter = resolve_project_chat_adapter(agent, model=model_override)
 
     session = None
     if session_id:
