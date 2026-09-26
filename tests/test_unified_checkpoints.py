@@ -95,18 +95,14 @@ class UnifiedCheckpointTests(unittest.TestCase):
             ).validate()
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
     def test_multi_agent_resume_starts_at_checkpointed_stage(self):
         class InterruptOnceExecutor:
             def __init__(self):
                 self.calls = []
+
             def execute(self, *, agent, model_id, work_unit):
                 self.calls.append(agent.id)
                 if agent.id == "developer":
-                    from core.lifecycle import ExecutionInterrupted
                     raise ExecutionInterrupted("stage interrupted")
                 return {"agent": agent.id}
 
@@ -116,11 +112,13 @@ if __name__ == "__main__":
             AgentContract(id="tester", role="tester"),
         ]
         models = [ModelSpec("local", "local", frozenset())]
+
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             runtime = VYRELONRuntime()
             work_unit = WorkUnit("wu-stage-resume", "resume from developer")
             executor = InterruptOnceExecutor()
+
             with self.assertRaises(ExecutionInterrupted):
                 runtime.run_multi_agent_workflow(
                     work_unit=work_unit,
@@ -147,3 +145,7 @@ if __name__ == "__main__":
                 [stage.agent_id for stage in resumed.stages],
                 ["developer", "tester"],
             )
+
+
+if __name__ == "__main__":
+    unittest.main()
