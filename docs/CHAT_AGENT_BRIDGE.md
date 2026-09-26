@@ -245,3 +245,6 @@ This gives VYRELON a single recovery invariant:
 `WorkUnit -> Checkpoint -> Process Death/Boundary -> Reload -> Validate -> Resume or Resolve`
 
 A completed or terminally failed WorkUnit is recorded as non-resumable. An interrupted execution remains resumable and can be reloaded by a fresh runtime.
+
+
+For generic orchestration, `VYRELONRuntime.resume_workflow(work_unit_id, ...)` reloads the checkpoint and WorkUnit, validates the agent/model context, and re-enters the controlled lifecycle. This is distinct from Chat Agent-specific resume and Human Gate rework authorization; those paths retain their own contract-level validation.
