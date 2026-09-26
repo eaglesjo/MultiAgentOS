@@ -28,6 +28,7 @@ VYRELON currently includes:
 - provider-neutral Chat Agent contracts and persistent VYRELON agent rules
 - local stdlib unittest validation plus GitHub Actions CI
 - read-only project status and durable checkpoint inspection
+- project-scoped execution configuration for selecting the CLI Agent/Model
 
 ## CLI
 
@@ -40,12 +41,13 @@ After installation:
     multiagentos init . --component all
     multiagentos status .
     multiagentos run --path . --objective "run tests" -- python -m unittest discover -s tests -v
+    multiagentos run --path . --agent custom-executor --model custom-process --objective "run tests" -- python -m unittest discover -s tests -v
     multiagentos resume <work-unit-id> --path .
     multiagentos github probe eaglesjo/MultiAgentOS
 
 The initializer supports independent installation:
 
-- `vyrelon`: VYRELON runtime, policy, lifecycle, planning/state and project profile.
+- `vyrelon`: VYRELON runtime, policy, lifecycle, planning/state, project profile and execution configuration.
 - `multi-agent`: role catalog and profile-specific multi-agent definitions.
 - `all`: both components.
 
@@ -53,13 +55,28 @@ The selected mode is recorded in:
 
     .multiagentos/components.json
 
+VYRELON installation also writes:
+
+    .multiagentos/execution.json
+
+The default execution configuration is:
+
+    {
+      "version": 1,
+      "runtime": "process",
+      "agent_id": "cli-executor",
+      "model_id": "local-process"
+    }
+
+The `run` and `resume` commands load Agent/Model IDs from this project configuration. `--agent` and `--model` are explicit per-invocation overrides. The runtime and process capability remain controlled by VYRELON; the configuration does not contain credentials or executable command definitions.
+
 Multi-agent installation additionally writes:
 
     .multiagentos/agents.json
 
 No provider credentials or API keys are written to the project.
 
-The read-only `status` command reports installed components, detected profiles, agent catalog entries, WorkUnits, and durable workflow checkpoints. The `run` command executes a local command through the VYRELON WorkUnit lifecycle, while `resume` reloads a durable orchestration checkpoint and continues it. It makes interrupted or resumable work visible without granting the CLI any additional execution authority.
+The read-only `status` command reports installed components, detected profiles, execution configuration, agent catalog entries, WorkUnits, and durable workflow checkpoints. The `run` command executes a local command through the VYRELON WorkUnit lifecycle, while `resume` reloads a durable orchestration checkpoint and continues it. It makes interrupted or resumable work visible without granting the CLI any additional execution authority.
 
 ## Architecture
 
