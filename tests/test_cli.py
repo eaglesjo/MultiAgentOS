@@ -107,6 +107,7 @@ class CLITests(unittest.TestCase):
     def test_run_executes_command_and_persists_state(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
             self.assertEqual(
                 main(["run", "--path", temp, "--objective", "echo smoke test", "--", "python", "-c", "print('ok')"]),
                 0,
@@ -119,6 +120,7 @@ class CLITests(unittest.TestCase):
     def test_resume_rejects_terminal_work_unit(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
             self.assertEqual(
                 main(["run", "--path", temp, "--objective", "terminal", "--", "python", "-c", "print('done')"]),
                 0,
