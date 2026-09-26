@@ -7,10 +7,11 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
-from core.contracts import AgentContract, ModelSpec, WorkUnit
+from core.contracts import WorkUnit
 from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
 from runtime.execution_config import load_execution_config
+from runtime.execution_registry import resolve_execution_contracts
 from runtime.github_probe import probe
 from runtime.process import ProcessRuntime
 from runtime.status import project_status
@@ -63,14 +64,8 @@ def _execution_contracts(root: Path, agent_override: str | None, model_override:
         raise ValueError(f"unsupported CLI execution runtime: {config.runtime}")
     agent_id = agent_override or config.agent_id
     model_id = model_override or config.model_id
-    agent = AgentContract(
-        id=agent_id,
-        role="executor",
-        capabilities=frozenset({"process"}),
-        tools=frozenset({"process"}),
-    )
-    models = [ModelSpec(model_id, "local", frozenset({"process"}))]
-    return config, agent, models
+    agent, model = resolve_execution_contracts(agent_id, model_id)
+    return config, agent, [model]
 
 
 def main(argv: list[str] | None = None) -> int:
