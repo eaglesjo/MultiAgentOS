@@ -8,7 +8,9 @@ from core.contracts.handoff import ArtifactContract
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.work_unit import WorkStatus, WorkUnit
+from core.lifecycle import ExecutionInterrupted
 from core.multi_agent_workflow import MultiAgentWorkflow
+from runtime.vyrelon import VYRELONRuntime
 
 
 class FakeExecutor:
@@ -278,6 +280,229 @@ class MultiAgentWorkflowTests(unittest.TestCase):
         )
         self.assertEqual(result.work_unit.status, WorkStatus.FAILED)
         self.assertEqual(work_unit.metadata["human_review_decision"], "rejected")
+
+
+    def test_verify_checkpoint_resumes_without_rerunning_stages(self):
+        class InterruptingVerifier:
+            def __init__(self):
+                self.calls = 0
+
+            def verify(self, *, work_unit, output):
+                self.calls += 1
+                if self.calls == 1:
+                    raise ExecutionInterrupted("verification interrupted")
+                return True
+
+        class FreshVerifier:
+            def verify(self, *, work_unit, output):
+                return output == {"agent": "tester"}
+
+        executor = FakeExecutor()
+        stages = [
+            AgentContract(id="developer", role="developer"),
+            AgentContract(id="tester", role="tester"),
+        ]
+        models = [ModelSpec("local", "local", frozenset())]
+        verifier = InterruptingVerifier()
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = VYRELONRuntime()
+            work_unit = WorkUnit("wu-verify-resume", "resume verification")
+            with self.assertRaises(ExecutionInterrupted):
+                runtime.run_multi_agent_workflow(
+                    work_unit=work_unit,
+                    stages=stages,
+                    models=models,
+                    executor=executor,
+                    verifier=verifier,
+                    project_root=root,
+                )
+
+            checkpoint = runtime.load_checkpoint(work_unit.id, root)
+            self.assertEqual(checkpoint.next_action, "verify")
+            self.assertEqual(checkpoint.metadata["next_stage_index"], 2)
+
+            resumed = runtime.resume_multi_agent_workflow(
+                work_unit.id,
+                stages=stages,
+                models=models,
+                executor=FakeExecutor(),
+                verifier=FreshVerifier(),
+                project_root=root,
+            )
+
+            self.assertEqual(resumed.work_unit.status, WorkStatus.COMPLETED)
+            self.assertEqual(resumed.stages, ())
+            self.assertEqual(
+                runtime.load_checkpoint(work_unit.id, root).resumable,
+                False,
+            )
+
+    def test_review_checkpoint_resumes_without_rerunning_stages(self):
+        class InterruptingReviewer:
+            def __init__(self):
+                self.calls = 0
+
+            def __call__(self, *, review_work_unit_id, reviewer, context):
+                self.calls += 1
+                if self.calls == 1:
+                    raise ExecutionInterrupted("review interrupted")
+                from core.contracts.execution import ReviewDecision
+                return ReviewDecision(approved=True, feedback="approved")
+
+        executor = FakeExecutor()
+        stages = [AgentContract(id="developer", role="developer")]
+        reviewers = [(AgentContract(id="reviewer", role="reviewer"), {})]
+        models = [ModelSpec("local", "local", frozenset())]
+        reviewer = InterruptingReviewer()
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = VYRELONRuntime()
+            work_unit = WorkUnit("wu-review-resume", "resume review")
+            with self.assertRaises(ExecutionInterrupted):
+                runtime.run_multi_agent_workflow(
+                    work_unit=work_unit,
+                    stages=stages,
+                    models=models,
+                    executor=executor,
+                    reviewers=reviewers,
+                    reviewer_runner=reviewer,
+                    project_root=root,
+                )
+
+            checkpoint = runtime.load_checkpoint(work_unit.id, root)
+            self.assertEqual(checkpoint.next_action, "review")
+
+            resumed = runtime.resume_multi_agent_workflow(
+                work_unit.id,
+                stages=stages,
+                models=models,
+                executor=FakeExecutor(),
+                reviewers=reviewers,
+                reviewer_runner=reviewer,
+                project_root=root,
+            )
+
+            self.assertEqual(resumed.work_unit.status, WorkStatus.COMPLETED)
+            self.assertEqual(resumed.stages, ())
+
+    def test_review_rework_checkpoint_resumes_at_review(self):
+        class InterruptingReviewer:
+            def __init__(self):
+                self.calls = 0
+
+            def __call__(self, *, review_work_unit_id, reviewer, context):
+                self.calls += 1
+                if self.calls == 1:
+                    raise ExecutionInterrupted("review interrupted")
+                from core.contracts.execution import ReviewDecision
+                return ReviewDecision(approved=True, feedback="approved")
+
+        developer = AgentContract(id="developer", role="developer")
+        tester = AgentContract(id="tester", role="tester")
+        reviewers = [(AgentContract(id="reviewer", role="reviewer"), {})]
+        models = [ModelSpec("local", "local", frozenset())]
+        reviewer = InterruptingReviewer()
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = VYRELONRuntime()
+            work_unit = WorkUnit("wu-rework-review-resume", "resume bounded review")
+            with self.assertRaises(ExecutionInterrupted):
+                runtime.run_review_rework_workflow(
+                    work_unit=work_unit,
+                    developer=developer,
+                    tester=tester,
+                    reviewers=reviewers,
+                    models=models,
+                    executor=FakeExecutor(),
+                    reviewer_runner=reviewer,
+                    max_review_cycles=2,
+                    project_root=root,
+                )
+
+            checkpoint = runtime.load_checkpoint(work_unit.id, root)
+            self.assertEqual(checkpoint.workflow, "review_rework")
+            self.assertEqual(checkpoint.next_action, "review")
+
+            resumed = runtime.resume_review_rework_workflow(
+                work_unit.id,
+                developer=developer,
+                tester=tester,
+                reviewers=reviewers,
+                models=models,
+                executor=FakeExecutor(),
+                reviewer_runner=reviewer,
+                max_review_cycles=2,
+                project_root=root,
+            )
+
+            self.assertEqual(resumed.work_unit.status, WorkStatus.COMPLETED)
+            self.assertEqual([stage.agent_id for stage in resumed.stages], [])
+            self.assertEqual(work_unit.metadata["review_cycle_count"], 1)
+
+    def test_review_rework_checkpoint_resumes_next_rework_cycle(self):
+        class RejectThenInterruptExecutor(FakeExecutor):
+            def execute(self, *, agent, model_id, work_unit):
+                self.calls.append((agent.id, model_id))
+                if work_unit.metadata.get("review_cycle") == 2 and agent.id == "developer":
+                    raise ExecutionInterrupted("rework interrupted")
+                return {"agent": agent.id}
+
+        class RejectFirstReviewer:
+            def __init__(self):
+                self.calls = 0
+
+            def __call__(self, *, review_work_unit_id, reviewer, context):
+                self.calls += 1
+                from core.contracts.execution import ReviewDecision
+                if context["review_cycle"] == 1:
+                    return ReviewDecision(approved=False, feedback="fix before review")
+                return ReviewDecision(approved=True, feedback="approved")
+
+        developer = AgentContract(id="developer", role="developer")
+        tester = AgentContract(id="tester", role="tester")
+        reviewers = [(AgentContract(id="reviewer", role="reviewer"), {})]
+        models = [ModelSpec("local", "local", frozenset())]
+        reviewer = RejectFirstReviewer()
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = VYRELONRuntime()
+            work_unit = WorkUnit("wu-rework-cycle-resume", "resume next rework")
+            with self.assertRaises(ExecutionInterrupted):
+                runtime.run_review_rework_workflow(
+                    work_unit=work_unit,
+                    developer=developer,
+                    tester=tester,
+                    reviewers=reviewers,
+                    models=models,
+                    executor=RejectThenInterruptExecutor(),
+                    reviewer_runner=reviewer,
+                    max_review_cycles=2,
+                    project_root=root,
+                )
+
+            checkpoint = runtime.load_checkpoint(work_unit.id, root)
+            self.assertEqual(checkpoint.next_action, "rework")
+            self.assertEqual(checkpoint.metadata["review_cycle"], 2)
+
+            resumed = runtime.resume_review_rework_workflow(
+                work_unit.id,
+                developer=developer,
+                tester=tester,
+                reviewers=reviewers,
+                models=models,
+                executor=FakeExecutor(),
+                reviewer_runner=reviewer,
+                max_review_cycles=2,
+                project_root=root,
+            )
+
+            self.assertEqual(resumed.work_unit.status, WorkStatus.COMPLETED)
+            self.assertEqual([stage.agent_id for stage in resumed.stages], ["developer", "tester"])
 
 
 if __name__ == "__main__":
