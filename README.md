@@ -20,6 +20,7 @@ VYRELON currently includes:
 - deterministic multi-AI routing
 - model adapters for generic CLI and HTTP JSON endpoints
 - model-backed agent execution
+- declarative provider/model configuration loaded by VYRELON
 - policy-controlled local process and GitHub runtimes
 - evidence-based technology profile detection
 - executable project bootstrap via the MultiAgentOS CLI
@@ -34,6 +35,8 @@ After installation:
     multiagentos detect .
     multiagentos init .
     multiagentos github probe eaglesjo/MultiAgentOS
+
+Optional provider/model definitions can be placed at `.multiagentos/providers.json` and loaded through `VYRELONRuntime.load_project_provider_config(...)`. See `.multiagentos/providers.example.json` for the provider-neutral schema.
 
 The initializer writes only:
 
