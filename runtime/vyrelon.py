@@ -196,6 +196,14 @@ class VYRELONRuntime:
             for field in ("returncode", "stdout", "stderr"):
                 if hasattr(output, field):
                     work_unit.metadata[field] = getattr(output, field)
+            if hasattr(output, "text"):
+                work_unit.metadata["model_response"] = output.text
+            if hasattr(output, "model_id"):
+                work_unit.metadata["model_id"] = output.model_id
+            if hasattr(output, "metadata"):
+                output_metadata = getattr(output, "metadata")
+                if isinstance(output_metadata, dict):
+                    work_unit.metadata["model_response_metadata"] = dict(output_metadata)
             store.save(work_unit)
             return result
         except Exception as exc:
