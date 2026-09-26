@@ -217,6 +217,20 @@ class MultiAgentWorkflow:
                     previous_agent = agent
                     previous_output = output
 
+            work_unit.metadata["resume_context"] = WorkflowResumeContext(
+                workflow="review_rework",
+                work_unit_id=work_unit.id,
+                review_cycle=cycle + 1,
+                max_review_cycles=max_review_cycles,
+                developer_id=developer.id,
+                tester_id=tester.id,
+                reviewer_ids=tuple(agent.id for agent, _ in reviewers),
+                model_ids=tuple(model.id for model in models),
+                artifact_ids=tuple(work_unit.artifacts),
+                findings=tuple(work_unit.metadata.get("findings", ())),
+                last_agent_id=previous_agent.id if previous_agent else None,
+            ).to_metadata()
+
             if verifier is not None:
                 work_unit.metadata["checkpoint_output"] = _checkpoint_value(previous_output)
                 work_unit.metadata["checkpoint_next_action"] = "verify"
