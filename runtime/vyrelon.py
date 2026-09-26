@@ -369,7 +369,16 @@ class VYRELONRuntime:
             notes=notes,
         )
         work_unit.metadata["human_review_decision"] = decision.value
-        self.state_store(root).save(result.work_unit)
+        self.state_store(root).checkpoint(
+            result.work_unit,
+            workflow="review_rework",
+            stage=result.work_unit.status.value,
+            sequence=int(result.work_unit.metadata.get("review_cycle_count", 0)),
+            next_action=None,
+            agent_ids=tuple(result.work_unit.metadata.get("execution_agent_ids", ())),
+            resumable=False,
+            metadata={"human_decision": decision.value},
+        )
         return result
 
     def resolve_persisted_human_review(
@@ -440,7 +449,17 @@ class VYRELONRuntime:
             work_unit.metadata["human_review_notes"] = notes
         work_unit.metadata["rework_required"] = True
         work_unit.transition(WorkStatus.EXECUTING)
-        self.state_store(root).save(work_unit)
+        self.state_store(root).checkpoint(
+            work_unit,
+            workflow="review_rework",
+            stage=WorkStatus.EXECUTING.value,
+            sequence=int(context.review_cycle),
+            next_action="review_rework",
+            agent_ids=(developer.id, tester.id, *reviewer_ids),
+            model_ids=tuple(model.id for model in models),
+            resumable=True,
+            metadata={"human_decision": HumanReviewDecision.APPROVE_REWORK.value},
+        )
         result = self.multi_agent_workflow().run_with_review_rework(
             work_unit=work_unit,
             developer=developer,
