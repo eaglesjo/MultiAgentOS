@@ -296,6 +296,7 @@ class VYRELONRuntime:
         preferred_model_ids: list[str] | None = None,
         routing_strategy="pool",
         project_root: Path | None = None,
+        start_stage_index: int = 0,
     ) -> MultiAgentWorkflowResult:
         """Run a WorkUnit through multiple agents without transferring authority."""
         root = project_root or Path.cwd()
@@ -310,6 +311,57 @@ class VYRELONRuntime:
             preferred_model_ids=preferred_model_ids,
             routing_strategy=routing_strategy,
             artifact_store=self.artifact_store(root),
+            checkpoint=lambda unit, **kwargs: self.state_store(root).checkpoint(
+                unit, workflow="multi_agent", metadata={"next_stage_index": kwargs.get("sequence", 0)}, **kwargs
+            ),
+            start_stage_index=start_stage_index,
+        )
+
+    def resume_multi_agent_workflow(
+        self,
+        work_unit_id: str,
+        *,
+        stages: list[AgentContract],
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        verifier: ResultVerifier | None = None,
+        reviewers=None,
+        reviewer_runner=None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+        project_root: Path | None = None,
+    ) -> MultiAgentWorkflowResult:
+        """Reload a multi-agent checkpoint and continue from its next stage."""
+        root = project_root or Path.cwd()
+        store = self.state_store(root)
+        checkpoint = store.load_checkpoint(work_unit_id)
+        if not checkpoint.resumable:
+            raise ValueError("multi-agent checkpoint is not resumable")
+        if checkpoint.workflow != "multi_agent":
+            raise ValueError("checkpoint does not belong to multi-agent workflow")
+        available_models = {model.id for model in models}
+        if checkpoint.model_ids and not set(checkpoint.model_ids).issubset(available_models):
+            raise ValueError("resume models do not match checkpoint context")
+        if checkpoint.agent_ids and tuple(agent.id for agent in stages) != checkpoint.agent_ids:
+            raise ValueError("resume agents do not match checkpoint context")
+        work_unit = store.load(work_unit_id)
+        if work_unit.status in {WorkStatus.COMPLETED, WorkStatus.FAILED}:
+            raise ValueError("work unit is terminal and cannot be resumed")
+        next_stage = int(checkpoint.metadata.get("next_stage_index", 0))
+        if checkpoint.next_action != "execute_stage":
+            raise ValueError("multi-agent checkpoint does not point to a resumable stage")
+        return self.run_multi_agent_workflow(
+            work_unit=work_unit,
+            stages=stages,
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            reviewers=reviewers,
+            reviewer_runner=reviewer_runner,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            project_root=root,
+            start_stage_index=next_stage,
         )
 
     def run_debug_retry_workflow(
