@@ -129,6 +129,9 @@ class MultiAgentWorkflow:
         routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
         artifact_store=None,
         checkpoint=None,
+        start_cycle: int = 0,
+        resume_action: str | None = None,
+        resume_output: object = None,
     ) -> MultiAgentWorkflowResult:
         """Run Developer -> Tester -> Review and bounded reviewer-requested rework."""
         if max_review_cycles < 1:
@@ -138,73 +141,81 @@ class MultiAgentWorkflow:
         if reviewer_runner is None:
             raise ValueError("reviewer_runner is required")
 
+        if start_cycle < 0 or start_cycle > max_review_cycles:
+            raise ValueError("start_cycle must be within review cycle bounds")
+        if resume_action not in {None, "verify", "review", "rework"}:
+            raise ValueError("unsupported review-rework resume action")
+        if resume_action in {"verify", "review"} and start_cycle >= max_review_cycles:
+            raise ValueError("resume cycle must be within review cycle bounds")
+
         stages: list[AgentStageResult] = []
         reviews: list[ReviewResult] = []
-        previous_agent: AgentContract | None = None
-        previous_output: object = None
+        previous_agent: AgentContract | None = tester if resume_action in {"verify", "review"} else None
+        previous_output: object = resume_output if resume_action in {"verify", "review"} else None
 
-        for cycle in range(max_review_cycles):
+        for cycle in range(start_cycle, max_review_cycles):
             work_unit.metadata["review_cycle"] = cycle + 1
             work_unit.metadata["checkpoint_next_action"] = "rework"
             if checkpoint is not None:
                 checkpoint(work_unit, stage="rework", sequence=cycle,
                            next_action="rework", agent_ids=(developer.id, tester.id, *[agent.id for agent, _ in reviewers]),
                            model_ids=tuple(model.id for model in models))
-            for agent in (developer, tester):
-                work_unit.metadata["stage_input"] = {
-                    "from_agent": previous_agent.id if previous_agent else None,
-                    "artifacts": tuple(work_unit.artifacts),
-                    "findings": tuple(work_unit.metadata.get("findings", ())),
-                    "review_cycle": cycle + 1,
-                }
-                delegation = self.delegation.delegate(
-                    work_unit, agent, models, preferred_model_ids, routing_strategy
-                )
-                output = executor.execute(
-                    agent=agent,
-                    model_id=delegation.assignment.model_id,
-                    work_unit=work_unit,
-                )
-                stage_findings = tuple(work_unit.metadata.get("stage_findings", ()))
-                stage_artifacts = tuple(
-                    artifact for artifact in work_unit.metadata.get("artifacts", ())
-                    if isinstance(artifact, ArtifactContract)
-                )
-                for artifact in stage_artifacts:
-                    artifact.validate()
-                    if artifact_store is not None:
-                        artifact_store.save(artifact)
-                for artifact in stage_artifacts:
-                    if artifact.id not in work_unit.artifacts:
-                        work_unit.artifacts.append(artifact.id)
-                work_unit.metadata.setdefault("artifact_ids", [])
-                for artifact in stage_artifacts:
-                    if artifact.id not in work_unit.metadata["artifact_ids"]:
-                        work_unit.metadata["artifact_ids"].append(artifact.id)
-                handoff = None
-                if previous_agent is not None:
-                    handoff = self.handoffs.create(
-                        work_unit.id,
-                        previous_agent,
-                        agent,
-                        summary=f"Handoff from {previous_agent.id} to {agent.id}",
-                        artifacts=work_unit.artifacts,
-                        findings=tuple(work_unit.metadata.get("findings", ())),
-                    )
-                    work_unit.metadata.setdefault("handoffs", []).append({
-                        "from_agent": handoff.from_agent,
-                        "to_agent": handoff.to_agent,
-                        "summary": handoff.summary,
+            if resume_action not in {"verify", "review"}:
+                for agent in (developer, tester):
+                        work_unit.metadata["stage_input"] = {
+                        "from_agent": previous_agent.id if previous_agent else None,
+                        "artifacts": tuple(work_unit.artifacts),
+                        "findings": tuple(work_unit.metadata.get("findings", ())),
                         "review_cycle": cycle + 1,
-                    })
-                stages.append(
-                    AgentStageResult(
-                        agent.id, delegation, output, handoff,
-                        stage_artifacts, stage_findings
+                    }
+                    delegation = self.delegation.delegate(
+                        work_unit, agent, models, preferred_model_ids, routing_strategy
                     )
-                )
-                previous_agent = agent
-                previous_output = output
+                    output = executor.execute(
+                        agent=agent,
+                        model_id=delegation.assignment.model_id,
+                        work_unit=work_unit,
+                    )
+                    stage_findings = tuple(work_unit.metadata.get("stage_findings", ()))
+                    stage_artifacts = tuple(
+                        artifact for artifact in work_unit.metadata.get("artifacts", ())
+                        if isinstance(artifact, ArtifactContract)
+                    )
+                    for artifact in stage_artifacts:
+                        artifact.validate()
+                        if artifact_store is not None:
+                            artifact_store.save(artifact)
+                    for artifact in stage_artifacts:
+                        if artifact.id not in work_unit.artifacts:
+                            work_unit.artifacts.append(artifact.id)
+                    work_unit.metadata.setdefault("artifact_ids", [])
+                    for artifact in stage_artifacts:
+                        if artifact.id not in work_unit.metadata["artifact_ids"]:
+                            work_unit.metadata["artifact_ids"].append(artifact.id)
+                    handoff = None
+                    if previous_agent is not None:
+                        handoff = self.handoffs.create(
+                            work_unit.id,
+                            previous_agent,
+                            agent,
+                            summary=f"Handoff from {previous_agent.id} to {agent.id}",
+                            artifacts=work_unit.artifacts,
+                            findings=tuple(work_unit.metadata.get("findings", ())),
+                        )
+                        work_unit.metadata.setdefault("handoffs", []).append({
+                            "from_agent": handoff.from_agent,
+                            "to_agent": handoff.to_agent,
+                            "summary": handoff.summary,
+                            "review_cycle": cycle + 1,
+                        })
+                    stages.append(
+                        AgentStageResult(
+                            agent.id, delegation, output, handoff,
+                            stage_artifacts, stage_findings
+                        )
+                    )
+                    previous_agent = agent
+                    previous_output = output
 
             if verifier is not None:
                 work_unit.metadata["checkpoint_output"] = _checkpoint_value(previous_output)
@@ -359,6 +370,8 @@ class MultiAgentWorkflow:
         artifact_store=None,
         checkpoint=None,
         start_stage_index: int = 0,
+        resume_action: str | None = None,
+        resume_output: object = None,
     ) -> MultiAgentWorkflowResult:
         if not stages:
             raise ValueError("multi-agent workflow requires at least one stage")
@@ -366,9 +379,14 @@ class MultiAgentWorkflow:
         if start_stage_index < 0 or start_stage_index > len(stages):
             raise ValueError("start_stage_index must be within the stage list")
 
+        if resume_action not in {None, "verify", "review"}:
+            raise ValueError("unsupported multi-agent resume action")
+        if resume_action is not None and start_stage_index != len(stages):
+            raise ValueError("resume_action requires all execution stages to be complete")
+
         results: list[AgentStageResult] = []
         previous_agent: AgentContract | None = stages[start_stage_index - 1] if start_stage_index else None
-        previous_output: object = None
+        previous_output: object = resume_output if resume_action is not None else None
         previous_artifacts: tuple[ArtifactContract, ...] = ()
         previous_findings: tuple[str, ...] = tuple(work_unit.metadata.get("findings", ()))
 
@@ -443,7 +461,7 @@ class MultiAgentWorkflow:
             previous_agent = agent
             previous_output = output
 
-        if verifier is not None:
+        if verifier is not None and resume_action != "review":
             work_unit.metadata["checkpoint_next_action"] = "verify"
             work_unit.metadata["checkpoint_output"] = _checkpoint_value(previous_output)
             if checkpoint is not None:
@@ -458,6 +476,11 @@ class MultiAgentWorkflow:
                                next_action=None, agent_ids=tuple(a.id for a in stages),
                                model_ids=tuple(model.id for model in models), resumable=False)
                 raise RuntimeError(f"verification failed for work unit: {work_unit.id}")
+
+        if resume_action == "verify" and work_unit.status == WorkStatus.EXECUTING:
+            work_unit.transition(WorkStatus.VERIFYING)
+        elif resume_action == "review" and work_unit.status == WorkStatus.EXECUTING:
+            work_unit.transition(WorkStatus.VERIFYING)
 
         reviews: tuple[ReviewResult, ...] = ()
         if reviewers:
