@@ -39,7 +39,7 @@ After installation:
     multiagentos init . --component multi-agent
     multiagentos init . --component all
     multiagentos status .
-    multiagentos run . --objective "run tests" -- python -m unittest discover -s tests -v
+    multiagentos run --path . --objective "run tests" -- python -m unittest discover -s tests -v
     multiagentos resume <work-unit-id> --path .
     multiagentos github probe eaglesjo/MultiAgentOS
 
