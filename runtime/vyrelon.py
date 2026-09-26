@@ -54,6 +54,11 @@ class VYRELONRuntime:
     def state_store(self, project_root: Path):
         return WorkStateStore(project_root / ".multiagentos" / "state")
 
+    def load_checkpoint(self, work_unit_id: str, project_root: Path | None = None):
+        """Load the durable checkpoint associated with a WorkUnit."""
+        root = project_root or Path.cwd()
+        return self.state_store(root).load_checkpoint(work_unit_id)
+
     def artifact_store(self, project_root: Path):
         """Return persistent artifact metadata storage for a project."""
         return ArtifactStore(project_root / ".multiagentos" / "artifacts")
@@ -195,7 +200,30 @@ class VYRELONRuntime:
         reviewer: ResultReviewer | None = None,
         preferred_model_ids: list[str] | None = None,
         routing_strategy="pool",
+        project_root: Path | None = None,
     ) -> OrchestrationResult:
+        root = project_root or Path.cwd()
+        store = self.state_store(root)
+        checkpoint_sequence = 0
+
+        def checkpoint(unit: WorkUnit) -> None:
+            nonlocal checkpoint_sequence
+            checkpoint_sequence += 1
+            store.checkpoint(
+                unit,
+                workflow="orchestration",
+                stage=unit.status.value,
+                sequence=checkpoint_sequence,
+                next_action=(
+                    "resume_execution"
+                    if unit.status.value not in {"completed", "failed"}
+                    else None
+                ),
+                agent_ids=(agent.id,),
+                model_ids=tuple(model.id for model in models),
+                resumable=unit.status.value not in {"completed", "failed"},
+            )
+
         return self.orchestrator.run(
             work_unit=work_unit,
             agent=agent,
@@ -205,6 +233,7 @@ class VYRELONRuntime:
             verifier=verifier,
             reviewer=reviewer,
             routing_strategy=routing_strategy,
+            checkpoint=checkpoint,
         )
 
     def multi_agent_workflow(self) -> MultiAgentWorkflow:
@@ -362,14 +391,6 @@ class VYRELONRuntime:
         context = WorkflowResumeContext.from_metadata(raw_context)
         if context.workflow != "review_rework" or context.work_unit_id != work_unit.id:
             raise ValueError("work unit has incompatible resume context")
-        if context.developer_id != developer.id or context.tester_id != tester.id:
-            raise ValueError("resume agents do not match persisted workflow context")
-        reviewer_ids = tuple(agent.id for agent, _ in reviewers)
-        if reviewer_ids != context.reviewer_ids:
-            raise ValueError("resume reviewers do not match persisted workflow context")
-        available_models = {model.id for model in models}
-        if context.model_ids and not set(context.model_ids).issubset(available_models):
-            raise ValueError("resume models do not match persisted workflow context")
         return self.resolve_human_review(
             work_unit=work_unit,
             decision=decision,
@@ -399,6 +420,20 @@ class VYRELONRuntime:
         work_unit = self.state_store(root).load(work_unit_id)
         if work_unit.status is not WorkStatus.WAITING_HUMAN_APPROVAL:
             raise ValueError("work unit is not waiting for human approval")
+        raw_context = work_unit.metadata.get("resume_context")
+        if not isinstance(raw_context, dict):
+            raise ValueError("work unit has no resumable workflow context")
+        context = WorkflowResumeContext.from_metadata(raw_context)
+        if context.workflow != "review_rework" or context.work_unit_id != work_unit.id:
+            raise ValueError("work unit has incompatible resume context")
+        if context.developer_id != developer.id or context.tester_id != tester.id:
+            raise ValueError("resume agents do not match persisted workflow context")
+        reviewer_ids = tuple(agent.id for agent, _ in reviewers)
+        if reviewer_ids != context.reviewer_ids:
+            raise ValueError("resume reviewers do not match persisted workflow context")
+        available_models = {model.id for model in models}
+        if context.model_ids and not set(context.model_ids).issubset(available_models):
+            raise ValueError("resume models do not match persisted workflow context")
         work_unit.metadata["human_review_required"] = False
         work_unit.metadata["human_review_decision"] = HumanReviewDecision.APPROVE_REWORK.value
         if notes.strip():
