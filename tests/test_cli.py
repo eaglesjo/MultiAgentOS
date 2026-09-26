@@ -93,8 +93,8 @@ class CLITests(unittest.TestCase):
             self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
             self.assertEqual(
                 main([
-                    "run", "--path", temp, "--agent", "override-agent",
-                    "--model", "override-model", "--objective", "override",
+                    "run", "--path", temp, "--agent", "cli-executor",
+                    "--model", "local-process", "--objective", "override",
                     "--", "python", "-c", "print('ok')"
                 ]),
                 0,
