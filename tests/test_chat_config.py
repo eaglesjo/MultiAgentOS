@@ -39,3 +39,13 @@ class ChatConfigTests(unittest.TestCase):
             agent, model = VYRELONRuntime().project_chat_agent(root)
             self.assertEqual(agent.id, "chatgpt")
             self.assertIsNone(model)
+
+    def test_project_chat_adapter_resolves_chatgpt_provider(self):
+        from runtime.vyrelon import VYRELONRuntime
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write_default_chat_config(root)
+            agent, adapter = VYRELONRuntime().project_chat_adapter(root)
+            self.assertEqual(agent.id, "chatgpt")
+            self.assertEqual(adapter.model, None)
