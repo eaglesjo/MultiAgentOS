@@ -12,12 +12,28 @@ from core.contracts.work_unit import WorkUnit
 class ModelAgentExecutor(AgentExecutor):
     """Turn a WorkUnit into a model request and return the model response."""
 
-    def __init__(self, adapters: dict[str, ModelAdapter], system_prompt: str | None = None):
+    def __init__(
+        self,
+        adapters: dict[str, ModelAdapter],
+        models: list[ModelSpec],
+        system_prompt: str | None = None,
+    ):
         self.adapters = dict(adapters)
+        self.models = {model.id: model for model in models}
         self.system_prompt = system_prompt
 
-    def execute(self, *, agent: AgentContract, model_id: str, work_unit: WorkUnit) -> ModelResponse:
-        model = self._model_for(agent, model_id)
+    def execute(
+        self, *, agent: AgentContract, model_id: str, work_unit: WorkUnit
+    ) -> ModelResponse:
+        if agent.model_ids and model_id not in agent.model_ids:
+            raise PermissionError(
+                f"Model {model_id} is not assigned to agent {agent.id}"
+            )
+        try:
+            model = self.models[model_id]
+        except KeyError as exc:
+            raise LookupError(f"Model not registered: {model_id}") from exc
+
         adapter_id = str(model.metadata.get("adapter_id", model.provider_id))
         try:
             adapter = self.adapters[adapter_id]
@@ -35,16 +51,3 @@ class ModelAgentExecutor(AgentExecutor):
         work_unit.metadata["model_id"] = response.model_id
         work_unit.metadata["model_adapter"] = adapter_id
         return response
-
-    @staticmethod
-    def _model_for(agent: AgentContract, model_id: str) -> ModelSpec:
-        allowed = agent.model_ids
-        if allowed and model_id not in allowed:
-            raise PermissionError(
-                f"Model {model_id} is not assigned to agent {agent.id}"
-            )
-        return ModelSpec(
-            id=model_id,
-            provider_id="unknown",
-            capabilities=frozenset(),
-        )
