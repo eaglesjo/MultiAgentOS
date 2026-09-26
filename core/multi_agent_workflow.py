@@ -440,6 +440,17 @@ class MultiAgentWorkflow:
         work_unit.transition(WorkStatus.COMPLETED)
         work_unit.metadata["execution_agent_ids"] = [stage.agent_id for stage in results]
         work_unit.metadata["multi_agent_stage_count"] = len(results)
+        work_unit.metadata["checkpoint_next_action"] = None
+        if checkpoint is not None:
+            checkpoint(
+                work_unit,
+                stage="completed",
+                sequence=len(stages),
+                next_action=None,
+                agent_ids=tuple(a.id for a in stages),
+                model_ids=tuple(model.id for model in models),
+                resumable=False,
+            )
         return MultiAgentWorkflowResult(
             work_unit=work_unit,
             stages=tuple(results),
