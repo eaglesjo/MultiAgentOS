@@ -21,6 +21,7 @@ class CheckpointExecutor:
         return {"agent": agent.id}
 
 
+
 class UnifiedCheckpointTests(unittest.TestCase):
     def test_checkpoint_store_round_trips_structured_boundary(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -70,6 +71,18 @@ class UnifiedCheckpointTests(unittest.TestCase):
             self.assertEqual(checkpoint.next_action, "resume_execution")
             self.assertEqual(checkpoint.agent_ids, ("developer",))
             self.assertEqual(checkpoint.model_ids, ("local",))
+
+            resumed = fresh.resume_workflow(
+                work_unit.id,
+                agent,
+                models,
+                CheckpointExecutor(),
+                project_root=root,
+            )
+            self.assertEqual(resumed.work_unit.status, WorkStatus.COMPLETED)
+            completed_checkpoint = fresh.load_checkpoint(work_unit.id, root)
+            self.assertFalse(completed_checkpoint.resumable)
+            self.assertEqual(completed_checkpoint.status, WorkStatus.COMPLETED.value)
 
     def test_checkpoint_contract_rejects_invalid_schema(self):
         with self.assertRaises(ValueError):
