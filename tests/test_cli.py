@@ -31,6 +31,10 @@ class CLITests(unittest.TestCase):
             self.assertTrue(status["initialized"])
             self.assertEqual(status["components"], ["vyrelon"])
             self.assertEqual(status["agents"], [])
+            self.assertEqual(
+                status["execution"],
+                {"runtime": "process", "agent_id": "cli-executor", "model_id": "local-process"},
+            )
 
     def test_status_reports_multi_agent_catalog(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -39,6 +43,7 @@ class CLITests(unittest.TestCase):
             self.assertTrue(status["initialized"])
             self.assertEqual(status["components"], ["multi-agent"])
             self.assertTrue(status["agents"])
+            self.assertIsNone(status["execution"])
 
     def test_status_reports_durable_state(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -60,6 +65,44 @@ class CLITests(unittest.TestCase):
             status = project_status(root)
             self.assertEqual(status["work_units"][0]["id"], "wu-1")
             self.assertEqual(status["checkpoints"][0]["next_action"], "resume_execution")
+
+    def test_run_uses_project_execution_config(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+            execution = root / ".multiagentos" / "execution.json"
+            execution.write_text(json.dumps({
+                "version": 1,
+                "runtime": "process",
+                "agent_id": "project-executor",
+                "model_id": "project-process",
+            }), encoding="utf-8")
+            self.assertEqual(
+                main([
+                    "run", "--path", temp, "--objective", "configured execution",
+                    "--", "python", "-c", "print('ok')"
+                ]),
+                0,
+            )
+            state = project_status(root)
+            self.assertEqual(state["work_units"][0]["status"], "completed")
+
+    def test_run_supports_cli_agent_and_model_overrides(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+            self.assertEqual(
+                main([
+                    "run", "--path", temp, "--agent", "override-agent",
+                    "--model", "override-model", "--objective", "override",
+                    "--", "python", "-c", "print('ok')"
+                ]),
+                0,
+            )
+            state_path = next((root / ".multiagentos" / "state").glob("*.json"))
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(state["metadata"]["execution_agent_id"], "override-agent")
+            self.assertEqual(state["metadata"]["execution_model_id"], "override-model")
 
     def test_run_executes_command_and_persists_state(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -89,6 +132,7 @@ class CLITests(unittest.TestCase):
             self.assertEqual(main(["init", temp]), 0)
             self.assertTrue((Path(temp) / ".multiagentos" / "profile.json").exists())
             self.assertTrue((Path(temp) / ".multiagentos" / "agents.json").exists())
+            self.assertTrue((Path(temp) / ".multiagentos" / "execution.json").exists())
 
 
 if __name__ == "__main__":
