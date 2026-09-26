@@ -63,6 +63,29 @@ class VYRELONRuntimeTests(unittest.TestCase):
             self.assertEqual(persisted.assigned_agents, ["executor"])
             self.assertEqual(persisted.metadata["cwd"], str(root))
 
+    def test_run_model_uses_provider_neutral_adapter(self):
+        class Adapter:
+            def generate(self, model, request):
+                return ModelResponse(text='hello', model_id=model.id)
+
+        runtime = VYRELONRuntime()
+        agent = AgentContract(
+            id="writer", role="writer",
+            capabilities=frozenset({"generation"}),
+            model_ids=("model-a",),
+        )
+        model = ModelSpec(
+            id="model-a", provider_id="provider-a",
+            capabilities=frozenset({"generation"}),
+            metadata={"adapter_id": "adapter-a"},
+        )
+        work = WorkUnit('wu-model-runtime', 'write something')
+        result = runtime.run_model(
+            work, agent, [model], {'adapter-a': Adapter()},
+            preferred_model_ids=["model-a"],
+        )
+        self.assertEqual(result.output.text, 'hello')
+        self.assertEqual(work.status, WorkStatus.COMPLETED)
 
 if __name__ == "__main__":
     unittest.main()
