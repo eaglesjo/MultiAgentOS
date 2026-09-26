@@ -175,7 +175,7 @@ class MultiAgentWorkflow:
                            model_ids=tuple(model.id for model in models))
             if resume_action not in {"verify", "review"}:
                 for agent in (developer, tester):
-                        work_unit.metadata["stage_input"] = {
+                    work_unit.metadata["stage_input"] = {
                         "from_agent": previous_agent.id if previous_agent else None,
                         "artifacts": tuple(work_unit.artifacts),
                         "findings": tuple(work_unit.metadata.get("findings", ())),
