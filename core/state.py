@@ -24,8 +24,10 @@ class WorkStateStore:
             "assigned_agents": work_unit.assigned_agents,
             "metadata": work_unit.metadata,
         }
-        path.write_text(json.dumps(payload, indent=2, default=str) + "
-", encoding="utf-8")
+        path.write_text(
+            json.dumps(payload, indent=2, default=str) + "\n",
+            encoding="utf-8",
+        )
         return path
 
     def load(self, work_unit_id: str) -> WorkUnit:
