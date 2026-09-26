@@ -520,6 +520,10 @@ class VYRELONRuntime:
         if reviewer_ids != context.reviewer_ids:
             raise ValueError("resume reviewers do not match persisted workflow context")
         available_models = {model.id for model in models}
+        if checkpoint.agent_ids and checkpoint.agent_ids != (developer.id, tester.id, *reviewer_ids):
+            raise ValueError("resume agents do not match checkpoint context")
+        if checkpoint.model_ids and not set(checkpoint.model_ids).issubset(available_models):
+            raise ValueError("resume models do not match checkpoint context")
         if context.model_ids and not set(context.model_ids).issubset(available_models):
             raise ValueError("resume models do not match persisted workflow context")
         action = checkpoint.next_action
