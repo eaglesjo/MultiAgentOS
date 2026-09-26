@@ -29,6 +29,7 @@ VYRELON currently includes:
 - local stdlib unittest validation plus GitHub Actions CI
 - read-only project status and durable checkpoint inspection
 - project-scoped execution configuration for selecting the CLI Agent/Model
+- direct project Chat Agent CLI with optional persistent conversation sessions
 
 ## CLI
 
@@ -43,6 +44,8 @@ After installation:
     multiagentos run --path . --objective "run tests" -- python -m unittest discover -s tests -v
     multiagentos run --path . --agent custom-executor --model custom-process --objective "run tests" -- python -m unittest discover -s tests -v
     multiagentos resume <work-unit-id> --path .
+    multiagentos chat --path . --objective "inspect the current project"
+    multiagentos chat --path . --objective "continue our conversation" --session project-1
     multiagentos github probe eaglesjo/MultiAgentOS
 
 The initializer supports independent installation:
@@ -76,6 +79,8 @@ Multi-agent installation additionally writes:
     .multiagentos/agents.json
 
 The project Chat Agent defaults to ChatGPT and is resolved through VYRELON's provider-neutral Chat Agent registry. Gemini, Claude, and other registered providers can be selected by changing `chat.json`; the selected Chat Agent still has no execution authority above VYRELON.
+
+The `chat` command sends a conversational request through the configured Chat Agent and returns its summary, proposed plan steps, findings, artifacts, and provider evidence as JSON. It does not execute filesystem, Git, GitHub, process, verification, or review actions. Use `--session <id>` to persist conversation turns under `.multiagentos/sessions/`; credentials are never stored there. Provider SDKs remain optional and CI tests use injected adapters.
 
 No provider credentials or API keys are written to the project.
 
