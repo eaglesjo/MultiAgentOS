@@ -107,3 +107,22 @@ The read-only `status` command reports installed components, detected profiles, 
     python -m unittest discover -s tests -v
 
 GitHub Actions runs the same test suite on pull requests and pushes.
+
+
+### Chat Agent adapter resolution
+
+VYRELON resolves the configured Chat Agent through a provider-neutral adapter registry:
+
+    .multiagentos/chat.json
+            |
+            v
+    ChatAgentRegistry
+            |
+            v
+    ChatAdapterRegistry
+            |
+            +-- ChatGPT -> OpenAI adapter
+            +-- Gemini -> provider adapter when registered
+            +-- Claude -> provider adapter when registered
+
+The core does not require a provider SDK. The OpenAI/ChatGPT adapter remains optional and obtains credentials from the provider's normal environment/authentication mechanism. A Chat Agent can propose intent and plans, but actual filesystem, Git, GitHub, process, verification, review, and approval actions remain VYRELON responsibilities.
