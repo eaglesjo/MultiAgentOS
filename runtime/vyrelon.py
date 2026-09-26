@@ -236,6 +236,49 @@ class VYRELONRuntime:
             checkpoint=checkpoint,
         )
 
+    def resume_workflow(
+        self,
+        work_unit_id: str,
+        agent: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        *,
+        verifier: ResultVerifier | None = None,
+        reviewer: ResultReviewer | None = None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+        project_root: Path | None = None,
+    ) -> OrchestrationResult:
+        """Reload a durable checkpoint and resume a generic VYRELON workflow."""
+        root = project_root or Path.cwd()
+        store = self.state_store(root)
+        checkpoint = store.load_checkpoint(work_unit_id)
+        if not checkpoint.resumable:
+            raise ValueError(f"work unit checkpoint is not resumable: {work_unit_id}")
+        if checkpoint.workflow != "orchestration":
+            raise ValueError(
+                f"checkpoint belongs to workflow {checkpoint.workflow!r}, not orchestration"
+            )
+        if checkpoint.agent_ids and agent.id not in checkpoint.agent_ids:
+            raise ValueError("resume agent does not match checkpoint context")
+        available_models = {model.id for model in models}
+        if checkpoint.model_ids and not set(checkpoint.model_ids).issubset(available_models):
+            raise ValueError("resume models do not match checkpoint context")
+        work_unit = store.load(work_unit_id)
+        if work_unit.status in {WorkStatus.COMPLETED, WorkStatus.FAILED}:
+            raise ValueError(f"work unit is terminal and cannot be resumed: {work_unit_id}")
+        return self.run(
+            work_unit,
+            agent,
+            models,
+            executor,
+            verifier=verifier,
+            reviewer=reviewer,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            project_root=root,
+        )
+
     def multi_agent_workflow(self) -> MultiAgentWorkflow:
         """Return the VYRELON-controlled multi-agent handoff workflow."""
         return MultiAgentWorkflow()
