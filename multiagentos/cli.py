@@ -98,11 +98,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--objective", required=True)
     run.add_argument("--agent", default="executor")
     run.add_argument("--id", dest="work_unit_id")
+    run.add_argument("--model")
     run.add_argument(
         "--command",
         dest="process_command",
         nargs=argparse.REMAINDER,
-        required=True,
     )
 
     resume = subparsers.add_parser("resume", help="resume a persisted WorkUnit")
@@ -225,6 +225,8 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.path).expanduser().resolve()
 
     if args.command == "run":
+        if bool(args.model) == bool(args.process_command):
+            raise ValueError("Specify exactly one of --model or --command")
         work = WorkUnit(
             id=args.work_unit_id or uuid.uuid4().hex,
             objective=args.objective,
@@ -233,19 +235,32 @@ def main(argv: list[str] | None = None) -> int:
             id=args.agent,
             role=args.agent,
             capabilities=frozenset({"execution"}),
-            tools=frozenset({"process"}),
+            tools=frozenset({"process"}) if args.process_command else frozenset(),
         )
-        model = ModelSpec(
-            id="local-process",
-            provider_id="vyrelon-local",
-            capabilities=frozenset({"execution"}),
-        )
-        work.metadata["command"] = args.process_command
-        work.metadata["runtime"] = "local-process"
         print(f"WorkUnit: {work.id}")
         try:
             from runtime.vyrelon import VYRELONRuntime
             runtime = VYRELONRuntime()
+            if args.model:
+                work.metadata["runtime"] = "configured-model"
+                work.metadata["model_id"] = args.model
+                work.metadata["agent_id"] = args.agent
+                result = runtime.run_persistent_registered_model(
+                    root,
+                    work,
+                    agent,
+                    preferred_model_ids=[args.model],
+                )
+                print(result.output.text, end="")
+                return 0
+
+            model = ModelSpec(
+                id="local-process",
+                provider_id="vyrelon-local",
+                capabilities=frozenset({"execution"}),
+            )
+            work.metadata["command"] = args.process_command
+            work.metadata["runtime"] = "local-process"
             result = runtime.run_persistent(
                 root,
                 work,
@@ -270,10 +285,30 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError(
                 f"WorkUnit {work.id} is not resumable from status {work.status.value}"
             )
+        agent_id = str(work.metadata.get("agent_id", work.assigned_agents[-1] if work.assigned_agents else "executor"))
+        from runtime.vyrelon import VYRELONRuntime
+        runtime = VYRELONRuntime()
+        if work.metadata.get("runtime") == "configured-model":
+            model_id = str(work.metadata.get("model_id", ""))
+            if not model_id:
+                raise ValueError(f"WorkUnit {work.id} has no persisted model id")
+            agent = AgentContract(
+                id=agent_id,
+                role=agent_id,
+                capabilities=frozenset({"execution"}),
+            )
+            result = runtime.run_persistent_registered_model(
+                root,
+                work,
+                agent,
+                preferred_model_ids=[model_id],
+            )
+            print(result.output.text, end="")
+            return 0
+
         command = list(work.metadata.get("command", []))
         if not command:
             raise ValueError(f"WorkUnit {work.id} has no persisted command")
-        agent_id = str(work.metadata.get("agent_id", "executor"))
         agent = AgentContract(
             id=agent_id,
             role=agent_id,
@@ -285,8 +320,7 @@ def main(argv: list[str] | None = None) -> int:
             provider_id="vyrelon-local",
             capabilities=frozenset({"execution"}),
         )
-        from runtime.vyrelon import VYRELONRuntime
-        result = VYRELONRuntime().run_persistent(
+        result = runtime.run_persistent(
             root,
             work,
             agent,
