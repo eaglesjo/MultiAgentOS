@@ -5,14 +5,16 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from uuid import uuid4
 
+from core.contracts import AgentContract, ModelSpec, WorkUnit
 from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
+from runtime.execution_config import load_execution_config
 from runtime.github_probe import probe
+from runtime.process import ProcessRuntime
 from runtime.status import project_status
 from runtime.vyrelon import VYRELONRuntime
-from core.contracts import AgentContract, ModelSpec, WorkUnit
-from runtime.process import ProcessRuntime
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -37,17 +39,38 @@ def build_parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser("run", help="execute a local command through the VYRELON lifecycle")
     run.add_argument("--path", default=".")
     run.add_argument("--objective", required=True, help="WorkUnit objective")
+    run.add_argument("--agent", help="override the project execution agent id")
+    run.add_argument("--model", help="override the project execution model id")
     run.add_argument("exec_command", nargs=argparse.REMAINDER, help="command after --")
 
     resume = subparsers.add_parser("resume", help="resume a durable VYRELON orchestration checkpoint")
     resume.add_argument("work_unit_id")
     resume.add_argument("--path", default=".")
+    resume.add_argument("--agent", help="override the project execution agent id")
+    resume.add_argument("--model", help="override the project execution model id")
+
     github = subparsers.add_parser("github", help="use VYRELON GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
     probe_parser = github_sub.add_parser("probe", help="verify GitHub access for a repository")
     probe_parser.add_argument("repository")
 
     return parser
+
+
+def _execution_contracts(root: Path, agent_override: str | None, model_override: str | None):
+    config = load_execution_config(root)
+    if config.runtime != "process":
+        raise ValueError(f"unsupported CLI execution runtime: {config.runtime}")
+    agent_id = agent_override or config.agent_id
+    model_id = model_override or config.model_id
+    agent = AgentContract(
+        id=agent_id,
+        role="executor",
+        capabilities=frozenset({"process"}),
+        tools=frozenset({"process"}),
+    )
+    models = [ModelSpec(model_id, "local", frozenset({"process"}))]
+    return config, agent, models
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -59,8 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command in {"run", "resume"}:
         root = Path(args.path).expanduser().resolve()
         runtime = VYRELONRuntime()
-        agent = AgentContract(id="cli-executor", role="executor", capabilities=frozenset({"process"}), tools=frozenset({"process"}))
-        models = [ModelSpec("local-process", "local", frozenset({"process"}))]
+        config, agent, models = _execution_contracts(root, args.agent, args.model)
 
         class CommandExecutor:
             def __init__(self, process_runtime):
@@ -74,6 +96,8 @@ def main(argv: list[str] | None = None) -> int:
                 work_unit.metadata["process_returncode"] = result.returncode
                 work_unit.metadata["process_stdout"] = result.stdout
                 work_unit.metadata["process_stderr"] = result.stderr
+                work_unit.metadata["execution_agent_id"] = agent.id
+                work_unit.metadata["execution_model_id"] = model_id
                 if result.returncode != 0:
                     raise RuntimeError(f"command failed with exit code {result.returncode}")
                 return result
@@ -85,12 +109,27 @@ def main(argv: list[str] | None = None) -> int:
                 command.pop(0)
             if not command:
                 raise SystemExit("run requires a command after --")
-            work_unit = WorkUnit(id=__import__("uuid").uuid4().hex, objective=args.objective, inputs={"command": command})
+            work_unit = WorkUnit(
+                id=uuid4().hex,
+                objective=args.objective,
+                inputs={"command": command},
+                metadata={
+                    "execution_runtime": config.runtime,
+                    "execution_agent_id": agent.id,
+                    "execution_model_id": models[0].id,
+                },
+            )
             result = runtime.run(work_unit, agent, models, executor, project_root=root)
         else:
             result = runtime.resume_workflow(args.work_unit_id, agent, models, executor, project_root=root)
-        print(json.dumps({"work_unit_id": result.work_unit.id, "status": result.work_unit.status.value, "objective": result.work_unit.objective, "artifacts": list(result.work_unit.artifacts)}, indent=2, ensure_ascii=False))
+        print(json.dumps({
+            "work_unit_id": result.work_unit.id,
+            "status": result.work_unit.status.value,
+            "objective": result.work_unit.objective,
+            "artifacts": list(result.work_unit.artifacts),
+        }, indent=2, ensure_ascii=False))
         return 0
+
     if args.command == "github" and args.github_command == "probe":
         print(json.dumps(probe(args.repository), indent=2))
         return 0
