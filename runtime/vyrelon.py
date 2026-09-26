@@ -20,6 +20,7 @@ from runtime.github_probe import probe
 from runtime.git import GitRuntime
 from runtime.model.config import DEFAULT_CONFIG_PATH, ProviderConfigLoader
 from runtime.model.credentials import EnvironmentCredentialResolver
+from runtime.model.factory import ConfiguredAdapterFactory
 from runtime.model.providers import AIProviderRegistry
 from runtime.model.registry import ModelAdapterRegistry
 from runtime.policy import ExecutionPolicy
@@ -44,6 +45,7 @@ class VYRELONRuntime:
         self.model_adapters = ModelAdapterRegistry()
         self.provider_config = ProviderConfigLoader()
         self.credentials = EnvironmentCredentialResolver()
+        self.adapter_factory = ConfiguredAdapterFactory()
 
     def inspect(self, project_root: Path):
         return ProfileDetector().detect(project_root)
@@ -103,6 +105,20 @@ class VYRELONRuntime:
         """Register a runtime adapter referenced by model metadata."""
         self.model_adapters.register(adapter_id, adapter)
 
+    def configure_model_adapters(self) -> None:
+        """Materialize adapters declared by registered model metadata."""
+        for model in self.configured_models():
+            adapter_id = str(model.metadata.get("adapter_id", model.provider_id))
+            if adapter_id in self.model_adapters.list():
+                continue
+            metadata = dict(model.metadata)
+            adapter_kind = metadata.get("adapter_kind", adapter_id)
+            if adapter_kind in {"cli", "http"}:
+                self.register_model_adapter(
+                    adapter_id,
+                    self.adapter_factory.build(adapter_id, metadata, self.policy),
+                )
+
     def configured_models(self, provider_id: str | None = None) -> list[ModelSpec]:
         """Return registered models, optionally scoped to one provider."""
         return list(self.providers.models(provider_id))
@@ -121,6 +137,7 @@ class VYRELONRuntime:
         from runtime.agent.model import ModelAgentExecutor
 
         models = self.configured_models()
+        self.configure_model_adapters()
         if preferred_model_ids:
             for model_id in preferred_model_ids:
                 self.providers.get_model(model_id)
