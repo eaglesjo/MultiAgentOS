@@ -215,3 +215,58 @@ The persisted path is:
             +-- REJECT -> FAILED
 
 `APPROVE_REWORK` is deliberately not accepted by the simple completion resolver. It must go through the VYRELON resume path with the required agents, models, executor, reviewer, and bounded cycle configuration. This prevents a Chat Agent or reviewer from silently granting additional execution authority.
+
+
+## Unified durable checkpoints
+
+VYRELON now treats resumability as a runtime primitive rather than a Human Gate special case.
+
+A `WorkflowCheckpoint` records a versioned boundary containing:
+
+- WorkUnit identity and lifecycle status
+- workflow and stage
+- checkpoint sequence
+- next resumable action
+- participating agent/model IDs
+- artifact IDs and findings
+- whether the boundary is resumable
+
+The state store keeps WorkUnit state under `.multiagentos/state/` and normalized checkpoints under `.multiagentos/checkpoints/`. Checkpoints contain execution metadata only; credentials and model secrets remain external.
+
+The same checkpoint path is used by:
+
+- standard VYRELON orchestration
+- Chat Agent execution and interruption recovery
+- persisted Human Gate decisions
+- bounded human-authorized rework
+
+This gives VYRELON a single recovery invariant:
+
+`WorkUnit -> Checkpoint -> Process Death/Boundary -> Reload -> Validate -> Resume or Resolve`
+
+A completed or terminally failed WorkUnit is recorded as non-resumable. An interrupted execution remains resumable and can be reloaded by a fresh runtime.
+
+
+For generic orchestration, `VYRELONRuntime.resume_workflow(work_unit_id, ...)` reloads the checkpoint and WorkUnit, validates the agent/model context, and re-enters the controlled lifecycle. This is distinct from Chat Agent-specific resume and Human Gate rework authorization; those paths retain their own contract-level validation.
+
+
+## End-to-end recovery graph
+
+The durable checkpoint contract now covers the full multi-agent recovery path:
+
+`Execute stage -> Verify -> Review -> Rework -> Human Gate -> Resume/Resolve`
+
+Each boundary records the next action before the potentially interruptible operation begins. Completed stages are never replayed when a checkpoint points directly to verification or review.
+
+For verification and review recovery, the checkpoint stores a JSON-safe snapshot of the last stage output. Arbitrary Python objects are represented by type and `repr` rather than being treated as executable state. Durable artifacts remain the preferred handoff for substantive execution evidence.
+
+Supported recovery actions include:
+
+- `execute_stage`: continue at the recorded agent stage
+- `verify`: re-enter verification without rerunning completed agents
+- `review`: re-enter reviewer execution without rerunning completed agents
+- `rework`: continue at the next bounded Developer/Tester cycle
+- `human_review`: wait for an explicit human decision
+- terminal completion/failure: recorded as non-resumable
+
+The review/rework runtime exposes `resume_review_rework_workflow(...)` in addition to the generic `resume_multi_agent_workflow(...)`. Human-authorized rework remains behind the explicit Human Review contract and does not grant a Chat Agent or reviewer independent execution authority.

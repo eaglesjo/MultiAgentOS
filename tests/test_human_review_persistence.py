@@ -70,6 +70,10 @@ class HumanReviewPersistenceTests(unittest.TestCase):
                 HumanReviewDecision.APPROVE_COMPLETION.value,
             )
             self.assertFalse(persisted.metadata["human_review_required"])
+            checkpoint = fresh.load_checkpoint("wu-persisted-gate", root)
+            self.assertEqual(checkpoint.workflow, "review_rework")
+            self.assertEqual(checkpoint.status, WorkStatus.COMPLETED.value)
+            self.assertFalse(checkpoint.resumable)
 
     def test_human_can_authorize_a_fresh_bounded_rework_cycle(self):
         work_unit = WorkUnit("wu-human-rework", "resume after human authorization")

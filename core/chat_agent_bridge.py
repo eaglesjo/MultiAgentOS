@@ -167,10 +167,30 @@ class ChatAgentBridge:
         if session is not None:
             session.work_unit_id = work_unit.id
             session.metadata["execution_agent_id"] = agent.id
+        checkpoint_sequence = 0
+
         def checkpoint(unit: WorkUnit) -> None:
-            unit.metadata["checkpoint"] = {"status": unit.status.value}
+            nonlocal checkpoint_sequence
+            checkpoint_sequence += 1
+            unit.metadata["checkpoint"] = {
+                "status": unit.status.value,
+                "sequence": checkpoint_sequence,
+            }
             if state_store is not None:
-                state_store.save(unit)
+                state_store.checkpoint(
+                    unit,
+                    workflow="chat_execution",
+                    stage=unit.status.value,
+                    sequence=checkpoint_sequence,
+                    next_action=(
+                        "resume_execution"
+                        if unit.status.value not in {"completed", "failed"}
+                        else None
+                    ),
+                    agent_ids=(agent.id,),
+                    model_ids=tuple(model.id for model in models),
+                    resumable=unit.status.value not in {"completed", "failed"},
+                )
             if session is not None:
                 session.metadata["lifecycle_status"] = unit.status.value
                 if session_store is not None:
@@ -223,9 +243,29 @@ class ChatAgentBridge:
         if work_unit.status.value == "failed":
             raise ValueError(f"failed work unit requires explicit retry policy: {work_unit_id}")
 
+        checkpoint_sequence = 0
+
         def checkpoint(unit: WorkUnit) -> None:
-            unit.metadata["checkpoint"] = {"status": unit.status.value}
-            state_store.save(unit)
+            nonlocal checkpoint_sequence
+            checkpoint_sequence += 1
+            unit.metadata["checkpoint"] = {
+                "status": unit.status.value,
+                "sequence": checkpoint_sequence,
+            }
+            state_store.checkpoint(
+                unit,
+                workflow="chat_execution",
+                stage=unit.status.value,
+                sequence=checkpoint_sequence,
+                next_action=(
+                    "resume_execution"
+                    if unit.status.value not in {"completed", "failed"}
+                    else None
+                ),
+                agent_ids=(agent.id,),
+                model_ids=tuple(model.id for model in models),
+                resumable=unit.status.value not in {"completed", "failed"},
+            )
 
         return self.orchestrator.run(
             work_unit=work_unit,

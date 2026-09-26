@@ -12,3 +12,5 @@ venv/
 .env.*
 
 .multiagentos/sessions/
+
+.multiagentos/checkpoints/
