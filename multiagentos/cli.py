@@ -67,7 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("path", nargs="?", default=".")
     run.add_argument("--objective", required=True)
     run.add_argument("--id", dest="work_unit_id")
-    run.add_argument("--command", dest="process_command", nargs="+", required=True)
+    run.add_argument("--command", dest="process_command", nargs=argparse.REMAINDER, required=True)
 
     resume = subparsers.add_parser("resume", help="resume a persisted WorkUnit")
     resume.add_argument("work_unit_id")
