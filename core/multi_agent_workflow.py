@@ -321,17 +321,29 @@ class MultiAgentWorkflow:
         preferred_model_ids: list[str] | None = None,
         routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
         artifact_store=None,
+        checkpoint=None,
+        start_stage_index: int = 0,
     ) -> MultiAgentWorkflowResult:
         if not stages:
             raise ValueError("multi-agent workflow requires at least one stage")
 
+        if start_stage_index < 0 or start_stage_index > len(stages):
+            raise ValueError("start_stage_index must be within the stage list")
+
         results: list[AgentStageResult] = []
-        previous_agent: AgentContract | None = None
+        previous_agent: AgentContract | None = stages[start_stage_index - 1] if start_stage_index else None
         previous_output: object = None
         previous_artifacts: tuple[ArtifactContract, ...] = ()
         previous_findings: tuple[str, ...] = tuple(work_unit.metadata.get("findings", ()))
 
-        for agent in stages:
+        for stage_index, agent in enumerate(stages[start_stage_index:], start=start_stage_index):
+            work_unit.metadata["checkpoint_stage_index"] = stage_index
+            work_unit.metadata["checkpoint_next_action"] = "execute_stage"
+            if checkpoint is not None:
+                checkpoint(work_unit, stage=agent.id, sequence=stage_index,
+                           next_action="execute_stage",
+                           agent_ids=tuple(a.id for a in stages),
+                           model_ids=tuple(model.id for model in models))
             work_unit.metadata["stage_input"] = {
                 "from_agent": previous_agent.id if previous_agent else None,
                 "artifacts": tuple(a.id for a in previous_artifacts),
@@ -349,6 +361,15 @@ class MultiAgentWorkflow:
                 model_id=delegation.assignment.model_id,
                 work_unit=work_unit,
             )
+            work_unit.metadata["checkpoint_stage_index"] = stage_index + 1
+            work_unit.metadata["checkpoint_next_action"] = (
+                "execute_stage" if stage_index + 1 < len(stages) else "verify"
+            )
+            if checkpoint is not None:
+                checkpoint(work_unit, stage=agent.id, sequence=stage_index + 1,
+                           next_action=work_unit.metadata["checkpoint_next_action"],
+                           agent_ids=tuple(a.id for a in stages),
+                           model_ids=tuple(model.id for model in models))
             stage_findings = tuple(work_unit.metadata.get("stage_findings", ()))
             previous_findings = stage_findings
             stage_artifacts = tuple(
@@ -386,6 +407,11 @@ class MultiAgentWorkflow:
             previous_output = output
 
         if verifier is not None:
+            work_unit.metadata["checkpoint_next_action"] = "verify"
+            if checkpoint is not None:
+                checkpoint(work_unit, stage="verification", sequence=len(stages),
+                           next_action="verify", agent_ids=tuple(a.id for a in stages),
+                           model_ids=tuple(model.id for model in models))
             work_unit.transition(WorkStatus.VERIFYING)
             if not verifier.verify(work_unit=work_unit, output=previous_output):
                 work_unit.transition(WorkStatus.FAILED)
