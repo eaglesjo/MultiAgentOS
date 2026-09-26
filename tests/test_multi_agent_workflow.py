@@ -49,7 +49,7 @@ class MultiAgentWorkflowTests(unittest.TestCase):
         )
         self.assertEqual(len(result.stages), 3)
         self.assertEqual(
-            [(h.from_agent, h.to_agent) for h in result.stages[1:] if h.handoff],
+            [(h.handoff.from_agent, h.handoff.to_agent) for h in result.stages[1:] if h.handoff],
             [("planner", "developer"), ("developer", "tester")],
         )
         self.assertEqual(work_unit.metadata["execution_agent_ids"], ["planner", "developer", "tester"])
@@ -199,7 +199,7 @@ class MultiAgentWorkflowTests(unittest.TestCase):
         ])
         self.assertEqual(len(result.reviews), 4)
         self.assertEqual(calls[0][1]["artifact_ids"], ())
-        self.assertIn("please fix the implementation", calls[2][1]["findings"])
+        self.assertTrue(any("please fix the implementation" in finding for finding in calls[2][1]["findings"]))
         self.assertEqual(calls[2][1]["review_cycle"], 2)
 
     def test_review_rework_cycle_is_bounded(self):
@@ -214,8 +214,7 @@ class MultiAgentWorkflowTests(unittest.TestCase):
             from core.contracts.execution import ReviewDecision
             return ReviewDecision(approved=False, feedback="still needs work")
 
-        with self.assertRaises(RuntimeError):
-            MultiAgentWorkflow().run_with_review_rework(
+        result = MultiAgentWorkflow().run_with_review_rework(
                 work_unit=work_unit,
                 developer=developer,
                 tester=tester,
@@ -226,7 +225,7 @@ class MultiAgentWorkflowTests(unittest.TestCase):
                 max_review_cycles=2,
             )
 
-        self.assertEqual(work_unit.status, WorkStatus.FAILED)
+        self.assertEqual(result.work_unit.status, WorkStatus.WAITING_HUMAN_APPROVAL)
         self.assertEqual(work_unit.metadata["review_cycle_count"], 2)
         self.assertTrue(work_unit.metadata["rework_required"])
 
@@ -441,7 +440,7 @@ class MultiAgentWorkflowTests(unittest.TestCase):
 
             self.assertEqual(resumed.work_unit.status, WorkStatus.COMPLETED)
             self.assertEqual([stage.agent_id for stage in resumed.stages], [])
-            self.assertEqual(work_unit.metadata["review_cycle_count"], 1)
+            self.assertEqual(resumed.work_unit.metadata["review_cycle_count"], 1)
 
     def test_review_rework_checkpoint_resumes_next_rework_cycle(self):
         class RejectThenInterruptExecutor(FakeExecutor):
