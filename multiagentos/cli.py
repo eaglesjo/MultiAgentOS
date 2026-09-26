@@ -57,6 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
     chat.add_argument("--agent", help="override the configured Chat Agent id")
     chat.add_argument("--model", help="override the configured Chat Agent model")
     chat.add_argument("--session", help="persist conversation turns in this session id")
+    chat.add_argument("--execute", action="store_true", help="execute the explicit command after -- through VYRELON")
+    chat.add_argument("exec_command", nargs=argparse.REMAINDER, help="explicit command after -- when using --execute")
 
     github = subparsers.add_parser("github", help="use VYRELON GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
@@ -92,7 +94,15 @@ def _chat_request(root: Path, objective: str, session_id: str | None) -> ChatAge
     return ChatAgentRequest(objective=objective, inputs=inputs)
 
 
-def _run_chat(root: Path, objective: str, agent_override: str | None, model_override: str | None, session_id: str | None) -> int:
+def _run_chat(
+    root: Path,
+    objective: str,
+    agent_override: str | None,
+    model_override: str | None,
+    session_id: str | None,
+    execute: bool = False,
+    exec_command: list[str] | None = None,
+) -> int:
     runtime = VYRELONRuntime()
     configured_agent, configured_model = runtime.project_chat_agent(root)
     agent_id = agent_override or configured_agent.id
@@ -114,8 +124,65 @@ def _run_chat(root: Path, objective: str, agent_override: str | None, model_over
             session = runtime.create_chat_session(session_id, chat_agent_id=agent.id)
 
     request = _chat_request(root, objective, session_id)
-    _, plan, response = runtime.chat_request(request, adapter, agent_id=agent.id)
 
+    if execute:
+        command = list(exec_command or [])
+        while command and command[0] == "--":
+            command.pop(0)
+        if not command:
+            raise SystemExit("chat --execute requires an explicit command after --")
+        config, execution_agent, models = _execution_contracts(root, None, model_override)
+
+        class CommandExecutor:
+            def execute(self, *, agent, model_id, work_unit):
+                result = ProcessRuntime(runtime.policy).run(
+                    list(work_unit.inputs["command"]), cwd=str(root)
+                )
+                work_unit.metadata["process_returncode"] = result.returncode
+                work_unit.metadata["process_stdout"] = result.stdout
+                work_unit.metadata["process_stderr"] = result.stderr
+                if result.returncode != 0:
+                    raise RuntimeError(f"command failed with exit code {result.returncode}")
+                return result
+
+        request = ChatAgentRequest(
+            objective=objective,
+            inputs={**(request.inputs or {}), "command": command},
+            work_unit_id=request.work_unit_id,
+        )
+        result = runtime.execute_chat_request(
+            request=request,
+            adapter=adapter,
+            agent=execution_agent,
+            models=models,
+            executor=CommandExecutor(),
+            chat_agent_id=agent.id,
+            preferred_model_ids=[models[0].id],
+            session=session,
+            project_root=root,
+        )
+        if session is not None:
+            session.add_turn("user", objective)
+            session.add_turn("assistant", result.chat_response.summary)
+            session.metadata["last_plan_steps"] = [step.id for step in result.plan.steps]
+            runtime.chat_session_store(root).save(session)
+        print(json.dumps({
+            "mode": "execute",
+            "chat_agent_id": agent.id,
+            "provider": agent.provider.value,
+            "summary": result.chat_response.summary,
+            "work_unit_id": result.work_unit.id,
+            "status": result.work_unit.status.value,
+            "execution_agent_id": execution_agent.id,
+            "execution_model_id": result.orchestration.delegation.assignment.model_id,
+            "execution_evidence": result.work_unit.metadata.get("execution_evidence", []),
+            "verification_evidence": result.work_unit.metadata.get("verification_evidence", []),
+            "review_evidence": result.work_unit.metadata.get("review_evidence", []),
+            "session_id": session.id if session is not None else None,
+        }, indent=2, ensure_ascii=False))
+        return 0
+
+    _, plan, response = runtime.chat_request(request, adapter, agent_id=agent.id)
     if session is None and session_id:
         session = runtime.create_chat_session(session_id, chat_agent_id=agent.id)
     if session is not None:
@@ -125,16 +192,12 @@ def _run_chat(root: Path, objective: str, agent_override: str | None, model_over
         runtime.chat_session_store(root).save(session)
 
     print(json.dumps({
+        "mode": "chat",
         "chat_agent_id": agent.id,
         "provider": agent.provider.value,
         "summary": response.summary,
         "steps": [
-            {
-                "id": step.id,
-                "objective": step.objective,
-                "agent_id": step.agent_id,
-                "depends_on": list(step.depends_on),
-            }
+            {"id": step.id, "objective": step.objective, "agent_id": step.agent_id, "depends_on": list(step.depends_on)}
             for step in plan.steps
         ],
         "findings": list(response.findings),
@@ -153,7 +216,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "chat":
         root = Path(args.path).expanduser().resolve()
-        return _run_chat(root, args.objective, args.agent, args.model, args.session)
+        return _run_chat(root, args.objective, args.agent, args.model, args.session, args.execute, args.exec_command)
 
     if args.command in {"run", "resume"}:
         root = Path(args.path).expanduser().resolve()
