@@ -97,3 +97,53 @@ class UnifiedCheckpointTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_multi_agent_resume_starts_at_checkpointed_stage(self):
+        class InterruptOnceExecutor:
+            def __init__(self):
+                self.calls = []
+            def execute(self, *, agent, model_id, work_unit):
+                self.calls.append(agent.id)
+                if agent.id == "developer":
+                    from core.lifecycle import ExecutionInterrupted
+                    raise ExecutionInterrupted("stage interrupted")
+                return {"agent": agent.id}
+
+        agents = [
+            AgentContract(id="planner", role="planner"),
+            AgentContract(id="developer", role="developer"),
+            AgentContract(id="tester", role="tester"),
+        ]
+        models = [ModelSpec("local", "local", frozenset())]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = VYRELONRuntime()
+            work_unit = WorkUnit("wu-stage-resume", "resume from developer")
+            executor = InterruptOnceExecutor()
+            with self.assertRaises(ExecutionInterrupted):
+                runtime.run_multi_agent_workflow(
+                    work_unit=work_unit,
+                    stages=agents,
+                    models=models,
+                    executor=executor,
+                    project_root=root,
+                )
+
+            checkpoint = runtime.load_checkpoint(work_unit.id, root)
+            self.assertEqual(checkpoint.workflow, "multi_agent")
+            self.assertEqual(checkpoint.next_action, "execute_stage")
+            self.assertEqual(checkpoint.metadata["next_stage_index"], 1)
+
+            resumed = runtime.resume_multi_agent_workflow(
+                work_unit.id,
+                stages=agents,
+                models=models,
+                executor=CheckpointExecutor(),
+                project_root=root,
+            )
+            self.assertEqual(resumed.work_unit.status, WorkStatus.COMPLETED)
+            self.assertEqual(
+                [stage.agent_id for stage in resumed.stages],
+                ["developer", "tester"],
+            )
