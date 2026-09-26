@@ -97,6 +97,33 @@ class VYRELONRuntime:
             store.save(work_unit)
             raise
 
+    def run_model(
+        self,
+        work_unit: WorkUnit,
+        agent: AgentContract,
+        models: list[ModelSpec],
+        adapters: dict[str, object],
+        preferred_model_ids: list[str] | None = None,
+        system_prompt: str | None = None,
+        verifier: ResultVerifier | None = None,
+        reviewer: ResultReviewer | None = None,
+    ) -> OrchestrationResult:
+        """Execute an agent through a provider-neutral model adapter."""
+        from runtime.agent.model import ModelAgentExecutor
+
+        return self.run(
+            work_unit=work_unit,
+            agent=agent,
+            models=models,
+            executor=ModelAgentExecutor(
+                adapters=adapters,
+                models=models,
+                system_prompt=system_prompt,
+            ),
+            preferred_model_ids=preferred_model_ids,
+            verifier=verifier,
+            reviewer=reviewer,
+        )
     def run(
         self,
         work_unit: WorkUnit,
