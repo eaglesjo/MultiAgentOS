@@ -9,6 +9,7 @@ from pathlib import Path
 from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
 from runtime.github_probe import probe
+from runtime.status import project_status
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -27,6 +28,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="install only VYRELON, only multi-agent, or both",
     )
 
+    status = subparsers.add_parser("status", help="show VYRELON project and durable workflow state")
+    status.add_argument("path", nargs="?", default=".")
+
     github = subparsers.add_parser("github", help="use VYRELON GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
     probe_parser = github_sub.add_parser("probe", help="verify GitHub access for a repository")
@@ -37,6 +41,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "status":
+        print(json.dumps(project_status(Path(args.path)), indent=2, ensure_ascii=False))
+        return 0
+
     if args.command == "github" and args.github_command == "probe":
         print(json.dumps(probe(args.repository), indent=2))
         return 0
