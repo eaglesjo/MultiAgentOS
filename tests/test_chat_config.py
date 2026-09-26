@@ -29,3 +29,13 @@ class ChatConfigTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             with self.assertRaises(FileNotFoundError):
                 load_chat_config(Path(temp))
+
+    def test_project_chat_agent_uses_registry(self):
+        from runtime.vyrelon import VYRELONRuntime
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write_default_chat_config(root)
+            agent, model = VYRELONRuntime().project_chat_agent(root)
+            self.assertEqual(agent.id, "chatgpt")
+            self.assertIsNone(model)
