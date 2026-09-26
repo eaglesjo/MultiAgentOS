@@ -313,9 +313,6 @@ class VYRELONRuntime:
             preferred_model_ids=preferred_model_ids,
             routing_strategy=routing_strategy,
             artifact_store=self.artifact_store(root),
-            start_cycle=start_cycle,
-            resume_action=resume_action,
-            resume_output=resume_output,
             checkpoint=lambda unit, **kwargs: self.state_store(root).checkpoint(
                 unit,
                 workflow="multi_agent",
@@ -466,6 +463,9 @@ class VYRELONRuntime:
             preferred_model_ids=preferred_model_ids,
             routing_strategy=routing_strategy,
             artifact_store=self.artifact_store(root),
+            start_cycle=start_cycle,
+            resume_action=resume_action,
+            resume_output=resume_output,
             checkpoint=lambda unit, **kwargs: self.state_store(root).checkpoint(
                 unit,
                 workflow="review_rework",
