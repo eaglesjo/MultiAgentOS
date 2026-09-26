@@ -29,7 +29,7 @@ class PlanningStateTests(unittest.TestCase):
             work.transition(WorkStatus.EXECUTING)
             path = store.save(work)
             restored = store.load("wu-state")
-        self.assertTrue(path.exists())
+            self.assertTrue(path.exists())
         self.assertEqual(restored.status, WorkStatus.EXECUTING)
         self.assertEqual(restored.assigned_agents, ["developer"])
 
