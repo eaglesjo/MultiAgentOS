@@ -297,6 +297,8 @@ class VYRELONRuntime:
         routing_strategy="pool",
         project_root: Path | None = None,
         start_stage_index: int = 0,
+        resume_action: str | None = None,
+        resume_output: object = None,
     ) -> MultiAgentWorkflowResult:
         """Run a WorkUnit through multiple agents without transferring authority."""
         root = project_root or Path.cwd()
@@ -311,10 +313,21 @@ class VYRELONRuntime:
             preferred_model_ids=preferred_model_ids,
             routing_strategy=routing_strategy,
             artifact_store=self.artifact_store(root),
+            start_cycle=start_cycle,
+            resume_action=resume_action,
+            resume_output=resume_output,
             checkpoint=lambda unit, **kwargs: self.state_store(root).checkpoint(
-                unit, workflow="multi_agent", metadata={"next_stage_index": kwargs.get("sequence", 0)}, **kwargs
+                unit,
+                workflow="multi_agent",
+                metadata={
+                    "next_stage_index": kwargs.get("sequence", 0),
+                    "resume_output": unit.metadata.get("checkpoint_output"),
+                },
+                **kwargs,
             ),
             start_stage_index=start_stage_index,
+            resume_action=resume_action,
+            resume_output=resume_output,
         )
 
     def resume_multi_agent_workflow(
@@ -348,21 +361,39 @@ class VYRELONRuntime:
         if work_unit.status in {WorkStatus.COMPLETED, WorkStatus.FAILED}:
             raise ValueError("work unit is terminal and cannot be resumed")
         next_stage = int(checkpoint.metadata.get("next_stage_index", 0))
-        if checkpoint.next_action != "execute_stage":
-            raise ValueError("multi-agent checkpoint does not point to a resumable stage")
-        return self.run_multi_agent_workflow(
-            work_unit=work_unit,
-            stages=stages,
-            models=models,
-            executor=executor,
-            verifier=verifier,
-            reviewers=reviewers,
-            reviewer_runner=reviewer_runner,
-            preferred_model_ids=preferred_model_ids,
-            routing_strategy=routing_strategy,
-            project_root=root,
-            start_stage_index=next_stage,
-        )
+        if checkpoint.next_action == "execute_stage":
+            return self.run_multi_agent_workflow(
+                work_unit=work_unit,
+                stages=stages,
+                models=models,
+                executor=executor,
+                verifier=verifier,
+                reviewers=reviewers,
+                reviewer_runner=reviewer_runner,
+                preferred_model_ids=preferred_model_ids,
+                routing_strategy=routing_strategy,
+                project_root=root,
+                start_stage_index=next_stage,
+            )
+        if checkpoint.next_action in {"verify", "review"}:
+            if next_stage != len(stages):
+                raise ValueError("verify/review checkpoint does not follow completed stages")
+            return self.run_multi_agent_workflow(
+                work_unit=work_unit,
+                stages=stages,
+                models=models,
+                executor=executor,
+                verifier=verifier,
+                reviewers=reviewers,
+                reviewer_runner=reviewer_runner,
+                preferred_model_ids=preferred_model_ids,
+                routing_strategy=routing_strategy,
+                project_root=root,
+                start_stage_index=len(stages),
+                resume_action=checkpoint.next_action,
+                resume_output=checkpoint.metadata.get("resume_output"),
+            )
+        raise ValueError(f"unsupported multi-agent checkpoint action: {checkpoint.next_action!r}")
 
     def run_debug_retry_workflow(
         self,
@@ -416,6 +447,9 @@ class VYRELONRuntime:
         project_root: Path | None = None,
         preferred_model_ids: list[str] | None = None,
         routing_strategy="pool",
+        start_cycle: int = 0,
+        resume_action: str | None = None,
+        resume_output: object = None,
     ) -> MultiAgentWorkflowResult:
         """Run bounded Review -> Rework -> Review under VYRELON authority."""
         root = project_root or Path.cwd()
@@ -432,9 +466,81 @@ class VYRELONRuntime:
             preferred_model_ids=preferred_model_ids,
             routing_strategy=routing_strategy,
             artifact_store=self.artifact_store(root),
+            checkpoint=lambda unit, **kwargs: self.state_store(root).checkpoint(
+                unit,
+                workflow="review_rework",
+                metadata={
+                    "review_cycle": unit.metadata.get("review_cycle", kwargs.get("sequence", 0)),
+                    "resume_output": unit.metadata.get("checkpoint_output"),
+                },
+                **kwargs,
+            ),
         )
         self.state_store(root).save(result.work_unit)
         return result
+
+    def resume_review_rework_workflow(
+        self,
+        work_unit_id: str,
+        *,
+        developer: AgentContract,
+        tester: AgentContract,
+        reviewers,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        reviewer_runner,
+        verifier: ResultVerifier | None = None,
+        max_review_cycles: int = 2,
+        project_root: Path | None = None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+    ) -> MultiAgentWorkflowResult:
+        """Resume a review/rework workflow from verify, review, or rework boundary."""
+        root = project_root or Path.cwd()
+        store = self.state_store(root)
+        checkpoint = store.load_checkpoint(work_unit_id)
+        if not checkpoint.resumable:
+            raise ValueError("review-rework checkpoint is not resumable")
+        if checkpoint.workflow != "review_rework":
+            raise ValueError("checkpoint does not belong to review-rework workflow")
+        work_unit = store.load(work_unit_id)
+        if work_unit.status in {WorkStatus.COMPLETED, WorkStatus.FAILED}:
+            raise ValueError("work unit is terminal and cannot be resumed")
+        raw_context = work_unit.metadata.get("resume_context")
+        if not isinstance(raw_context, dict):
+            raise ValueError("work unit has no resumable workflow context")
+        context = WorkflowResumeContext.from_metadata(raw_context)
+        if context.workflow != "review_rework" or context.work_unit_id != work_unit.id:
+            raise ValueError("work unit has incompatible resume context")
+        if context.developer_id != developer.id or context.tester_id != tester.id:
+            raise ValueError("resume agents do not match persisted workflow context")
+        reviewer_ids = tuple(agent.id for agent, _ in reviewers)
+        if reviewer_ids != context.reviewer_ids:
+            raise ValueError("resume reviewers do not match persisted workflow context")
+        available_models = {model.id for model in models}
+        if context.model_ids and not set(context.model_ids).issubset(available_models):
+            raise ValueError("resume models do not match persisted workflow context")
+        action = checkpoint.next_action
+        if action not in {"verify", "review", "rework"}:
+            raise ValueError(f"unsupported review-rework checkpoint action: {action!r}")
+        cycle = max(0, int(checkpoint.metadata.get("review_cycle", context.review_cycle)) - 1)
+        return self.run_review_rework_workflow(
+            work_unit=work_unit,
+            developer=developer,
+            tester=tester,
+            reviewers=reviewers,
+            models=models,
+            executor=executor,
+            reviewer_runner=reviewer_runner,
+            verifier=verifier,
+            max_review_cycles=max_review_cycles,
+            project_root=root,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            start_cycle=cycle,
+            resume_action=action if action in {"verify", "review"} else None,
+            resume_output=checkpoint.metadata.get("resume_output"),
+        )
 
     def resolve_human_review(
         self,
@@ -568,6 +674,15 @@ class VYRELONRuntime:
             preferred_model_ids=preferred_model_ids,
             routing_strategy=routing_strategy,
             artifact_store=self.artifact_store(root),
+            checkpoint=lambda unit, **kwargs: self.state_store(root).checkpoint(
+                unit,
+                workflow="review_rework",
+                metadata={
+                    "review_cycle": unit.metadata.get("review_cycle", kwargs.get("sequence", 0)),
+                    "resume_output": unit.metadata.get("checkpoint_output"),
+                },
+                **kwargs,
+            ),
         )
         self.state_store(root).save(result.work_unit)
         return result
