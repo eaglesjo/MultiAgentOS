@@ -156,6 +156,19 @@ class MultiAgentWorkflow:
         for cycle in range(start_cycle, max_review_cycles):
             work_unit.metadata["review_cycle"] = cycle + 1
             work_unit.metadata["checkpoint_next_action"] = "rework"
+            work_unit.metadata["resume_context"] = WorkflowResumeContext(
+                workflow="review_rework",
+                work_unit_id=work_unit.id,
+                review_cycle=cycle + 1,
+                max_review_cycles=max_review_cycles,
+                developer_id=developer.id,
+                tester_id=tester.id,
+                reviewer_ids=tuple(agent.id for agent, _ in reviewers),
+                model_ids=tuple(model.id for model in models),
+                artifact_ids=tuple(work_unit.artifacts),
+                findings=tuple(work_unit.metadata.get("findings", ())),
+                last_agent_id=previous_agent.id if previous_agent else None,
+            ).to_metadata()
             if checkpoint is not None:
                 checkpoint(work_unit, stage="rework", sequence=cycle,
                            next_action="rework", agent_ids=(developer.id, tester.id, *[agent.id for agent, _ in reviewers]),
@@ -248,6 +261,11 @@ class MultiAgentWorkflow:
                         continue
                     work_unit.transition(WorkStatus.FAILED)
                     work_unit.metadata["review_cycle_count"] = cycle + 1
+                    if checkpoint is not None:
+                        checkpoint(work_unit, stage="verification", sequence=cycle + 1,
+                                   next_action=None,
+                                   agent_ids=(developer.id, tester.id, *[agent.id for agent, _ in reviewers]),
+                                   model_ids=tuple(model.id for model in models), resumable=False)
                     raise RuntimeError(
                         f"verification failed after {cycle + 1} review cycles for work unit: {work_unit.id}"
                     )
@@ -288,6 +306,11 @@ class MultiAgentWorkflow:
                 work_unit.transition(WorkStatus.COMPLETED)
                 work_unit.metadata["execution_agent_ids"] = [stage.agent_id for stage in stages]
                 work_unit.metadata["multi_agent_stage_count"] = len(stages)
+                if checkpoint is not None:
+                    checkpoint(work_unit, stage="completed", sequence=cycle + 1,
+                               next_action=None,
+                               agent_ids=(developer.id, tester.id, *[agent.id for agent, _ in reviewers]),
+                               model_ids=tuple(model.id for model in models), resumable=False)
                 return MultiAgentWorkflowResult(
                     work_unit, tuple(stages), previous_output, tuple(reviews)
                 )
