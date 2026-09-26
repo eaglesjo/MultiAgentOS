@@ -65,7 +65,7 @@ class CLITests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             self.assertEqual(
-                main(["run", temp, "--objective", "echo smoke test", "--", "python", "-c", "print('ok')"]),
+                main(["run", "--path", temp, "--objective", "echo smoke test", "--", "python", "-c", "print('ok')"]),
                 0,
             )
             status = project_status(root)
@@ -77,7 +77,7 @@ class CLITests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             self.assertEqual(
-                main(["run", temp, "--objective", "terminal", "--", "python", "-c", "print('done')"]),
+                main(["run", "--path", temp, "--objective", "terminal", "--", "python", "-c", "print('done')"]),
                 0,
             )
             work_unit_id = project_status(root)["work_units"][0]["id"]
