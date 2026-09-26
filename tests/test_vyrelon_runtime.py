@@ -40,6 +40,29 @@ class VYRELONRuntimeTests(unittest.TestCase):
         self.assertEqual(result.work_unit.status, WorkStatus.COMPLETED)
         self.assertEqual(result.delegation.assignment.model_id, "model-a")
 
+    def test_run_persistent_saves_lifecycle_state(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = VYRELONRuntime()
+            agent = AgentContract(
+                id="executor", role="executor",
+                capabilities=frozenset({"execution"}),
+            )
+            models = [ModelSpec("local-process", "vyrelon-local", frozenset({"execution"}))]
+            result = runtime.run_persistent(
+                root,
+                WorkUnit("wu-persistent", "run persistent task"),
+                agent,
+                models,
+                FakeExecutor(),
+                preferred_model_ids=["local-process"],
+            )
+            persisted = runtime.state_store(root).load("wu-persistent")
+            self.assertEqual(result.work_unit.status, WorkStatus.COMPLETED)
+            self.assertEqual(persisted.status, WorkStatus.COMPLETED)
+            self.assertEqual(persisted.assigned_agents, ["executor"])
+            self.assertEqual(persisted.metadata["cwd"], str(root))
+
 
 if __name__ == "__main__":
     unittest.main()
