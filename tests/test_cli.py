@@ -75,8 +75,14 @@ class CLITests(unittest.TestCase):
 
     def test_resume_rejects_terminal_work_unit(self):
         with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertEqual(
+                main(["run", temp, "--objective", "terminal", "--", "python", "-c", "print('done')"]),
+                0,
+            )
+            work_unit_id = project_status(root)["work_units"][0]["id"]
             with self.assertRaises(ValueError):
-                main(["resume", "missing-work-unit", "--path", temp])
+                main(["resume", work_unit_id, "--path", temp])
 
     def test_init(self):
         with tempfile.TemporaryDirectory() as temp:
