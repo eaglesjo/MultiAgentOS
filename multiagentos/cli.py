@@ -7,11 +7,14 @@ import json
 import uuid
 from pathlib import Path
 
+from core.contracts.agent import AgentContract
+from core.contracts.ai import ModelSpec
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
 from runtime.github_probe import probe
 from runtime.process import ProcessRuntime
+from runtime.agent.process import ProcessAgentExecutor
 
 
 def _work_state(root: Path):
@@ -66,6 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser("run", help="create and execute a persistent WorkUnit")
     run.add_argument("path", nargs="?", default=".")
     run.add_argument("--objective", required=True)
+    run.add_argument("--agent", default="executor")
     run.add_argument("--id", dest="work_unit_id")
     run.add_argument("--command", dest="process_command", nargs=argparse.REMAINDER, required=True)
 
@@ -99,8 +103,40 @@ def main(argv: list[str] | None = None) -> int:
             id=args.work_unit_id or uuid.uuid4().hex,
             objective=args.objective,
         )
+        agent = AgentContract(
+            id=args.agent,
+            role=args.agent,
+            capabilities=frozenset({"execution"}),
+            tools=frozenset({"process"}),
+        )
+        model = ModelSpec(
+            id="local-process",
+            provider_id="vyrelon-local",
+            capabilities=frozenset({"execution"}),
+        )
+        work.metadata["command"] = args.process_command
+        work.metadata["runtime"] = "local-process"
         print(f"WorkUnit: {work.id}")
-        return _run_process(root, work, args.process_command)
+        try:
+            from runtime.vyrelon import VYRELONRuntime
+            runtime = VYRELONRuntime()
+            result = runtime.run_persistent(
+                root,
+                work,
+                agent,
+                [model],
+                ProcessAgentExecutor(args.process_command),
+                preferred_model_ids=["local-process"],
+            )
+            if result.output.returncode == 0:
+                print(result.output.stdout, end="")
+                return 0
+            print(result.output.stdout, end="")
+            print(result.output.stderr, end="")
+            return result.output.returncode
+        except Exception as exc:
+            print(str(exc))
+            return 1
 
     if args.command == "resume":
         work = _work_state(root).load(args.work_unit_id)
