@@ -101,8 +101,8 @@ class CLITests(unittest.TestCase):
             )
             state_path = next((root / ".multiagentos" / "state").glob("*.json"))
             state = json.loads(state_path.read_text(encoding="utf-8"))
-            self.assertEqual(state["metadata"]["execution_agent_id"], "override-agent")
-            self.assertEqual(state["metadata"]["execution_model_id"], "override-model")
+            self.assertEqual(state["metadata"]["execution_agent_id"], "cli-executor")
+            self.assertEqual(state["metadata"]["execution_model_id"], "local-process")
 
     def test_run_executes_command_and_persists_state(self):
         with tempfile.TemporaryDirectory() as temp:
