@@ -74,8 +74,8 @@ class CLITests(unittest.TestCase):
             execution.write_text(json.dumps({
                 "version": 1,
                 "runtime": "process",
-                "agent_id": "project-executor",
-                "model_id": "project-process",
+                "agent_id": "cli-executor",
+                "model_id": "local-process",
             }), encoding="utf-8")
             self.assertEqual(
                 main([
