@@ -147,7 +147,33 @@ def main(argv: list[str] | None = None) -> int:
         command = list(work.metadata.get("command", []))
         if not command:
             raise ValueError(f"WorkUnit {work.id} has no persisted command")
-        return _run_process(root, work, command)
+        agent_id = str(work.metadata.get("agent_id", "executor"))
+        agent = AgentContract(
+            id=agent_id,
+            role=agent_id,
+            capabilities=frozenset({"execution"}),
+            tools=frozenset({"process"}),
+        )
+        model = ModelSpec(
+            id="local-process",
+            provider_id="vyrelon-local",
+            capabilities=frozenset({"execution"}),
+        )
+        from runtime.vyrelon import VYRELONRuntime
+        result = VYRELONRuntime().run_persistent(
+            root,
+            work,
+            agent,
+            [model],
+            ProcessAgentExecutor(command),
+            preferred_model_ids=["local-process"],
+        )
+        if result.output.returncode == 0:
+            print(result.output.stdout, end="")
+            return 0
+        print(result.output.stdout, end="")
+        print(result.output.stderr, end="")
+        return result.output.returncode
 
     if args.command == "status":
         work = _work_state(root).load(args.work_unit_id)
