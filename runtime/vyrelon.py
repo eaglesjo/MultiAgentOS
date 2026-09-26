@@ -8,7 +8,7 @@ from agents.registry import build_registry
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
-from core.contracts.work_unit import WorkUnit
+from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import WorkStateStore
@@ -53,6 +53,45 @@ class VYRELONRuntime:
 
     def github_probe(self, repository: str) -> dict:
         return probe(repository)
+
+    def run_persistent(
+        self,
+        project_root: Path,
+        work_unit: WorkUnit,
+        agent: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        verifier: ResultVerifier | None = None,
+        reviewer: ResultReviewer | None = None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy="pool",
+    ) -> OrchestrationResult:
+        """Run through the VYRELON lifecycle while persisting every terminal state."""
+        work_unit.metadata["cwd"] = str(project_root)
+        store = self.state_store(project_root)
+        if work_unit.status == WorkStatus.FAILED:
+            work_unit.transition(WorkStatus.EXECUTING)
+        elif work_unit.status == WorkStatus.PENDING:
+            work_unit.transition(WorkStatus.EXECUTING)
+        store.save(work_unit)
+        try:
+            result = self.run(
+                work_unit=work_unit,
+                agent=agent,
+                models=models,
+                executor=executor,
+                verifier=verifier,
+                reviewer=reviewer,
+                preferred_model_ids=preferred_model_ids,
+                routing_strategy=routing_strategy,
+            )
+            work_unit.metadata["output"] = str(result.output)
+            store.save(work_unit)
+            return result
+        except Exception as exc:
+            work_unit.metadata["error"] = str(exc)
+            store.save(work_unit)
+            raise
 
     def run(
         self,
