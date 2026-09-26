@@ -15,6 +15,7 @@ def project_status(project_root: Path) -> dict[str, object]:
         "initialized": target.is_dir(),
         "components": [],
         "profiles": [],
+        "execution": None,
         "agents": [],
         "work_units": [],
         "checkpoints": [],
@@ -31,6 +32,15 @@ def project_status(project_root: Path) -> dict[str, object]:
     if profile_path.exists():
         data = json.loads(profile_path.read_text(encoding="utf-8"))
         result["profiles"] = list(data.get("profiles", []))
+
+    execution_path = target / "execution.json"
+    if execution_path.exists():
+        data = json.loads(execution_path.read_text(encoding="utf-8"))
+        result["execution"] = {
+            "runtime": data.get("runtime", ""),
+            "agent_id": data.get("agent_id", ""),
+            "model_id": data.get("model_id", ""),
+        }
 
     agents_path = target / "agents.json"
     if agents_path.exists():
