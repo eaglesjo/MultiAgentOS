@@ -1,10 +1,24 @@
+import contextlib
+import io
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
+from core.chat_agent_bridge import ChatAgentResponse
+from installer.init import ProjectInitializer
 from multiagentos.cli import main
 from runtime.status import project_status
+
+
+class FakeChatAdapter:
+    def __init__(self, label="fake"):
+        self.label = label
+        self.requests = []
+
+    def respond(self, *, agent, instructions, request):
+        self.requests.append(request)
+        return ChatAgentResponse(summary=f"planned: {request.objective}", evidence=(self.label,))
 
 
 class CLITests(unittest.TestCase):
@@ -129,6 +143,37 @@ class CLITests(unittest.TestCase):
             work_unit_id = project_status(root)["work_units"][0]["id"]
             with self.assertRaises(ValueError):
                 main(["resume", work_unit_id, "--path", temp])
+
+    def test_chat_uses_configured_chat_agent_and_persists_session(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+
+            import multiagentos.cli as cli_module
+            original = cli_module.VYRELONRuntime.project_chat_adapter
+            cli_module.VYRELONRuntime.project_chat_adapter = lambda self, project_root: (
+                self, FakeChatAdapter()
+            )
+            try:
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    self.assertEqual(
+                        main([
+                            "chat", "--path", temp, "--objective", "inspect this project",
+                            "--session", "session-1"
+                        ]),
+                        0,
+                    )
+            finally:
+                cli_module.VYRELONRuntime.project_chat_adapter = original
+
+            payload = json.loads(output.getvalue())
+            self.assertEqual(payload["chat_agent_id"], "chatgpt")
+            self.assertEqual(payload["summary"], "planned: inspect this project")
+            self.assertEqual(payload["session_id"], "session-1")
+            session_path = root / ".multiagentos" / "sessions" / "session-1.json"
+            session = json.loads(session_path.read_text(encoding="utf-8"))
+            self.assertEqual([turn["role"] for turn in session["turns"]], ["user", "assistant"])
 
     def test_init(self):
         with tempfile.TemporaryDirectory() as temp:
