@@ -15,6 +15,13 @@ class MCPServerSpec:
     metadata: dict[str, object] = field(default_factory=dict)
 
 @dataclass(frozen=True)
+class MCPSession:
+    id: str
+    server_id: str
+    protocol_version: str = "2025-03-26"
+    metadata: dict[str, object] = field(default_factory=dict)
+
+@dataclass(frozen=True)
 class MCPTool:
     name: str
     description: str = ""
