@@ -57,6 +57,17 @@ class IDEEvent:
 
 
 @dataclass(frozen=True)
+class IDEWorkRequest:
+    """Explicit user/IDE request that asks VYRELON to execute agent work."""
+
+    context: IDEContext
+    objective: str
+    agent_id: str
+    model_ids: tuple[str, ...] = ()
+    metadata: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class IDECommand:
     """Normalized command sent from VYRELON to an IDE adapter."""
 
