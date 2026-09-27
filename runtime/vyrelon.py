@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from uuid import uuid4
 
 from agents.registry import build_registry
 from core.contracts.agent import AgentContract
+from core.contracts.ide import IDECommand, IDECommandKind, IDEWorkRequest
 from core.contracts.ai import AIProvider, ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.work_unit import WorkStatus, WorkUnit
@@ -85,6 +87,7 @@ class VYRELONRuntime:
         bridge = IDEBridge(
             policy=IDEBridgePolicy(token=token, allow_remote=allow_remote),
             runtime=self.ide,
+            work_handler=self.submit_ide_work,
         )
         self.ide_bridge_server = IDEBridgeServer(bridge, host=host, port=port)
         self.ide_bridge_server.start()
@@ -95,6 +98,76 @@ class VYRELONRuntime:
         if self.ide_bridge_server is not None:
             self.ide_bridge_server.stop()
             self.ide_bridge_server = None
+
+    def submit_ide_work(
+        self,
+        request: IDEWorkRequest,
+        *,
+        models: list[ModelSpec] | None = None,
+        executor: AgentExecutor | None = None,
+        verifier: ResultVerifier | None = None,
+        reviewer: ResultReviewer | None = None,
+    ) -> dict[str, object]:
+        """Turn an explicit IDE work request into a persistent Agent/WorkUnit execution."""
+        project_root = Path(request.context.project_root).resolve()
+        agent = self.agent_profile(project_root, request.agent_id)
+        work_unit = WorkUnit(
+            id=f"ide-{uuid4().hex}",
+            objective=request.objective,
+            inputs={
+                "ide_context": {
+                    "kind": request.context.kind.value,
+                    "file_path": request.context.file_path,
+                    "selection_start": request.context.selection_start,
+                    "selection_end": request.context.selection_end,
+                    "language_id": request.context.language_id,
+                }
+            },
+            metadata={
+                "source": "ide",
+                "ide_kind": request.context.kind.value,
+                "agent_id": request.agent_id,
+            },
+        )
+        if models is not None and executor is not None:
+            result = self.run_persistent(
+                project_root=project_root,
+                work_unit=work_unit,
+                agent=agent,
+                models=models,
+                executor=executor,
+                preferred_model_ids=list(request.model_ids) or None,
+                verifier=verifier,
+                reviewer=reviewer,
+            )
+        else:
+            result = self.run_persistent_registered_model(
+                project_root=project_root,
+                work_unit=work_unit,
+                agent=agent,
+                preferred_model_ids=list(request.model_ids) or None,
+                verifier=verifier,
+                reviewer=reviewer,
+            )
+        output = result.output
+        text = getattr(output, "text", str(output))
+        ide_result = self.ide.execute(
+            request.context.kind,
+            IDECommand(
+                kind=IDECommandKind.SHOW_MESSAGE,
+                arguments={
+                    "text": text,
+                    "work_unit_id": work_unit.id,
+                    "status": work_unit.status.value,
+                },
+                context=request.context,
+            ),
+        )
+        return {
+            "work_unit": work_unit,
+            "orchestration": result,
+            "ide_result": ide_result,
+        }
 
     def load_mcp_config(self, project_root: Path):
         """Load external MCP server definitions from the project configuration."""

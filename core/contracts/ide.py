@@ -27,6 +27,7 @@ class IDECommandKind(StrEnum):
     INSERT_TEXT = "insert_text"
     REPLACE_SELECTION = "replace_selection"
     RUN_COMMAND = "run_command"
+    START_WORK = "start_work"
     SHOW_MESSAGE = "show_message"
     SHOW_DIFF = "show_diff"
 
@@ -52,6 +53,17 @@ class IDEEvent:
     kind: IDEEventKind
     context: IDEContext
     payload: dict[str, object] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class IDEWorkRequest:
+    """Explicit user/IDE request that asks VYRELON to execute agent work."""
+
+    context: IDEContext
+    objective: str
+    agent_id: str
+    model_ids: tuple[str, ...] = ()
     metadata: dict[str, object] = field(default_factory=dict)
 
 

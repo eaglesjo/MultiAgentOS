@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
+from pathlib import Path
 
-from core.contracts.ide import IDECommand, IDECommandKind, IDECommandResult, IDEContext, IDEEvent, IDEEventKind, IDEKind
+from core.contracts.agent import AgentContract
+from core.contracts.ai import ModelSpec
+from core.contracts.ide import IDECommand, IDECommandKind, IDECommandResult, IDEContext, IDEEvent, IDEEventKind, IDEKind, IDEWorkRequest
+from core.contracts.model_runtime import ModelResponse
 from runtime.ide.registry import IDEAdapterRegistry
 from runtime.ide.runtime import IDERuntime
+from runtime.vyrelon import VYRELONRuntime
 
 
 class FakeIDEAdapter:
@@ -56,6 +62,51 @@ class IDERuntimeTests(unittest.TestCase):
         command = IDECommand(kind=IDECommandKind.REPLACE_SELECTION, arguments={"text": "updated"}, context=context)
         self.assertEqual(command.context.kind, IDEKind.ANDROID_STUDIO)
         self.assertEqual(command.arguments["text"], "updated")
+
+
+
+class FakeAgentExecutor:
+    def execute(self, *, agent: AgentContract, model_id: str, work_unit):
+        work_unit.metadata["executor_seen"] = True
+        return ModelResponse(text=f"completed: {work_unit.objective}", model_id=model_id)
+
+
+class IDEWorkExecutionTests(unittest.TestCase):
+    def test_ide_work_reaches_agent_workunit_and_returns_to_ide(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = VYRELONRuntime()
+            adapter = FakeIDEAdapter(IDEKind.VS_CODE)
+            adapter.context = lambda: IDEContext(
+                kind=IDEKind.VS_CODE,
+                project_root=directory,
+                file_path=str(Path(directory) / "main.py"),
+            )
+            runtime.ide.register(adapter)
+            request = IDEWorkRequest(
+                context=adapter.context(),
+                objective="Explain the selected function",
+                agent_id="coder",
+                model_ids=("fake-model",),
+            )
+
+            runtime.agent_profile = lambda project_root, agent_id: AgentContract(
+                id=agent_id,
+                role="coder",
+                model_ids=("fake-model",),
+            )
+            result = runtime.submit_ide_work(
+                request,
+                models=[ModelSpec(id="fake-model", provider_id="test")],
+                executor=FakeAgentExecutor(),
+            )
+
+            work_unit = result["work_unit"]
+            self.assertEqual(work_unit.status.value, "completed")
+            self.assertTrue(work_unit.metadata["executor_seen"])
+            self.assertEqual(work_unit.metadata["model_response"], "completed: Explain the selected function")
+            ide_result = result["ide_result"]
+            self.assertTrue(ide_result.ok)
+            self.assertEqual(ide_result.output, "show_message")
 
 
 if __name__ == "__main__":
