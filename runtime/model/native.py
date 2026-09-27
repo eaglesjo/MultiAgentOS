@@ -79,7 +79,7 @@ class AnthropicMessagesToolAdapter:
     policy: ExecutionPolicy = ExecutionPolicy(allow_network=True)
     def generate(self, model: ModelSpec, request: ModelRequest) -> ModelResponse:
         return self._generate(model, request, ())
-    def generate_with_tools(self, model: ModelRequest, request: ModelRequest, tools: tuple[ToolSpec, ...]) -> ModelResponse:
+    def generate_with_tools(self, model: ModelSpec, request: ModelRequest, tools: tuple[ToolSpec, ...]) -> ModelResponse:
         return self._generate(model, request, tools)
     def _generate(self, model: ModelSpec, request: ModelRequest, tools: tuple[ToolSpec, ...]) -> ModelResponse:
         key = os.environ.get(self.api_key_env)
