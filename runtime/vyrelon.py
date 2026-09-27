@@ -343,6 +343,10 @@ class VYRELONRuntime:
     def state_store(self, project_root: Path):
         return WorkStateStore(project_root / ".multiagentos" / "state")
 
+    def quota_store(self, project_root: Path):
+        """Return the project-scoped persistent model quota store."""
+        return QuotaStore(Path(project_root) / ".multiagentos" / "quota")
+
     def agents(self, project_root: Path):
         """Return the legacy AgentRegistry for compatibility."""
         detections = self.inspect(project_root)
@@ -484,6 +488,7 @@ class VYRELONRuntime:
             )
 
         from runtime.agent.model import ModelAgentExecutor
+        quota_intelligence = QuotaIntelligence(self.quota_store(project_root))
 
         tool_runtime = ToolRuntime(self.policy)
         BuiltinToolBindings(str(project_root), tool_runtime)
@@ -502,6 +507,7 @@ class VYRELONRuntime:
             models=models,
             system_prompt=system_prompt,
             fallback_model_ids=fallback_model_ids,
+            quota_intelligence=quota_intelligence,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,
