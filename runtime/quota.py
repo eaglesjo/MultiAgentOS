@@ -195,7 +195,12 @@ def _number(value: object) -> int | float | None:
 
 def quota_available(snapshot: QuotaSnapshot, threshold: float = 0.05) -> bool:
     """Return whether any known limiting dimension has usable capacity."""
-    known = [item for item in snapshot.dimensions if item.remaining is not None]
+    now = _now()
+    known = [
+        item for item in snapshot.dimensions
+        if item.remaining is not None
+        and not (item.reset_at is not None and item.reset_at <= now)
+    ]
     if not known:
         return True
     return all(
@@ -210,10 +215,13 @@ def quota_available(snapshot: QuotaSnapshot, threshold: float = 0.05) -> bool:
 
 def quota_score(snapshot: QuotaSnapshot) -> float:
     """Return a normalized 0..1 score for routing among known quotas."""
+    now = _now()
     known = [
         item
         for item in snapshot.dimensions
-        if item.remaining is not None and item.limit not in (None, 0)
+        if item.remaining is not None
+        and item.limit not in (None, 0)
+        and not (item.reset_at is not None and item.reset_at <= now)
     ]
     if not known:
         return 0.5
