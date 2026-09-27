@@ -382,7 +382,9 @@ class VYRELONRuntime:
             raise ValueError("No configured models found")
         if adapter_overrides:
             for adapter_id, adapter in adapter_overrides.items():
-                if adapter_id not in self.model_adapters.list():
+                if adapter_id in self.model_adapters.list():
+                    self.model_adapters.replace(adapter_id, adapter)
+                else:
                     self.register_model_adapter(adapter_id, adapter)
         self.configure_model_adapters()
 
