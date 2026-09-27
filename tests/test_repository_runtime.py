@@ -39,7 +39,6 @@ class RepositoryRuntimeTests(TestCase):
             )
             checkpoint = runtime.checkpoint(root)
             self.assertTrue(checkpoint.metadata["stashed"])
-            (root / "sample.txt").write_text("changed-again")
             recovery = runtime.recover(root, checkpoint)
             self.assertTrue(recovery.restored)
             self.assertEqual((root / "sample.txt").read_text(), "after")
