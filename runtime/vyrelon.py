@@ -30,6 +30,9 @@ from runtime.model.providers import AIProviderRegistry
 from runtime.model.registry import ModelAdapterRegistry
 from runtime.mcp.client import MCPClient
 from runtime.mcp.config import MCPConfigLoader
+from runtime.mcp.session import MCPSessionRegistry
+from runtime.mcp.client import MCPClient
+from runtime.mcp.config import MCPConfigLoader
 from runtime.policy import ExecutionPolicy
 
 
@@ -54,6 +57,8 @@ class VYRELONRuntime:
         self.credentials = EnvironmentCredentialResolver()
         self.adapter_factory = ConfiguredAdapterFactory()
         self.mcp_config = MCPConfigLoader()
+        self.mcp_sessions = MCPSessionRegistry()
+        self.mcp_config = MCPConfigLoader()
         self.mcp_clients: dict[str, MCPClient] = {}
 
     def load_mcp_config(self, project_root: Path):
@@ -76,6 +81,19 @@ class VYRELONRuntime:
         client = self.mcp_clients.pop(server_id, None)
         if client is not None:
             client.close()
+
+    def load_mcp_config(self, project_root: Path):
+        return self.mcp_config.load(project_root)
+
+    def connect_mcp(self, project_root: Path, server_id: str):
+        specs={s.id:s for s in self.load_mcp_config(project_root)}
+        if server_id not in specs: raise LookupError(f"MCP server not configured: {server_id}")
+        client=MCPClient(specs[server_id],cwd=str(project_root))
+        client.connect(); self.mcp_sessions.add(client)
+        return client
+
+    def disconnect_mcp(self, session_id: str) -> None:
+        self.mcp_sessions.close(session_id)
 
     def local_filesystem(self, project_root: Path) -> FilesystemRuntime:
         return FilesystemRuntime(
