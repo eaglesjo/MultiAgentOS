@@ -3,12 +3,22 @@
     "mobile-mcp": {
       "command": "npx",
       "args": ["-y", "@mobilenext/mobile-mcp@latest"],
+      "source": "built-in",
+      "cost_policy": "no_external_billing",
       "metadata": {
         "provider": "mobile-next",
         "category": "mobile",
         "platforms": ["ios", "android"],
-        "role": "external-mobile-tool-provider"
+        "role": "local-mobile-tool-provider"
       }
+    },
+    "external-example": {
+      "enabled": false,
+      "source": "external",
+      "cost_policy": "external_service_possible",
+      "requires_explicit_enable": true,
+      "transport": "streamable-http",
+      "endpoint": "https://example.invalid/mcp"
     }
   }
 }
