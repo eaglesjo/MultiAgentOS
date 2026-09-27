@@ -6,19 +6,19 @@ final class SourceEditorCommand: NSObject, XCSourceEditorCommand {
 
     func perform(with invocation: XCSourceEditorCommandInvocation,
                  completionHandler: @escaping (Error?) -> Void) {
+        let buffer = invocation.buffer
         let context = IDEContext(
-            projectRoot: invocation.buffer.contentUTI ?? "",
-            filePath: invocation.buffer.completeBuffer,
-            languageId: invocation.buffer.contentUTI,
+            projectRoot: "",
+            filePath: nil,
+            languageId: buffer.contentUTI,
             workspaceId: nil
         )
-
-        do {
-            try bridge.publishContext(context)
-            completionHandler(nil)
-        } catch {
-            completionHandler(error)
-        }
+        let event = IDEEvent(
+            kind: "context_changed",
+            context: context,
+            payload: ["complete_buffer": buffer.completeBuffer]
+        )
+        bridge.publish(event, completion: completionHandler)
     }
 }
 
@@ -40,11 +40,12 @@ final class VyrelonBridge {
     private let token: String?
 
     init(endpoint: String = "http://127.0.0.1:8787", token: String? = nil) {
-        self.endpoint = URL(string: endpoint.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/v1/ide/event")!
+        let base = endpoint.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        self.endpoint = URL(string: base + "/v1/ide/event")!
         self.token = token
     }
 
-    func publishContext(_ context: IDEContext) throws {
+    func publish(_ event: IDEEvent, completion: @escaping (Error?) -> Void) {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.timeoutInterval = 10
@@ -52,25 +53,14 @@ final class VyrelonBridge {
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-
-        let event = IDEEvent(
-            kind: "context_changed",
-            context: context,
-            payload: [:]
-        )
-        request.httpBody = try JSONEncoder().encode(event)
-
-        let semaphore = DispatchSemaphore(value: 0)
-        var capturedError: Error?
-
-        URLSession.shared.dataTask(with: request) { _, responseError, _ in
-            capturedError = responseError
-            semaphore.signal()
-        }.resume()
-
-        semaphore.wait()
-        if let capturedError {
-            throw capturedError
+        do {
+            request.httpBody = try JSONEncoder().encode(event)
+        } catch {
+            completion(error)
+            return
         }
+        URLSession.shared.dataTask(with: request) { _, error, _ in
+            completion(error)
+        }.resume()
     }
 }
