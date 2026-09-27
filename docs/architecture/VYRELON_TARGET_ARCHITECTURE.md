@@ -273,6 +273,7 @@ VYRELON is ready for downstream integration when a project can:
 8. stream and audit runtime events;
 9. integrate external MCP tools;
 10. verify and publish work with evidence;
-11. optionally enable Multi-Agent orchestration.
+11. optionally enable Multi-Agent orchestration;
+12. only then evaluate IDE-specific adapters for Xcode/iOS, VS Code and Android Studio.
 
-At that point PetTarotReading, BuddyPet, iOS, and VS Code become consumers of VYRELON rather than defining its architecture.
+At that point downstream projects become consumers of VYRELON rather than defining its architecture.
