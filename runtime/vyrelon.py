@@ -19,6 +19,10 @@ from integrations.github.gateway import GitHubGatewayClient
 from runtime.github import GitHubRuntime
 from runtime.github_probe import probe
 from runtime.git import GitRuntime
+from runtime.local.filesystem import FilesystemRuntime
+from runtime.local.patch import PatchRuntime
+from runtime.local.path_security import PathPolicy
+from runtime.local.shell import PersistentShellRuntime
 from runtime.model.config import DEFAULT_CONFIG_PATH, ProviderConfigLoader
 from runtime.model.credentials import EnvironmentCredentialResolver
 from runtime.model.factory import ConfiguredAdapterFactory
@@ -28,7 +32,7 @@ from runtime.policy import ExecutionPolicy
 
 
 class VYRELONRuntime:
-    """Single entry point for project inspection, agent execution, and GitHub access."""
+    """Single entry point for project inspection, local tooling, agent execution, and GitHub access."""
 
     def __init__(
         self,
@@ -47,6 +51,25 @@ class VYRELONRuntime:
         self.provider_config = ProviderConfigLoader()
         self.credentials = EnvironmentCredentialResolver()
         self.adapter_factory = ConfiguredAdapterFactory()
+
+    def local_filesystem(self, project_root: Path) -> FilesystemRuntime:
+        return FilesystemRuntime(
+            policy=self.policy,
+            paths=PathPolicy((str(project_root),)),
+        )
+
+    def local_shell(self, project_root: Path) -> PersistentShellRuntime:
+        return PersistentShellRuntime(
+            cwd=str(project_root),
+            policy=self.policy,
+            paths=PathPolicy((str(project_root),)),
+        )
+
+    def local_patch(self, project_root: Path) -> PatchRuntime:
+        return PatchRuntime(
+            policy=self.policy,
+            paths=PathPolicy((str(project_root),)),
+        )
 
     def inspect(self, project_root: Path):
         return ProfileDetector().detect(project_root)
