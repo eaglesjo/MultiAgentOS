@@ -23,5 +23,21 @@ class CLITests(unittest.TestCase):
             self.assertTrue((Path(temp) / ".multiagentos" / "agents.json").exists())
 
 
+    def test_models_run_parser_accepts_runtime_options(self):
+        from multiagentos.cli import build_parser
+
+        args = build_parser().parse_args([
+            "models", "run", ".",
+            "--model", "test-model",
+            "--objective", "run tests",
+            "--apply-changes",
+            "--validate", "python -m unittest",
+            "--mcp", "local-tools",
+        ])
+        self.assertTrue(args.apply_changes)
+        self.assertEqual(args.validate, ["python -m unittest"])
+        self.assertEqual(args.mcp, ["local-tools"])
+
+
 if __name__ == "__main__":
     unittest.main()

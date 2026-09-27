@@ -45,7 +45,7 @@ from runtime.ide.bridge import IDEBridge, IDEBridgePolicy, IDEBridgeServer
 from runtime.agent.ide import IDECodingExecutor, IDEValidationVerifier
 from runtime.tool_calling import ToolRuntime
 from runtime.builtin_tools import BuiltinToolBindings
-from runtime.repository_tools import GitToolBindings
+from runtime.repository_tools import GitToolBindings, MCPToolBindings
 
 
 class VYRELONRuntime:
@@ -370,6 +370,7 @@ class VYRELONRuntime:
         apply_changes: bool = False,
         system_prompt: str | None = None,
         adapter_overrides: dict[str, object] | None = None,
+        mcp_server_ids: tuple[str, ...] = (),
         routing_strategy="pool",
     ) -> OrchestrationResult:
         """Run project-configured work without caller-side provider/model wiring."""
@@ -396,6 +397,9 @@ class VYRELONRuntime:
         tool_runtime = ToolRuntime(self.policy)
         BuiltinToolBindings(str(project_root), tool_runtime)
         GitToolBindings(str(project_root), tool_runtime)
+        for server_id in mcp_server_ids:
+            client = self.mcp_clients.get(server_id) or self.connect_mcp(project_root, server_id)
+            MCPToolBindings(tool_runtime, client).register_tools()
         if not apply_changes:
             tool_runtime.unregister("patch.apply")
 
