@@ -48,6 +48,7 @@ from runtime.agent.ide import IDECodingExecutor, IDEValidationVerifier
 from runtime.tool_calling import ToolRuntime
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.repository_tools import GitToolBindings, MCPToolBindings
+from runtime.quota import QuotaIntelligence, QuotaStore
 
 
 class VYRELONRuntime:
