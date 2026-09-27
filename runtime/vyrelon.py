@@ -35,6 +35,7 @@ from runtime.mcp.client import MCPClient
 from runtime.mcp.config import MCPConfigLoader
 from runtime.policy import ExecutionPolicy
 from runtime.validation import ValidationReport, ValidationRuntime, ValidationStep
+from runtime.repository import RepositoryRuntime
 
 
 class VYRELONRuntime:
@@ -62,6 +63,7 @@ class VYRELONRuntime:
         self.mcp_config = MCPConfigLoader()
         self.mcp_clients: dict[str, MCPClient] = {}
         self.validation = ValidationRuntime(self.policy)
+        self.repository = RepositoryRuntime(self.git, self.github, self.policy)
 
     def load_mcp_config(self, project_root: Path):
         """Load external MCP server definitions from the project configuration."""
@@ -115,6 +117,15 @@ class VYRELONRuntime:
             policy=self.policy,
             paths=PathPolicy((str(project_root),)),
         )
+
+    def repository_checkpoint(self, project_root: Path, *, metadata: dict[str, object] | None = None):
+        return self.repository.checkpoint(project_root, metadata=metadata)
+
+    def repository_recover(self, project_root: Path, checkpoint):
+        return self.repository.recover(project_root, checkpoint)
+
+    def repository_evidence(self, project_root: Path, *, repository: str | None = None, ref: str | None = None, validation: dict[str, object] | None = None):
+        return self.repository.evidence(project_root, repository=repository, ref=ref, validation=validation)
 
     def validate(self, project_root: Path, steps: list[ValidationStep], *, persist_evidence: bool = True) -> ValidationReport:
         """Run project validation through the VYRELON local execution boundary."""
