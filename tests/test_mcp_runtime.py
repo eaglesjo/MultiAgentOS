@@ -2,7 +2,7 @@ import json, sys, tempfile
 from pathlib import Path
 from unittest import TestCase
 
-from core.contracts.mcp import MCPToolCall
+from core.contracts.mcp import MCPServerSpec, MCPToolCall
 from runtime.mcp.client import MCPClient
 from runtime.mcp.config import MCPConfigLoader
 
