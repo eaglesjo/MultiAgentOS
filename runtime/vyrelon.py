@@ -551,6 +551,7 @@ class VYRELONRuntime:
         validation_commands: tuple[str, ...] = (),
         apply_changes: bool = False,
         fallback_model_ids: tuple[str, ...] = (),
+        adapter_overrides: dict[str, object] | None = None,
     ) -> OrchestrationResult:
         """Resume a persisted failed WorkUnit through the same configured runtime."""
         project_root = Path(project_root).resolve()
@@ -573,6 +574,7 @@ class VYRELONRuntime:
             validation_commands=validation_commands,
             apply_changes=apply_changes,
             fallback_model_ids=fallback_model_ids,
+            adapter_overrides=adapter_overrides,
         )
 
     def recoverable_work(self, project_root: Path) -> tuple[WorkUnit, ...]:
