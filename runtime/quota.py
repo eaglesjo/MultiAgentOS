@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -115,8 +114,9 @@ class QuotaIntelligence:
             reset_at = _parse_dt(value.get("reset_at"))
             reset_seconds = _number(value.get("reset_seconds"))
             if reset_at is None and reset_seconds is not None:
-                reset_at = _now().replace(microsecond=0)
-                reset_at = reset_at.fromtimestamp(reset_at.timestamp() + reset_seconds, tz=timezone.utc)
+                reset_at = datetime.fromtimestamp(
+                    _now().timestamp() + float(reset_seconds), tz=timezone.utc
+                )
             used = limit - remaining if limit is not None and remaining is not None else None
             dimensions.append(
                 QuotaDimension(
@@ -165,11 +165,18 @@ class QuotaIntelligence:
                 )
             )
 
+        merged: dict[str, QuotaDimension] = {}
+        if self.store.exists(model.id):
+            for item in self.store.load(model.id).dimensions:
+                merged[item.name] = item
+        for item in dimensions:
+            merged[item.name] = item
+
         snapshot = QuotaSnapshot(
             model_id=model.id,
             provider_id=model.provider_id,
             observed_at=_now(),
-            dimensions=tuple(dimensions),
+            dimensions=tuple(merged.values()),
             scope=str(model.metadata.get("quota_scope", "model")),
         )
         self.store.save(snapshot)
