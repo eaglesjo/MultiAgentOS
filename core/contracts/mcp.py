@@ -14,6 +14,9 @@ class MCPServerSpec:
     headers: dict[str, str] = field(default_factory=dict)
     enabled: bool = True
     metadata: dict[str, object] = field(default_factory=dict)
+    source: str = "built-in"
+    cost_policy: str = "no_external_billing"
+    requires_explicit_enable: bool = False
 
 @dataclass(frozen=True)
 class MCPSession:
