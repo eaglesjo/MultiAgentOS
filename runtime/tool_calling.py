@@ -77,6 +77,7 @@ class ToolCallingRuntime:
         if not callable(generate):
             raise ToolExecutionError(f"model adapter does not support tool calling: {model_id}")
         current, results = request, []
+        history: list[dict[str, object]] = []
         for round_number in range(1, self.max_rounds + 1):
             response = generate(model, current, self.tools.specs())
             calls = self._normalize_calls(response.metadata.get("tool_calls", ()))
@@ -90,8 +91,10 @@ class ToolCallingRuntime:
                 )
                 results.append(result)
                 round_results.append({"call_id": call["call_id"], "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error})
+            history.append({"tool_calls": calls, "tool_results": tuple(round_results)})
             metadata = dict(current.metadata)
             metadata["tool_results"] = tuple(round_results)
+            metadata["tool_history"] = tuple(history)
             current = ModelRequest(prompt=current.prompt, system=current.system, metadata=metadata)
         raise ToolExecutionError(f"tool calling exceeded maximum rounds: {self.max_rounds}")
 
