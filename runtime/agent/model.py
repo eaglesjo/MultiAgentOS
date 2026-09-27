@@ -7,6 +7,7 @@ from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
 from runtime.quota import QuotaIntelligence
+from runtime.health import ModelHealthRegistry
 from runtime.tool_calling import ToolCallingExecution, ToolCallingRuntime, ToolRuntime
 from core.contracts.work_unit import WorkUnit
 
@@ -21,12 +22,14 @@ class ModelAgentExecutor(AgentExecutor):
         system_prompt: str | None = None,
         fallback_model_ids: tuple[str, ...] = (),
         quota_intelligence: QuotaIntelligence | None = None,
+        health_registry: ModelHealthRegistry | None = None,
     ):
         self.adapters = dict(adapters)
         self.models = {model.id: model for model in models}
         self.system_prompt = system_prompt
         self.fallback_model_ids = tuple(fallback_model_ids)
         self.quota_intelligence = quota_intelligence
+        self.health_registry = health_registry
 
     def _candidate_model_ids(self, model_id: str) -> tuple[str, ...]:
         return tuple(dict.fromkeys((model_id, *self.fallback_model_ids)))
@@ -86,10 +89,14 @@ class ModelAgentExecutor(AgentExecutor):
                             for item in snapshot.dimensions
                         },
                     }
+                if self.health_registry is not None:
+                    self.health_registry.record_success(candidate_id, model.provider_id)
                 return response
             except Exception as exc:
                 attempts.append(candidate_id)
                 last_error = exc
+                if self.health_registry is not None and candidate_id in self.models:
+                    self.health_registry.record_failure(candidate_id, self.models[candidate_id].provider_id, exc)
                 if not self._is_failover_error(exc):
                     raise
         if last_error is not None:
@@ -147,10 +154,23 @@ class ModelAgentExecutor(AgentExecutor):
                 work_unit.metadata["tool_rounds"] = result.rounds
                 work_unit.metadata["tool_results"] = tuple(result.tool_results)
                 work_unit.metadata["model_attempts"] = tuple(attempts)
+                if self.quota_intelligence is not None:
+                    snapshot = self.quota_intelligence.observe_response(model, dict(result.response.metadata))
+                    work_unit.metadata["quota_snapshot"] = {
+                        "confidence": snapshot.confidence.value,
+                        "dimensions": {
+                            item.name: {"remaining": item.remaining, "limit": item.limit}
+                            for item in snapshot.dimensions
+                        },
+                    }
+                if self.health_registry is not None:
+                    self.health_registry.record_success(candidate_id, model.provider_id)
                 return result
             except Exception as exc:
                 attempts.append(candidate_id)
                 last_error = exc
+                if self.health_registry is not None and candidate_id in self.models:
+                    self.health_registry.record_failure(candidate_id, self.models[candidate_id].provider_id, exc)
                 if not self._is_failover_error(exc):
                     raise
         if last_error is not None:
