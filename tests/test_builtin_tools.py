@@ -10,7 +10,7 @@ class BuiltinToolTests(unittest.TestCase):
     def test_filesystem_read_write_and_patch_are_registered(self):
         with tempfile.TemporaryDirectory() as root:
             Path(root,"hello.py").write_text("value = 1\n",encoding="utf-8")
-            policy=ExecutionPolicy(allow_filesystem_write=True, require_approval_for_writes=False)
+            policy=ExecutionPolicy(allow_filesystem_write=True, require_approval_for=frozenset())
             tools=ToolRuntime(policy)
             BuiltinToolBindings(root,tools)
             read=tools.execute(ToolRequest("filesystem.read",{"path":"hello.py"}))
