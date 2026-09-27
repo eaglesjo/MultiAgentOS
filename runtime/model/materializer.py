@@ -60,6 +60,10 @@ class NativeProviderMaterializer:
             adapter_id = str(provider.metadata.get("adapter_id", provider.id))
             adapter = self._adapter(kind, provider)
             target.register(adapter_id, adapter)
+            for model in provider.models:
+                model_adapter_id = str(model.metadata.get("adapter_id", adapter_id))
+                if model_adapter_id != adapter_id and model_adapter_id not in target.list():
+                    target.register(model_adapter_id, adapter)
             if validate_credentials:
                 env = str(metadata_env(provider, kind))
                 if env:

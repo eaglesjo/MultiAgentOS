@@ -30,6 +30,7 @@ from runtime.model.credentials import EnvironmentCredentialResolver
 from runtime.model.factory import ConfiguredAdapterFactory
 from runtime.model.providers import AIProviderRegistry
 from runtime.model.registry import ModelAdapterRegistry
+from runtime.model.runtime_loader import ProviderRuntimeLoader
 from runtime.mcp.client import MCPClient
 from runtime.mcp.config import MCPConfigLoader
 from runtime.mcp.session import MCPSessionRegistry
@@ -67,6 +68,7 @@ class VYRELONRuntime:
         self.provider_config = ProviderConfigLoader()
         self.credentials = EnvironmentCredentialResolver()
         self.adapter_factory = ConfiguredAdapterFactory()
+        self.provider_runtime_loader = ProviderRuntimeLoader(policy=self.policy)
         self.mcp_config = MCPConfigLoader()
         self.mcp_sessions = MCPSessionRegistry()
         self.mcp_config = MCPConfigLoader()
@@ -338,16 +340,107 @@ class VYRELONRuntime:
             if adapter_id in self.model_adapters.list():
                 continue
             metadata = dict(model.metadata)
-            adapter_kind = metadata.get("adapter_kind", adapter_id)
+            adapter_kind = str(metadata.get("adapter_kind", ""))
             if adapter_kind in {"cli", "http"}:
                 self.register_model_adapter(
                     adapter_id,
                     self.adapter_factory.build(adapter_id, metadata, self.policy),
                 )
+                continue
+            provider = self.providers.get_provider(model.provider_id)
+            provider_kind = provider.kind.lower()
+            if provider_kind in {"openai", "openai_responses", "anthropic", "anthropic_messages", "gemini", "gemini_generate_content"}:
+                self.provider_runtime_loader.materializer.materialize(
+                    (provider,), registry=self.model_adapters
+                )
 
     def configured_models(self, provider_id: str | None = None) -> list[ModelSpec]:
         """Return registered models, optionally scoped to one provider."""
         return list(self.providers.models(provider_id))
+
+    def run_configured_work(
+        self,
+        project_root: Path,
+        *,
+        objective: str,
+        agent_id: str,
+        work_unit_id: str | None = None,
+        preferred_model_ids: list[str] | None = None,
+        validation_commands: tuple[str, ...] = (),
+        apply_changes: bool = False,
+        system_prompt: str | None = None,
+        adapter_overrides: dict[str, object] | None = None,
+        routing_strategy="pool",
+    ) -> OrchestrationResult:
+        """Run project-configured work without caller-side provider/model wiring."""
+        project_root = Path(project_root).resolve()
+        self.load_project_provider_config(project_root)
+        models = self.configured_models()
+        if not models:
+            raise ValueError("No configured models found")
+        if adapter_overrides:
+            for adapter_id, adapter in adapter_overrides.items():
+                if adapter_id not in self.model_adapters.list():
+                    self.register_model_adapter(adapter_id, adapter)
+        self.configure_model_adapters()
+
+        agent = self.agent_profile(project_root, agent_id)
+        if preferred_model_ids:
+            for model_id in preferred_model_ids:
+                self.providers.get_model(model_id)
+        elif agent.model_ids:
+            preferred_model_ids = list(agent.model_ids)
+
+        from runtime.agent.model import ModelAgentExecutor
+
+        tool_runtime = ToolRuntime(self.policy)
+        BuiltinToolBindings(str(project_root), tool_runtime)
+        GitToolBindings(str(project_root), tool_runtime)
+        if not apply_changes:
+            tool_runtime.unregister("patch.apply")
+
+        executor = ModelAgentExecutor(
+            adapters={
+                adapter_id: self.model_adapters.get(adapter_id)
+                for adapter_id in self.model_adapters.list()
+            },
+            models=models,
+            system_prompt=system_prompt,
+        )
+        effective_executor = IDECodingExecutor(
+            delegate=executor,
+            project_root=project_root,
+            apply_changes=apply_changes,
+            policy=self.policy,
+            tool_runtime=tool_runtime,
+        )
+        verifier = None
+        if validation_commands:
+            verifier = IDEValidationVerifier(
+                project_root=project_root,
+                commands=validation_commands,
+                policy=self.policy,
+            )
+        work_unit = WorkUnit(
+            id=work_unit_id or f"work-{uuid4().hex}",
+            objective=objective,
+            metadata={
+                "source": "configured-runtime",
+                "agent_id": agent_id,
+                "apply_changes": apply_changes,
+                "runtime": "configured-model",
+            },
+        )
+        return self.run_persistent(
+            project_root=project_root,
+            work_unit=work_unit,
+            agent=agent,
+            models=models,
+            executor=effective_executor,
+            preferred_model_ids=preferred_model_ids,
+            verifier=verifier,
+            routing_strategy=routing_strategy,
+        )
 
     def run_registered_model(
         self,
