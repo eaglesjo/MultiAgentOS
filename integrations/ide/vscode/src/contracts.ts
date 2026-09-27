@@ -1,3 +1,10 @@
+export type IDEEventKind =
+  | "context_changed"
+  | "selection_changed"
+  | "file_opened"
+  | "file_saved"
+  | "workspace_opened";
+
 export type IDECommandKind =
   | "open_workspace"
   | "open_file"
@@ -15,6 +22,13 @@ export interface IDEContext {
   selection_start?: number;
   selection_end?: number;
   language_id?: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface IDEEvent {
+  kind: IDEEventKind;
+  context: IDEContext;
+  payload: Record<string, unknown>;
   metadata: Record<string, unknown>;
 }
 

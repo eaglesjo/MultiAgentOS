@@ -39,10 +39,12 @@ final class VyrelonBridge {
     private let endpoint: URL
     private let token: String?
 
-    init(endpoint: String = "http://127.0.0.1:8787", token: String? = nil) {
-        let base = endpoint.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    init(endpoint: String? = nil, token: String? = nil) {
+        let configuredEndpoint = endpoint ?? ProcessInfo.processInfo.environment["VYRELON_IDE_ENDPOINT"] ?? "http://127.0.0.1:8787"
+        let configuredToken = token ?? ProcessInfo.processInfo.environment["VYRELON_IDE_TOKEN"]
+        let base = configuredEndpoint.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         self.endpoint = URL(string: base + "/v1/ide/event")!
-        self.token = token
+        self.token = configuredToken
     }
 
     func publish(_ event: IDEEvent, completion: @escaping (Error?) -> Void) {

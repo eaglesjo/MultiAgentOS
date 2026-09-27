@@ -1,4 +1,4 @@
-import type { IDECommand, IDECommandResult, IDEContext } from "./contracts";
+import type { IDECommand, IDECommandResult, IDEContext, IDEEvent } from "./contracts";
 
 export class VyrelonBridge {
   constructor(
@@ -15,15 +15,22 @@ export class VyrelonBridge {
   }
 
   async getContext(context: IDEContext): Promise<IDEContext> {
-    const response = await fetch(`${this.endpoint}/v1/ide/context`, {
+    const event: IDEEvent = {
+      kind: "context_changed",
+      context,
+      payload: {},
+      metadata: { source: "vscode" },
+    };
+    const response = await fetch(`${this.endpoint}/v1/ide/event`, {
       method: "POST",
       headers: this.headers(),
-      body: JSON.stringify(context),
+      body: JSON.stringify(event),
     });
     if (!response.ok) {
-      throw new Error(`VYRELON context request failed: ${response.status}`);
+      throw new Error(`VYRELON event request failed: ${response.status}`);
     }
-    return (await response.json()) as IDEContext;
+    const envelope = (await response.json()) as { result?: { context?: IDEContext } };
+    return envelope.result?.context ?? context;
   }
 
   async execute(command: IDECommand): Promise<IDECommandResult> {
@@ -35,6 +42,7 @@ export class VyrelonBridge {
     if (!response.ok) {
       throw new Error(`VYRELON command failed: ${response.status}`);
     }
-    return (await response.json()) as IDECommandResult;
+    const envelope = (await response.json()) as { result?: IDECommandResult };
+    return envelope.result ?? { ok: false, error: "VYRELON returned no command result.", metadata: {} };
   }
 }
