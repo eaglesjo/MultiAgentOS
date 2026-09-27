@@ -2,6 +2,8 @@ import json
 from urllib.request import Request, urlopen
 import unittest
 
+from core.contracts.agent import AgentContract
+from core.contracts.ai import ModelSpec
 from core.contracts.ide import IDECommandResult, IDEEventKind, IDEKind
 from runtime.ide.registry import IDEAdapterRegistry
 from runtime.ide.runtime import IDERuntime
@@ -34,6 +36,33 @@ class IDEBridgeTests(unittest.TestCase):
             with urlopen(request) as response:
                 self.assertEqual(response.status, 200)
             self.assertEqual(received[0].kind, IDEEventKind.CONTEXT_CHANGED)
+            self.assertEqual(received[0].context.kind, IDEKind.VS_CODE)
+        finally:
+            server.stop()
+
+    def test_authenticated_work_endpoint_uses_work_handler(self):
+        received = []
+        bridge = IDEBridge(policy=IDEBridgePolicy(token="secret"), work_handler=received.append)
+        server = IDEBridgeServer(bridge, host="127.0.0.1", port=0)
+        server.start()
+        try:
+            body = json.dumps({
+                "objective": "Explain this file",
+                "agent_id": "coder",
+                "model_ids": ["fake-model"],
+                "context": {"kind": "vs_code", "project_root": "/tmp/project", "file_path": "/tmp/project/main.py"},
+            }).encode()
+            request = Request(
+                f"http://127.0.0.1:{server.server.server_port}/v1/ide/work",
+                data=body,
+                headers={"Authorization": "Bearer secret", "Content-Type": "application/json"},
+                method="POST",
+            )
+            with urlopen(request) as response:
+                payload = json.loads(response.read())
+            self.assertTrue(payload["ok"])
+            self.assertEqual(received[0].objective, "Explain this file")
+            self.assertEqual(received[0].agent_id, "coder")
             self.assertEqual(received[0].context.kind, IDEKind.VS_CODE)
         finally:
             server.stop()
