@@ -153,7 +153,7 @@ def _provider_list(root: Path) -> int:
     return 0
 
 
-def _model_run(root: Path, model_id: str, objective: str, agent_id: str) -> int:
+def _model_run(root: Path, model_id: str, objective: str, agent_id: str, *, apply_changes: bool = False, validation_commands: list[str] | None = None, mcp_server_ids: list[str] | None = None) -> int:
     from runtime.vyrelon import VYRELONRuntime
 
     runtime = _provider_runtime(root)
@@ -164,6 +164,9 @@ def _model_run(root: Path, model_id: str, objective: str, agent_id: str) -> int:
         objective=objective,
         agent_id=agent_id,
         preferred_model_ids=[model_id],
+        apply_changes=apply_changes,
+        validation_commands=tuple(validation_commands or ()),
+        mcp_server_ids=tuple(mcp_server_ids or ()),
     )
     print(result.output.text, end="")
     return 0
@@ -251,6 +254,9 @@ def main(argv: list[str] | None = None) -> int:
                 args.model,
                 args.objective,
                 args.agent,
+                apply_changes=args.apply_changes,
+                validation_commands=args.validate,
+                mcp_server_ids=args.mcp,
             )
 
     root = Path(args.path).expanduser().resolve()
