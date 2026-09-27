@@ -8,7 +8,6 @@ from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.ide import IDECommand, IDECommandKind, IDECommandResult, IDEContext, IDEEvent, IDEEventKind, IDEKind, IDEWorkRequest
 from core.contracts.model_runtime import ModelResponse
-from core.contracts.execution import AgentExecutor
 from runtime.ide.registry import IDEAdapterRegistry
 from runtime.ide.runtime import IDERuntime
 from runtime.vyrelon import VYRELONRuntime
@@ -66,7 +65,7 @@ class IDERuntimeTests(unittest.TestCase):
 
 
 
-class FakeAgentExecutor(AgentExecutor):
+class FakeAgentExecutor:
     def execute(self, *, agent: AgentContract, model_id: str, work_unit):
         work_unit.metadata["executor_seen"] = True
         return ModelResponse(text=f"completed: {work_unit.objective}", model_id=model_id)
