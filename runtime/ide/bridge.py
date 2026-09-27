@@ -161,8 +161,6 @@ def decode_event(payload: dict[str, object]) -> IDEEvent:
         kind=IDEEventKind(str(payload["kind"])),
         context=_context(payload),
         payload=payload.get("payload", {}),
-        apply_changes=bool(payload.get("apply_changes", False)),
-        validation_commands=tuple(payload.get("validation_commands", [])),
         metadata=payload.get("metadata", {}),
     )
 
@@ -194,5 +192,7 @@ def decode_work_request(payload: dict[str, object]) -> IDEWorkRequest:
         objective=objective,
         agent_id=agent_id,
         model_ids=tuple(model_ids),
+        apply_changes=bool(payload.get("apply_changes", False)),
+        validation_commands=tuple(payload.get("validation_commands", [])),
         metadata=payload.get("metadata", {}),
     )
