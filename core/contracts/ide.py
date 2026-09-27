@@ -64,6 +64,8 @@ class IDEWorkRequest:
     objective: str
     agent_id: str
     model_ids: tuple[str, ...] = ()
+    apply_changes: bool = False
+    validation_commands: tuple[str, ...] = ()
     metadata: dict[str, object] = field(default_factory=dict)
 
 
