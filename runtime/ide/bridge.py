@@ -8,6 +8,7 @@ from threading import Thread
 from typing import Callable
 from urllib.parse import urlparse
 
+from runtime.ide.runtime import IDERuntime
 from core.contracts.ide import (
     IDECommand, IDECommandKind, IDEContext, IDEEvent, IDEEventKind, IDEKind,
 )
@@ -30,17 +31,27 @@ class IDEBridgePolicy:
 
 class IDEBridge:
     def __init__(self, *, policy: IDEBridgePolicy,
+                 runtime: IDERuntime | None = None,
                  event_handler: Callable[[IDEEvent], object] | None = None,
                  command_handler: Callable[[IDECommand], object] | None = None) -> None:
         self.policy = policy
+        self.runtime = runtime
         self.event_handler = event_handler or (lambda event: event)
         self.command_handler = command_handler or (lambda command: command)
 
     def handle_event(self, payload: dict[str, object]) -> object:
-        return self.event_handler(decode_event(payload))
+        event = decode_event(payload)
+        if self.runtime is not None:
+            return self.runtime.ingest_event(event)
+        return self.event_handler(event)
 
     def handle_command(self, payload: dict[str, object]) -> object:
-        return self.command_handler(decode_command(payload))
+        command = decode_command(payload)
+        if self.runtime is not None:
+            if command.context is None:
+                raise ValueError("command context is required for IDE bridge dispatch")
+            return self.runtime.execute(command.context.kind, command)
+        return self.command_handler(command)
 
 
 class _Handler(BaseHTTPRequestHandler):
