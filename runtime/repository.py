@@ -27,10 +27,14 @@ class RepositoryRuntime:
     def checkpoint(self, project_root: Path, *, metadata: dict[str, object] | None = None) -> RepositoryCheckpoint:
         checkpoint_id = f"cp-{uuid.uuid4().hex[:12]}"
         marker = f"VYRELON checkpoint {checkpoint_id}"
-        result = self.git.stash(project_root.as_posix(), "push", marker)
-        stashed = result.returncode == 0
-        if result.returncode != 0 and "No local changes" not in (result.stderr + result.stdout):
-            raise RuntimeError(result.stderr.strip() or "failed to create Git checkpoint")
+        initial_status = self.git.status(project_root.as_posix())
+        has_changes = bool(initial_status.stdout.splitlines()[1:])
+        stashed = False
+        if has_changes:
+            result = self.git.stash(project_root.as_posix(), "push", marker)
+            stashed = result.returncode == 0
+            if not stashed:
+                raise RuntimeError(result.stderr.strip() or "failed to create Git checkpoint")
         status = self.git.status(project_root.as_posix())
         diff = self.git.diff(project_root.as_posix())
         checkpoint = RepositoryCheckpoint(
