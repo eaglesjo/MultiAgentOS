@@ -111,3 +111,53 @@ class IDEWorkExecutionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IDECodeChangeTests(unittest.TestCase):
+    def test_ide_work_applies_model_patch_and_validates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "hello.py"
+            target.write_text("value = 1\n", encoding="utf-8")
+            runtime = VYRELONRuntime()
+            adapter = FakeIDEAdapter(IDEKind.VS_CODE)
+            adapter.context = lambda: IDEContext(
+                kind=IDEKind.VS_CODE,
+                project_root=directory,
+                file_path=str(target),
+            )
+            runtime.ide.register(adapter)
+            runtime.agent_profile = lambda project_root, agent_id: AgentContract(
+                id=agent_id, role="coder", model_ids=("fake-model",)
+            )
+
+            class PatchExecutor:
+                def execute(self, *, agent, model_id, work_unit):
+                    return ModelResponse(
+                        text="Applied change",
+                        model_id=model_id,
+                        metadata={
+                            "patch": "diff --git a/hello.py b/hello.py\n"
+                            "--- a/hello.py\n+++ b/hello.py\n"
+                            "@@ -1 +1 @@\n-value = 1\n+value = 2\n"
+                        },
+                    )
+
+            request = IDEWorkRequest(
+                context=adapter.context(),
+                objective="Change the value to 2",
+                agent_id="coder",
+                model_ids=("fake-model",),
+                apply_changes=True,
+                validation_commands=("python -m py_compile hello.py",),
+            )
+            result = runtime.submit_ide_work(
+                request,
+                models=[ModelSpec(id="fake-model", provider_id="test")],
+                executor=PatchExecutor(),
+            )
+            self.assertEqual(target.read_text(encoding="utf-8"), "value = 2\n")
+            work_unit = result["work_unit"]
+            self.assertTrue(work_unit.metadata["patch_applied"])
+            self.assertTrue(work_unit.metadata["validation_passed"])
+            self.assertEqual(work_unit.status.value, "completed")
