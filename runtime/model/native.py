@@ -68,7 +68,12 @@ class OpenAIResponsesToolAdapter:
                 calls.append({"id": item.get("call_id", item.get("id")), "name": aliases.get(item.get("name"), item.get("name")), "arguments": json.loads(item.get("arguments", "{}"))})
             elif item.get("type") == "message":
                 texts.extend(part.get("text", "") for part in item.get("content", ()) if part.get("type") == "output_text")
-        rate_limits = _openai_rate_limits(response_headers)\n        usage = _usage_dict(data.get("usage"))\n        metadata = {"adapter": "openai_responses", "tool_calls": calls, "provider_response_id": data.get("id")}\n        if rate_limits: metadata["rate_limits"] = rate_limits\n        if usage: metadata["usage"] = usage\n        return ModelResponse("".join(texts), model.id, metadata)
+        rate_limits = _openai_rate_limits(response_headers)
+        usage = _usage_dict(data.get("usage"))
+        metadata = {"adapter": "openai_responses", "tool_calls": calls, "provider_response_id": data.get("id")}
+        if rate_limits: metadata["rate_limits"] = rate_limits
+        if usage: metadata["usage"] = usage
+        return ModelResponse("".join(texts), model.id, metadata)
 
 @dataclass(frozen=True)
 class AnthropicMessagesToolAdapter:
@@ -100,7 +105,12 @@ class AnthropicMessagesToolAdapter:
         for block in data.get("content", ()):
             if block.get("type") == "tool_use": calls.append({"id": block["id"], "name": aliases.get(block["name"], block["name"]), "arguments": block.get("input", {})})
             elif block.get("type") == "text": texts.append(block.get("text", ""))
-        rate_limits = _anthropic_rate_limits(response_headers)\n        usage = _usage_dict(data.get("usage"))\n        metadata = {"adapter": "anthropic_messages", "tool_calls": calls, "stop_reason": data.get("stop_reason")}\n        if rate_limits: metadata["rate_limits"] = rate_limits\n        if usage: metadata["usage"] = usage\n        return ModelResponse("".join(texts), model.id, metadata)
+        rate_limits = _anthropic_rate_limits(response_headers)
+        usage = _usage_dict(data.get("usage"))
+        metadata = {"adapter": "anthropic_messages", "tool_calls": calls, "stop_reason": data.get("stop_reason")}
+        if rate_limits: metadata["rate_limits"] = rate_limits
+        if usage: metadata["usage"] = usage
+        return ModelResponse("".join(texts), model.id, metadata)
 
 @dataclass(frozen=True)
 class GeminiGenerateContentToolAdapter:
@@ -133,7 +143,10 @@ class GeminiGenerateContentToolAdapter:
                 if "functionCall" in part:
                     fc = part["functionCall"]; calls.append({"id": fc.get("id", f"call-{len(calls)+1}"), "name": aliases.get(fc.get("name"), fc.get("name")), "arguments": fc.get("args", {})})
                 elif "text" in part: texts.append(part["text"])
-        usage = _usage_dict(data.get("usageMetadata"))\n        metadata = {"adapter": "gemini_generate_content", "tool_calls": calls}\n        if usage: metadata["usage"] = usage\n        return ModelResponse("".join(texts), model.id, metadata)
+        usage = _usage_dict(data.get("usageMetadata"))
+        metadata = {"adapter": "gemini_generate_content", "tool_calls": calls}
+        if usage: metadata["usage"] = usage
+        return ModelResponse("".join(texts), model.id, metadata)
 
 
 def _usage_dict(value: object) -> dict[str, int]:
