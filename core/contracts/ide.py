@@ -27,6 +27,7 @@ class IDECommandKind(StrEnum):
     INSERT_TEXT = "insert_text"
     REPLACE_SELECTION = "replace_selection"
     RUN_COMMAND = "run_command"
+    START_WORK = "start_work"
     SHOW_MESSAGE = "show_message"
     SHOW_DIFF = "show_diff"
 
