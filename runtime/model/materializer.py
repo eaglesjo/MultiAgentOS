@@ -61,7 +61,7 @@ class NativeProviderMaterializer:
             adapter = self._adapter(kind, provider)
             target.register(adapter_id, adapter)
             if validate_credentials:
-                env = self._CREDENTIALS.get(kind)
+                env = str(metadata_env(provider, kind))
                 if env:
                     checks.extend(self.credentials.check([env]))
         return ProviderMaterialization(target, tuple(checks))
@@ -90,3 +90,8 @@ class NativeProviderMaterializer:
                 policy=policy,
             )
         raise ValueError(f"Unsupported native provider kind: {provider.kind}")
+
+
+def metadata_env(provider: AIProvider, kind: str) -> str:
+    default = NativeProviderMaterializer._CREDENTIALS.get(kind, "")
+    return str(provider.metadata.get("api_key_env", default))
