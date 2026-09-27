@@ -95,6 +95,9 @@ def build_parser() -> argparse.ArgumentParser:
     models_run.add_argument("--model", required=True)
     models_run.add_argument("--objective", required=True)
     models_run.add_argument("--agent", default="executor")
+    models_run.add_argument("--apply-changes", action="store_true")
+    models_run.add_argument("--validate", action="append", default=[])
+    models_run.add_argument("--mcp", action="append", default=[])
 
     run = subparsers.add_parser("run", help="create and execute a persistent WorkUnit")
     run.add_argument("path", nargs="?", default=".")
@@ -102,6 +105,9 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--agent", default="executor")
     run.add_argument("--id", dest="work_unit_id")
     run.add_argument("--model")
+    run.add_argument("--apply-changes", action="store_true")
+    run.add_argument("--validate", action="append", default=[])
+    run.add_argument("--mcp", action="append", default=[])
     run.add_argument(
         "--command",
         dest="process_command",
@@ -153,20 +159,10 @@ def _model_run(root: Path, model_id: str, objective: str, agent_id: str) -> int:
     runtime = _provider_runtime(root)
     if not runtime.providers.list_model_ids():
         raise ValueError("No configured models found")
-    runtime.configure_model_adapters()
-    agent = AgentContract(
-        id=agent_id,
-        role=agent_id,
-        capabilities=frozenset({"execution"}),
-        model_ids=(model_id,),
-    )
-    work = WorkUnit(
-        id=uuid.uuid4().hex,
+    result = runtime.run_configured_work(
+        root,
         objective=objective,
-    )
-    result = runtime.run_registered_model(
-        work_unit=work,
-        agent=agent,
+        agent_id=agent_id,
         preferred_model_ids=[model_id],
     )
     print(result.output.text, end="")
@@ -280,11 +276,15 @@ def main(argv: list[str] | None = None) -> int:
                 work.metadata["runtime"] = "configured-model"
                 work.metadata["model_id"] = args.model
                 work.metadata["agent_id"] = args.agent
-                result = runtime.run_persistent_registered_model(
+                result = runtime.run_configured_work(
                     root,
-                    work,
-                    agent,
+                    objective=args.objective,
+                    agent_id=args.agent,
+                    work_unit_id=work.id,
                     preferred_model_ids=[args.model],
+                    apply_changes=args.apply_changes,
+                    validation_commands=tuple(args.validate),
+                    mcp_server_ids=tuple(args.mcp),
                 )
                 print(result.output.text, end="")
                 return 0
