@@ -39,4 +39,4 @@ class PatchRuntime:
         if checked.returncode != 0:
             return checked
         root = self.paths.resolve(project_root, must_exist=True)
-        return self.process.run(["git", "apply", "-"], cwd=str(root))
+        return self.process.run(["git", "apply", "-"], cwd=str(root), input_text=patch_text)
