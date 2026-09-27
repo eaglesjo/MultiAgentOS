@@ -435,6 +435,7 @@ class VYRELONRuntime:
         objective: str,
         agent_id: str,
         work_unit_id: str | None = None,
+        session_id: str | None = None,
         preferred_model_ids: list[str] | None = None,
         validation_commands: tuple[str, ...] = (),
         apply_changes: bool = False,
@@ -508,6 +509,7 @@ class VYRELONRuntime:
                 "agent_id": agent_id,
                 "apply_changes": apply_changes,
                 "runtime": "configured-model",
+                "session_id": session_id,
             })
         else:
             work_unit = WorkUnit(
@@ -518,8 +520,11 @@ class VYRELONRuntime:
                     "agent_id": agent_id,
                     "apply_changes": apply_changes,
                     "runtime": "configured-model",
+                    "session_id": session_id,
                 },
             )
+        if session_id:
+            self.attach_work_unit(project_root, session_id, work_unit.id)
         return self.run_persistent(
             project_root=project_root,
             work_unit=work_unit,
