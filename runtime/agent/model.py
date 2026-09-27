@@ -151,6 +151,8 @@ class ModelAgentExecutor(AgentExecutor):
             except Exception as exc:
                 attempts.append(candidate_id)
                 last_error = exc
+                if not self._is_failover_error(exc):
+                    raise
         if last_error is not None:
             raise last_error
         raise LookupError(f"No executable tool-calling model available for agent {agent.id}")
