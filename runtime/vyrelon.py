@@ -142,14 +142,15 @@ class VYRELONRuntime:
                 policy=self.policy,
             )
         if models is not None and executor is not None:
-            BuiltinToolBindings(str(project_root), self.tool_runtime)
-            GitToolBindings(str(project_root), self.tool_runtime)
+            tool_runtime = ToolRuntime(self.policy)
+            BuiltinToolBindings(str(project_root), tool_runtime)
+            GitToolBindings(str(project_root), tool_runtime)
             effective_executor = IDECodingExecutor(
                 delegate=executor,
                 project_root=project_root,
                 apply_changes=request.apply_changes,
                 policy=self.policy,
-                tool_runtime=self.tool_runtime,
+                tool_runtime=tool_runtime,
             )
             result = self.run_persistent(
                 project_root=project_root,
