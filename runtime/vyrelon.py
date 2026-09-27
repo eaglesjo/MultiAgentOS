@@ -48,7 +48,7 @@ from runtime.agent.ide import IDECodingExecutor, IDEValidationVerifier
 from runtime.tool_calling import ToolRuntime
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.repository_tools import GitToolBindings, MCPToolBindings
-from runtime.quota import QuotaIntelligence, QuotaStore
+from runtime.quota import QuotaIntelligence, QuotaStore, quota_available
 from runtime.health import ModelHealthRegistry, ModelHealthStore
 
 
@@ -486,11 +486,11 @@ class VYRELONRuntime:
                 for model in models
                 if quota_store.exists(model.id)
             }
-            health_snapshots = {
-                model.id: health_registry.get(model.id)
-                for model in models
-                if health_registry.get(model.id) is not None
-            }
+            health_snapshots = {}
+            for model in models:
+                health = health_registry.get(model.id)
+                if health is not None:
+                    health_snapshots[model.id] = health
             assignment = router.assign(
                 agent,
                 models,
@@ -507,7 +507,7 @@ class VYRELONRuntime:
                 and health_registry.available(model.id)
                 and (
                     not quota_store.exists(model.id)
-                    or __import__("runtime.quota", fromlist=["quota_available"]).quota_available(quota_store.load(model.id))
+                    or quota_available(quota_store.load(model.id))
                 )
             )
 
