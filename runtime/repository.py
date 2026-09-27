@@ -28,7 +28,8 @@ class RepositoryRuntime:
         checkpoint_id = f"cp-{uuid.uuid4().hex[:12]}"
         marker = f"VYRELON checkpoint {checkpoint_id}"
         result = self.git.stash(project_root.as_posix(), "push", marker)
-        if result.returncode != 0:
+        stashed = result.returncode == 0
+        if result.returncode != 0 and "No local changes" not in (result.stderr + result.stdout):
             raise RuntimeError(result.stderr.strip() or "failed to create Git checkpoint")
         status = self.git.status(project_root.as_posix())
         diff = self.git.diff(project_root.as_posix())
@@ -39,13 +40,13 @@ class RepositoryRuntime:
             status=status.stdout,
             diff=diff.stdout,
             created_at=datetime.now(timezone.utc).isoformat(),
-            metadata=dict(metadata or {}),
+            metadata={**dict(metadata or {}), "stashed": stashed},
         )
         self._persist_checkpoint(project_root, checkpoint)
         return checkpoint
 
     def recover(self, project_root: Path, checkpoint: RepositoryCheckpoint) -> RecoveryResult:
-        result = self.git.stash(project_root.as_posix(), "pop")
+        if not bool(checkpoint.metadata.get("stashed", False)):\n            return RecoveryResult(checkpoint.id, True, "No local changes required recovery", "")\n        result = self.git.stash(project_root.as_posix(), "pop")
         if result.returncode == 0:
             return RecoveryResult(checkpoint.id, True, result.stdout, "")
         return RecoveryResult(checkpoint.id, False, result.stdout, result.stderr)
