@@ -72,21 +72,22 @@ class LocalToolRuntimeTests(unittest.TestCase):
                  "commit", "-m", "initial"],
                 cwd=root, check=True, capture_output=True,
             )
-            patch = (
-                "diff --git a/README.md b/README.md\n"
-                "--- a/README.md\n"
-                "+++ b/README.md\n"
-                "@@ -1 +1 @@\n"
-                "-before\n"
-                "+after\n"
-            )
+            target.write_text("after\n", encoding="utf-8")
+            diff = subprocess.run(
+                ["git", "diff", "--", "README.md"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            subprocess.run(["git", "checkout", "--", "README.md"], cwd=root, check=True)
             runtime = PatchRuntime(
                 policy=ExecutionPolicy(allow_filesystem_write=True),
                 paths=PathPolicy((str(root),)),
             )
-            self.assertEqual(runtime.check(str(root), patch).returncode, 0)
+            self.assertEqual(runtime.check(str(root), diff).returncode, 0)
             self.assertEqual(
-                runtime.apply(str(root), patch, approved=True).returncode, 0
+                runtime.apply(str(root), diff, approved=True).returncode, 0
             )
             self.assertEqual(target.read_text(encoding="utf-8"), "after\n")
 
