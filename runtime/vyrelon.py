@@ -530,6 +530,50 @@ class VYRELONRuntime:
             routing_strategy=routing_strategy,
         )
 
+    def resume_work(
+        self,
+        project_root: Path,
+        work_unit_id: str,
+        *,
+        agent_id: str,
+        preferred_model_ids: list[str] | None = None,
+        validation_commands: tuple[str, ...] = (),
+        apply_changes: bool = False,
+        fallback_model_ids: tuple[str, ...] = (),
+    ) -> OrchestrationResult:
+        """Resume a persisted failed WorkUnit through the same configured runtime."""
+        project_root = Path(project_root).resolve()
+        store = self.state_store(project_root)
+        if not store.exists(work_unit_id):
+            raise LookupError(f"Persisted WorkUnit not found: {work_unit_id}")
+        work_unit = store.load(work_unit_id)
+        if work_unit.status not in {WorkStatus.FAILED, WorkStatus.PENDING}:
+            raise ValueError(
+                f"WorkUnit {work_unit_id} is not resumable from {work_unit.status.value}"
+            )
+        work_unit.metadata["resume_count"] = int(work_unit.metadata.get("resume_count", 0)) + 1
+        work_unit.metadata["resumed"] = True
+        return self.run_configured_work(
+            project_root,
+            objective=work_unit.objective,
+            agent_id=agent_id,
+            work_unit_id=work_unit.id,
+            preferred_model_ids=preferred_model_ids,
+            validation_commands=validation_commands,
+            apply_changes=apply_changes,
+            fallback_model_ids=fallback_model_ids,
+        )
+
+    def recoverable_work(self, project_root: Path) -> tuple[WorkUnit, ...]:
+        """Return persisted WorkUnits that can be resumed."""
+        store = self.state_store(Path(project_root).resolve())
+        result = []
+        for work_unit_id in store.list_ids():
+            work_unit = store.load(work_unit_id)
+            if work_unit.status in {WorkStatus.FAILED, WorkStatus.PENDING}:
+                result.append(work_unit)
+        return tuple(result)
+
     def run_persistent(
         self,
         project_root: Path,
