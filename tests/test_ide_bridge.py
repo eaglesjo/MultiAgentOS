@@ -2,8 +2,6 @@ import json
 from urllib.request import Request, urlopen
 import unittest
 
-from core.contracts.agent import AgentContract
-from core.contracts.ai import ModelSpec
 from core.contracts.ide import IDECommandResult, IDEEventKind, IDEKind
 from runtime.ide.registry import IDEAdapterRegistry
 from runtime.ide.runtime import IDERuntime
