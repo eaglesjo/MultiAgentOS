@@ -41,6 +41,7 @@ from runtime.repository import RepositoryRuntime
 from runtime.multi_agent import MultiAgentResult, MultiAgentRuntime
 from runtime.ide.runtime import IDERuntime
 from runtime.ide.bridge import IDEBridge, IDEBridgePolicy, IDEBridgeServer
+from runtime.agent.ide import IDECodingExecutor, IDEValidationVerifier
 
 
 class VYRELONRuntime:
@@ -129,15 +130,28 @@ class VYRELONRuntime:
                 "agent_id": request.agent_id,
             },
         )
+        effective_verifier = verifier
+        if request.validation_commands:
+            effective_verifier = IDEValidationVerifier(
+                project_root=project_root,
+                commands=request.validation_commands,
+                policy=self.policy,
+            )
         if models is not None and executor is not None:
+            effective_executor = IDECodingExecutor(
+                delegate=executor,
+                project_root=project_root,
+                apply_changes=request.apply_changes,
+                policy=self.policy,
+            )
             result = self.run_persistent(
                 project_root=project_root,
                 work_unit=work_unit,
                 agent=agent,
                 models=models,
-                executor=executor,
+                executor=effective_executor,
                 preferred_model_ids=list(request.model_ids) or None,
-                verifier=verifier,
+                verifier=effective_verifier,
                 reviewer=reviewer,
             )
         else:
@@ -146,7 +160,7 @@ class VYRELONRuntime:
                 work_unit=work_unit,
                 agent=agent,
                 preferred_model_ids=list(request.model_ids) or None,
-                verifier=verifier,
+                verifier=effective_verifier,
                 reviewer=reviewer,
             )
         output = result.output
