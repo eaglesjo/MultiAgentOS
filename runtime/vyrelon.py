@@ -340,11 +340,18 @@ class VYRELONRuntime:
             if adapter_id in self.model_adapters.list():
                 continue
             metadata = dict(model.metadata)
-            adapter_kind = metadata.get("adapter_kind", adapter_id)
+            adapter_kind = str(metadata.get("adapter_kind", ""))
             if adapter_kind in {"cli", "http"}:
                 self.register_model_adapter(
                     adapter_id,
                     self.adapter_factory.build(adapter_id, metadata, self.policy),
+                )
+                continue
+            provider = self.providers.get_provider(model.provider_id)
+            provider_kind = provider.kind.lower()
+            if provider_kind in {"openai", "openai_responses", "anthropic", "anthropic_messages", "gemini", "gemini_generate_content"}:
+                self.provider_runtime_loader.materializer.materialize(
+                    (provider,), registry=self.model_adapters
                 )
 
     def configured_models(self, provider_id: str | None = None) -> list[ModelSpec]:
