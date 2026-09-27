@@ -35,6 +35,10 @@ class ToolRuntime:
     def specs(self) -> tuple[ToolSpec, ...]:
         return tuple(item.spec for item in self._tools.values())
 
+    def unregister(self, tool_id: str) -> None:
+        """Remove a registered tool from the current scoped runtime."""
+        self._tools.pop(tool_id, None)
+
     def execute(self, request: ToolRequest, *, granted_permissions: frozenset[str] = frozenset(), approved: bool = False) -> ToolResult:
         item = self._tools.get(request.tool_id)
         if item is None:
