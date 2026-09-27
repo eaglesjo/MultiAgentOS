@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Protocol
 
 
 class ToolSideEffect(StrEnum):
@@ -27,24 +27,12 @@ class RuntimeEventKind(StrEnum):
 
 
 @dataclass(frozen=True)
-class HarnessSpec:
-    """Execution/client behavior used by an agent."""
-
-    id: str
-    kind: str
-    display_name: str | None = None
-    capabilities: frozenset[str] = frozenset()
-    metadata: dict[str, object] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
 class SessionSpec:
     """Continuity policy for an active VYRELON development session."""
 
     id: str
     project_root: str
     agent_id: str | None = None
-    harness_id: str | None = None
     model_id: str | None = None
     checkpoint_id: str | None = None
     metadata: dict[str, object] = field(default_factory=dict)
@@ -97,7 +85,7 @@ class RuntimeEvent:
 
 
 class ProtocolAdapter(Protocol):
-    """Translate between provider/harness wire formats and VYRELON events."""
+    """Translate between provider wire formats and VYRELON requests/events."""
 
     def encode_request(self, request: object) -> object:
         ...
