@@ -16,6 +16,7 @@ from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import SessionStateStore, WorkStateStore
 from core.orchestrator import OrchestrationResult, Orchestrator
+from core.routing import AIRouter, RoutingStrategy
 from profiles.detector import ProfileDetector
 from profiles.resolver import ProfileResolver
 from integrations.github.gateway import GitHubGatewayClient
@@ -465,6 +466,14 @@ class VYRELONRuntime:
                 self.providers.get_model(model_id)
         elif agent.model_ids:
             preferred_model_ids = list(agent.model_ids)
+        else:
+            # Project-aware automatic routing is the default when no model is pinned.
+            assignment = AIRouter().assign(
+                agent,
+                models,
+                strategy=RoutingStrategy(routing_strategy),
+            )
+            preferred_model_ids = [assignment.model_id]
 
         from runtime.agent.model import ModelAgentExecutor
 
