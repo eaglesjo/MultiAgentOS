@@ -76,36 +76,53 @@ class ModelAgentExecutor(AgentExecutor):
         tool_runtime: ToolRuntime,
         approved: bool = False,
     ) -> ToolCallingExecution:
-        """Execute the selected model through the normalized Tool Calling runtime."""
-        if agent.model_ids and model_id not in agent.model_ids:
-            raise PermissionError(f"Model {model_id} is not assigned to agent {agent.id}")
-        model = self.models.get(model_id)
-        if model is None:
-            raise LookupError(f"Model not registered: {model_id}")
-        adapter_id = str(model.metadata.get("adapter_id", model.provider_id))
-        adapter = self.adapters.get(adapter_id)
-        if adapter is None:
-            raise LookupError(f"Model adapter not registered: {adapter_id}")
-        request = ModelRequest(
-            prompt=work_unit.objective,
-            system=self.system_prompt or str(agent.metadata.get("system_prompt", "")) or None,
-            metadata={"agent_id": agent.id, "work_unit_id": work_unit.id},
-        )
-        runtime = ToolCallingRuntime(
-            models={model_id: model},
-            adapters={model_id: adapter},
-            tools=tool_runtime,
-        )
-        result = runtime.execute(
-            request,
-            model_id=model_id,
-            work_unit_id=work_unit.id,
-            granted_permissions=agent.permissions,
-            approved=approved,
-        )
-        work_unit.metadata["model_response"] = result.response.text
-        work_unit.metadata["model_id"] = result.model_id
-        work_unit.metadata["model_adapter"] = adapter_id
-        work_unit.metadata["tool_rounds"] = result.rounds
-        work_unit.metadata["tool_results"] = tuple(result.tool_results)
-        return result
+        """Execute the selected model through Tool Calling with ordered fallback."""
+        attempts: list[str] = []
+        last_error: Exception | None = None
+        for candidate_id in self._candidate_model_ids(model_id):
+            if agent.model_ids and candidate_id not in agent.model_ids:
+                continue
+            try:
+                model = self.models.get(candidate_id)
+                if model is None:
+                    raise LookupError(f"Model not registered: {candidate_id}")
+                adapter_id = str(model.metadata.get("adapter_id", model.provider_id))
+                adapter = self.adapters.get(adapter_id)
+                if adapter is None:
+                    raise LookupError(f"Model adapter not registered: {adapter_id}")
+                request = ModelRequest(
+                    prompt=work_unit.objective,
+                    system=self.system_prompt or str(agent.metadata.get("system_prompt", "")) or None,
+                    metadata={
+                        "agent_id": agent.id,
+                        "work_unit_id": work_unit.id,
+                        "attempts": tuple(attempts),
+                    },
+                )
+                runtime = ToolCallingRuntime(
+                    models={candidate_id: model},
+                    adapters={candidate_id: adapter},
+                    tools=tool_runtime,
+                )
+                result = runtime.execute(
+                    request,
+                    model_id=candidate_id,
+                    work_unit_id=work_unit.id,
+                    granted_permissions=agent.permissions,
+                    approved=approved,
+                )
+                attempts.append(candidate_id)
+                work_unit.metadata["model_response"] = result.response.text
+                work_unit.metadata["model_id"] = result.model_id
+                work_unit.metadata["model_adapter"] = adapter_id
+                work_unit.metadata["tool_rounds"] = result.rounds
+                work_unit.metadata["tool_results"] = tuple(result.tool_results)
+                work_unit.metadata["model_attempts"] = tuple(attempts)
+                return result
+            except Exception as exc:
+                attempts.append(candidate_id)
+                last_error = exc
+        if last_error is not None:
+            raise last_error
+        raise LookupError(f"No executable tool-calling model available for agent {agent.id}")
+
