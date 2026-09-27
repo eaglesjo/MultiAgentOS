@@ -57,6 +57,7 @@ class MCPToolProfile:
     required_permissions: frozenset[str] = frozenset()
     allowed_side_effects: frozenset[ToolSideEffect] = frozenset({ToolSideEffect.READ})
     metadata: dict[str, object] = field(default_factory=dict)
+    tool_side_effects: dict[str, ToolSideEffect] = field(default_factory=dict)
 
     def allows(self, tool: MCPTool, permissions: frozenset[str] = frozenset()) -> bool:
         if self.server_ids and tool.server_id not in self.server_ids:
@@ -66,6 +67,7 @@ class MCPToolProfile:
             return False
         if self.allowed_tools and qualified not in self.allowed_tools and tool.name not in self.allowed_tools:
             return False
-        if tool.side_effect not in self.allowed_side_effects:
+        effective_side_effect = self.tool_side_effects.get(qualified, self.tool_side_effects.get(tool.name, tool.side_effect))
+        if effective_side_effect not in self.allowed_side_effects:
             return False
         return self.required_permissions.issubset(permissions) and tool.permissions.issubset(permissions)
