@@ -29,5 +29,8 @@ class MCPConfigLoader:
                 headers={str(k): str(v) for k,v in raw.get("headers", {}).items()},
                 enabled=bool(raw.get("enabled", True)),
                 metadata=dict(raw.get("metadata", {})),
+                source=str(raw.get("source", "built-in")),
+                cost_policy=str(raw.get("cost_policy", "no_external_billing" if raw.get("source", "built-in") == "built-in" else "external_service_possible")),
+                requires_explicit_enable=bool(raw.get("requires_explicit_enable", raw.get("source", "built-in") == "external")),
             ))
         return result
