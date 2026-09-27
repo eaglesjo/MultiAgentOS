@@ -3,6 +3,7 @@ import unittest
 from core.contracts import AgentContract, AIProvider, ModelRequest, ModelResponse, ModelSpec, WorkUnit
 from core.registry import AIRegistry
 from runtime.agent.model_backed import ModelBackedAgentExecutor
+from runtime.agent.model import ModelAgentExecutor
 from runtime.model.invoker import ModelInvoker
 from runtime.model.registry import ModelAdapterRegistry
 
