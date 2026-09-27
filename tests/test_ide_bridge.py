@@ -2,7 +2,9 @@ import json
 from urllib.request import Request, urlopen
 import unittest
 
-from core.contracts.ide import IDEEventKind, IDEKind
+from core.contracts.ide import IDECommandResult, IDEEventKind, IDEKind
+from runtime.ide.registry import IDEAdapterRegistry
+from runtime.ide.runtime import IDERuntime
 from runtime.ide.bridge import IDEBridge, IDEBridgeAuthorizationError, IDEBridgePolicy, IDEBridgeServer
 
 
@@ -57,6 +59,45 @@ class IDEBridgeTests(unittest.TestCase):
         bridge = IDEBridge(policy=IDEBridgePolicy(token="secret"))
         with self.assertRaises(ValueError):
             IDEBridgeServer(bridge, host="0.0.0.0", port=0)
+
+    def test_runtime_dispatches_authenticated_command(self):
+        class FakeAdapter:
+            kind = IDEKind.VS_CODE
+
+            def capabilities(self):
+                return frozenset({"insert_text"})
+
+            def context(self):
+                return None
+
+            def execute(self, command):
+                return IDECommandResult(ok=True, output={"command": command.kind.value}, metadata={})
+
+        registry = IDEAdapterRegistry()
+        registry.register(FakeAdapter())
+        runtime = IDERuntime(registry)
+        bridge = IDEBridge(policy=IDEBridgePolicy(token="secret"), runtime=runtime)
+        server = IDEBridgeServer(bridge, host="127.0.0.1", port=0)
+        server.start()
+        try:
+            body = json.dumps({
+                "kind": "insert_text",
+                "arguments": {"text": "hello"},
+                "context": {"kind": "vs_code", "project_root": "/tmp/project"},
+            }).encode()
+            request = Request(
+                f"http://127.0.0.1:{server.server.server_port}/v1/ide/command",
+                data=body,
+                headers={"Authorization": "Bearer secret", "Content-Type": "application/json"},
+                method="POST",
+            )
+            with urlopen(request) as response:
+                payload = json.loads(response.read())
+            self.assertTrue(payload["ok"])
+            self.assertTrue(payload["result"]["ok"])
+            self.assertEqual(payload["result"]["output"]["command"], "insert_text")
+        finally:
+            server.stop()
 
 
 if __name__ == "__main__":
