@@ -1,0 +1,22 @@
+{
+  "profiles": {
+    "mobile-tester": {
+      "servers": ["mobile-mcp"],
+      "tools": [
+        "mobile-mcp:take_screenshot",
+        "mobile-mcp:get_ui_tree",
+        "mobile-mcp:tap",
+        "mobile-mcp:swipe"
+      ],
+      "permissions": ["mcp.mobile.read", "mcp.mobile.interact"],
+      "side_effects": ["read", "write"],
+      "metadata": {"purpose": "controlled mobile validation"}
+    },
+    "mobile-observer": {
+      "servers": ["mobile-mcp"],
+      "tools": [],
+      "permissions": ["mcp.mobile.read"],
+      "side_effects": ["read"]
+    }
+  }
+}
