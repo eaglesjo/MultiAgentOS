@@ -30,6 +30,12 @@ class WorkStateStore:
         )
         return path
 
+    def exists(self, work_unit_id: str) -> bool:
+        return (self.root / f"{work_unit_id}.json").exists()
+
+    def list_ids(self) -> tuple[str, ...]:
+        return tuple(sorted(path.stem for path in self.root.glob("*.json")))
+
     def load(self, work_unit_id: str) -> WorkUnit:
         path = self.root / f"{work_unit_id}.json"
         data = json.loads(path.read_text(encoding="utf-8"))

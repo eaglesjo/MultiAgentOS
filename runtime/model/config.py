@@ -31,7 +31,10 @@ class ProviderConfigLoader:
             raise ValueError("'providers' must be a list")
 
         for provider_data in providers:
-            target.register(self._provider(provider_data))
+            provider = self._provider(provider_data)
+            if provider.id in target.list_provider_ids():
+                continue
+            target.register(provider)
         return target
 
     def _provider(self, value: Any) -> AIProvider:

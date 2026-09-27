@@ -136,5 +136,62 @@ class VYRELONRuntimeTests(unittest.TestCase):
             self.assertEqual(result.work_unit.metadata["runtime"], "configured-model")
             self.assertEqual(result.work_unit.metadata["agent_id"], "developer")
 
+    def test_failed_work_can_be_resumed_from_persisted_state(self):
+        class FailingAdapter:
+            def generate(self, model, request):
+                raise RuntimeError("temporary failure")
+            def generate_with_tools(self, model, request, tools):
+                raise RuntimeError("temporary failure")
+
+        class WorkingAdapter:
+            def generate(self, model, request):
+                return ModelResponse(text="resumed", model_id=model.id)
+            def generate_with_tools(self, model, request, tools):
+                return ModelResponse(text="resumed", model_id=model.id)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "package.json").write_text(
+                '{"dependencies":{"react-native":"0.82.0"}}', encoding="utf-8"
+            )
+            config = root / ".multiagentos"
+            config.mkdir()
+            (config / "providers.json").write_text(json.dumps({
+                "providers": [{
+                    "id": "test-provider",
+                    "kind": "openai",
+                    "models": [{
+                        "id": "test-model",
+                        "capabilities": ["code", "react-native"],
+                        "metadata": {"adapter_id": "test-adapter"},
+                    }],
+                }]
+            }), encoding="utf-8")
+            runtime = VYRELONRuntime()
+            with self.assertRaises(RuntimeError):
+                runtime.run_configured_work(
+                    root,
+                    objective="recover me",
+                    agent_id="developer",
+                    preferred_model_ids=["test-model"],
+                    adapter_overrides={"test-adapter": FailingAdapter()},
+                )
+            store = runtime.state_store(root)
+            work_id = store.list_ids()[-1]
+            failed = store.load(work_id)
+            self.assertEqual(failed.status, WorkStatus.FAILED)
+            self.assertEqual(failed.metadata["error"], "temporary failure")
+            result = runtime.resume_work(
+                root,
+                work_id,
+                agent_id="developer",
+                preferred_model_ids=["test-model"],
+                adapter_overrides={"test-adapter": WorkingAdapter()},
+            )
+            self.assertEqual(result.output.text, "resumed")
+            resumed = store.load(work_id)
+            self.assertEqual(resumed.status, WorkStatus.COMPLETED)
+            self.assertEqual(resumed.metadata["resume_count"], 1)
+
 if __name__ == "__main__":
     unittest.main()

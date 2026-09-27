@@ -12,6 +12,10 @@ class ModelAdapterRegistry:
             raise ValueError(f"Model adapter already registered: {adapter_id}")
         self._adapters[adapter_id] = adapter
 
+    def replace(self, adapter_id: str, adapter: ModelAdapter) -> None:
+        """Replace a scoped adapter, primarily for recovery/test injection."""
+        self._adapters[adapter_id] = adapter
+
     def get(self, adapter_id: str) -> ModelAdapter:
         try:
             return self._adapters[adapter_id]
