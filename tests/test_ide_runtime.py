@@ -8,6 +8,7 @@ from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.ide import IDECommand, IDECommandKind, IDECommandResult, IDEContext, IDEEvent, IDEEventKind, IDEKind, IDEWorkRequest
 from core.contracts.model_runtime import ModelResponse
+from runtime.agent.model import ModelAgentExecutor
 from runtime.ide.registry import IDEAdapterRegistry
 from runtime.ide.runtime import IDERuntime
 from runtime.vyrelon import VYRELONRuntime
@@ -128,20 +129,26 @@ class IDECodeChangeTests(unittest.TestCase):
             )
             runtime.ide.register(adapter)
             runtime.agent_profile = lambda project_root, agent_id: AgentContract(
-                id=agent_id, role="coder", model_ids=("fake-model",)
+                id=agent_id, role="coder", model_ids=("fake-model",), permissions=frozenset({"filesystem.write"})
             )
 
-            class PatchExecutor:
-                def execute(self, *, agent, model_id, work_unit):
-                    return ModelResponse(
-                        text="Applied change",
-                        model_id=model_id,
-                        metadata={
-                            "patch": "diff --git a/hello.py b/hello.py\n"
-                            "--- a/hello.py\n+++ b/hello.py\n"
-                            "@@ -1 +1 @@\n-value = 1\n+value = 2\n"
-                        },
-                    )
+            class PatchModel:
+                def __init__(self):
+                    self.calls = 0
+
+                def generate(self, model, request):
+                    return ModelResponse(text="unused", model_id=model.id)
+
+                def generate_with_tools(self, model, request, tools):
+                    self.calls += 1
+                    if self.calls == 1:
+                        patch = "diff --git a/hello.py b/hello.py\n--- a/hello.py\n+++ b/hello.py\n@@ -1 +1 @@\n-value = 1\n+value = 2\n"
+                        return ModelResponse(
+                            text="requesting patch",
+                            model_id=model.id,
+                            metadata={"tool_calls": [{"id": "call-1", "name": "patch.apply", "arguments": {"patch": patch}}]},
+                        )
+                    return ModelResponse(text="Applied change", model_id=model.id)
 
             request = IDEWorkRequest(
                 context=adapter.context(),
@@ -154,7 +161,7 @@ class IDECodeChangeTests(unittest.TestCase):
             result = runtime.submit_ide_work(
                 request,
                 models=[ModelSpec(id="fake-model", provider_id="test")],
-                executor=PatchExecutor(),
+                executor=ModelAgentExecutor({"test": PatchModel()}, [ModelSpec(id="fake-model", provider_id="test")]),
             )
             self.assertEqual(target.read_text(encoding="utf-8"), "value = 2\n")
             work_unit = result["work_unit"]

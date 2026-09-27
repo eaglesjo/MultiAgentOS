@@ -42,6 +42,9 @@ from runtime.multi_agent import MultiAgentResult, MultiAgentRuntime
 from runtime.ide.runtime import IDERuntime
 from runtime.ide.bridge import IDEBridge, IDEBridgePolicy, IDEBridgeServer
 from runtime.agent.ide import IDECodingExecutor, IDEValidationVerifier
+from runtime.tool_calling import ToolRuntime
+from runtime.builtin_tools import BuiltinToolBindings
+from runtime.repository_tools import GitToolBindings
 
 
 class VYRELONRuntime:
@@ -72,6 +75,7 @@ class VYRELONRuntime:
         self.repository = RepositoryRuntime(self.git, self.github, self.policy)
         self.multi_agent = MultiAgentRuntime(self.orchestrator)
         self.ide = IDERuntime()
+        self.tool_runtime = ToolRuntime(self.policy)
         self.ide_bridge_server: IDEBridgeServer | None = None
 
     def start_ide_bridge(
@@ -138,11 +142,15 @@ class VYRELONRuntime:
                 policy=self.policy,
             )
         if models is not None and executor is not None:
+            tool_runtime = ToolRuntime(self.policy)
+            BuiltinToolBindings(str(project_root), tool_runtime)
+            GitToolBindings(str(project_root), tool_runtime)
             effective_executor = IDECodingExecutor(
                 delegate=executor,
                 project_root=project_root,
                 apply_changes=request.apply_changes,
                 policy=self.policy,
+                tool_runtime=tool_runtime,
             )
             result = self.run_persistent(
                 project_root=project_root,
