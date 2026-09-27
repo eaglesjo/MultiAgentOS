@@ -28,6 +28,21 @@ class ModelAgentExecutor(AgentExecutor):
     def _candidate_model_ids(self, model_id: str) -> tuple[str, ...]:
         return tuple(dict.fromkeys((model_id, *self.fallback_model_ids)))
 
+    @staticmethod
+    def _is_failover_error(exc: Exception) -> bool:
+        """Return True for errors where another model/provider may succeed."""
+        status = getattr(exc, "status_code", getattr(exc, "status", None))
+        code = str(getattr(exc, "code", "")).lower()
+        message = str(exc).lower()
+        if status in {408, 429, 500, 502, 503, 504}:
+            return True
+        transient_codes = (
+            "rate_limit", "rate-limit", "quota", "resource_exhausted",
+            "too_many_requests", "temporarily_unavailable",
+            "service_unavailable", "overloaded", "timeout",
+        )
+        return any(token in code or token in message for token in transient_codes)
+
     def execute(
         self, *, agent: AgentContract, model_id: str, work_unit: WorkUnit
     ) -> ModelResponse:
@@ -63,6 +78,8 @@ class ModelAgentExecutor(AgentExecutor):
             except Exception as exc:
                 attempts.append(candidate_id)
                 last_error = exc
+                if not self._is_failover_error(exc):
+                    raise
         if last_error is not None:
             raise last_error
         raise LookupError(f"No executable model available for agent {agent.id}")
