@@ -26,6 +26,8 @@ class MCPClient:
         return self._stdio.session if self._stdio else self._http_session
 
     def connect(self) -> MCPSession:
+        if self.server.requires_explicit_enable and not self.server.enabled:
+            raise MCPError(f"External MCP server requires explicit enablement: {self.server.id}")
         if not self.server.enabled: raise MCPError(f"MCP server disabled: {self.server.id}")
         if self.server.transport in {"streamable-http", "http", "sse"}:
             return self._connect_http()
