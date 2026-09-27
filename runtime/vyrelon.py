@@ -472,12 +472,19 @@ class VYRELONRuntime:
         elif agent.model_ids:
             preferred_model_ids = list(agent.model_ids)
         else:
-            # Project-aware automatic routing is the default when no model is pinned.
+            # Project-aware automatic routing also considers the latest persisted quota.
             router = AIRouter()
+            quota_store = self.quota_store(project_root)
+            quota_snapshots = {
+                model.id: quota_store.load(model.id)
+                for model in models
+                if quota_store.exists(model.id)
+            }
             assignment = router.assign(
                 agent,
                 models,
                 strategy=RoutingStrategy(routing_strategy),
+                quota_snapshots=quota_snapshots,
             )
             preferred_model_ids = [assignment.model_id]
             fallback_model_ids = tuple(
