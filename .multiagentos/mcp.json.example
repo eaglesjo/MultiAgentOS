@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "mobile-mcp": {
+      "command": "npx",
+      "args": ["-y", "@mobilenext/mobile-mcp@latest"],
+      "metadata": {
+        "provider": "mobile-next",
+        "category": "mobile",
+        "platforms": ["ios", "android"],
+        "role": "external-mobile-tool-provider"
+      }
+    }
+  }
+}
