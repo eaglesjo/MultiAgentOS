@@ -1,0 +1,10 @@
+<idea-plugin>
+    <id>io.vyrelon.androidstudio</id>
+    <name>VYRELON</name>
+    <vendor>VYRELON</vendor>
+    <description>Android Studio adapter for the VYRELON development runtime.</description>
+    <depends>com.intellij.modules.platform</depends>
+    <extensions defaultExtensionNs="com.intellij">
+        <projectManagerListener implementation="io.vyrelon.androidstudio.VyrelonProjectActivityListener"/>
+    </extensions>
+</idea-plugin>
