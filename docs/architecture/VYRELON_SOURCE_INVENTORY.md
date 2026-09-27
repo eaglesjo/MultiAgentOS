@@ -23,7 +23,7 @@ MultiAgentOS remains the integration base. Multi-Agent orchestration is an exten
 | free-claude-code | fallback model routing | AI Runtime / Fallback | add |
 | free-claude-code | coding harness launchers | Agent Runtime / Harness | add |
 | free-claude-code | browser coding sessions | Session Runtime | add later |
-| free-claude-code | IDE/client integrations | Client Adapters | add incrementally |
+| free-claude-code | IDE/client integrations | Future IDE Adapters | evaluate only after runtime completion |
 | luna-chat-coder | exact GitHub source recovery | Repository Runtime | retain/generalize |
 | luna-chat-coder | sandbox-first workflow | Execution Policy | generalize |
 | luna-chat-coder | durable commit/PR state | Repository Runtime / State | retain |
@@ -134,13 +134,13 @@ Before copying implementation code rather than reimplementing behavior, inspect 
 ## Initial implementation order
 
 1. Runtime contracts: Harness, Session, Tool, Event, Protocol.
-2. Local execution/security runtime.
-3. AI protocol/event runtime and provider fallback.
-4. Repository continuity/recovery/evidence.
-5. MCP runtime.
-6. Validation/hooks.
-7. Multi-Agent orchestration integration.
-8. Client integrations (ChatGPT, VS Code, Android Studio, etc.).
+2. Local Tool Runtime: filesystem, shell/process, Git, patch, permission/path security.
+3. AI Runtime: protocol/event stream, tool calling, reasoning and fallback.
+4. Repository Runtime: GitHub, recovery, checkpoint, evidence and Actions.
+5. MCP Runtime: upstream, session, proxy, OAuth and tool profiles.
+6. Validation Runtime: post-edit hooks and validation evidence.
+7. Multi-Agent Runtime: planner, delegation, coder, reviewer, handoff and recovery.
+8. Only after 1–7: evaluate Xcode/iOS, VS Code and Android Studio plugin/extension adapters.
 
 ## Acceptance principle
 

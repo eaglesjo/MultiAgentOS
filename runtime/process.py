@@ -19,8 +19,23 @@ class ProcessRuntime:
     def __init__(self, policy: ExecutionPolicy | None = None) -> None:
         self.policy = policy or ExecutionPolicy()
 
-    def run(self, command: list[str], cwd: str | None = None) -> ProcessResult:
+    def run(
+        self,
+        command: list[str],
+        cwd: str | None = None,
+        *,
+        input_text: str | None = None,
+        timeout: float | None = None,
+    ) -> ProcessResult:
         if not self.policy.permits("process"):
             raise PermissionError("Process execution is disabled by policy")
-        result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, check=False)
+        result = subprocess.run(
+            command,
+            cwd=cwd,
+            input=input_text,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=timeout,
+        )
         return ProcessResult(result.returncode, result.stdout, result.stderr)
