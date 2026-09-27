@@ -90,6 +90,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     models = subparsers.add_parser("models", help="execute configured AI models")
     model_sub = models.add_subparsers(dest="models_command", required=True)
+    models_quota = model_sub.add_parser("quota", help="show observed and estimated model quota")
+    models_quota.add_argument("path", nargs="?", default=".")
+
     models_run = model_sub.add_parser("run", help="run a configured model through VYRELON")
     models_run.add_argument("path", nargs="?", default=".")
     models_run.add_argument("--model", required=True)
@@ -152,6 +155,43 @@ def _provider_list(root: Path) -> int:
     print(json.dumps(payload, indent=2))
     return 0
 
+
+
+def _model_quota(root: Path) -> int:
+    runtime = _provider_runtime(root)
+    store = runtime.quota_store(root)
+    payload = []
+    for model in runtime.configured_models():
+        if not store.exists(model.id):
+            payload.append({
+                "model": model.id,
+                "provider": model.provider_id,
+                "status": "unknown",
+                "confidence": "unknown",
+                "dimensions": {},
+            })
+            continue
+        snapshot = store.load(model.id)
+        payload.append({
+            "model": snapshot.model_id,
+            "provider": snapshot.provider_id,
+            "scope": snapshot.scope,
+            "observed_at": snapshot.observed_at.isoformat(),
+            "confidence": snapshot.confidence.value,
+            "dimensions": {
+                item.name: {
+                    "limit": item.limit,
+                    "used": item.used,
+                    "remaining": item.remaining,
+                    "reset_at": item.reset_at.isoformat() if item.reset_at else None,
+                    "confidence": item.confidence.value,
+                    "source": item.source,
+                }
+                for item in snapshot.dimensions
+            },
+        })
+    print(json.dumps(payload, indent=2))
+    return 0
 
 def _model_run(root: Path, model_id: str, objective: str, agent_id: str, *, apply_changes: bool = False, validation_commands: list[str] | None = None, mcp_server_ids: list[str] | None = None) -> int:
     from runtime.vyrelon import VYRELONRuntime
