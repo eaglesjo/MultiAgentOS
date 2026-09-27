@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 
 from runtime.ide.runtime import IDERuntime
 from core.contracts.ide import (
-    IDECommand, IDECommandKind, IDEContext, IDEEvent, IDEEventKind, IDEKind,
+    IDECommand, IDECommandKind, IDEContext, IDEEvent, IDEEventKind, IDEKind, IDEWorkRequest,
 )
 
 
@@ -33,17 +33,25 @@ class IDEBridge:
     def __init__(self, *, policy: IDEBridgePolicy,
                  runtime: IDERuntime | None = None,
                  event_handler: Callable[[IDEEvent], object] | None = None,
-                 command_handler: Callable[[IDECommand], object] | None = None) -> None:
+                 command_handler: Callable[[IDECommand], object] | None = None,
+                 work_handler: Callable[[IDEWorkRequest], object] | None = None) -> None:
         self.policy = policy
         self.runtime = runtime
         self.event_handler = event_handler or (lambda event: event)
         self.command_handler = command_handler or (lambda command: command)
+        self.work_handler = work_handler
 
     def handle_event(self, payload: dict[str, object]) -> object:
         event = decode_event(payload)
         if self.runtime is not None:
             return self.runtime.ingest_event(event)
         return self.event_handler(event)
+
+    def handle_work(self, payload: dict[str, object]) -> object:
+        request = decode_work_request(payload)
+        if self.work_handler is None:
+            raise ValueError("IDE work handler is not configured")
+        return self.work_handler(request)
 
     def handle_command(self, payload: dict[str, object]) -> object:
         command = decode_command(payload)
@@ -71,6 +79,8 @@ class _Handler(BaseHTTPRequestHandler):
             path = urlparse(self.path).path
             if path == "/v1/ide/event":
                 result = self.bridge.handle_event(payload)
+            elif path == "/v1/ide/work":
+                result = self.bridge.handle_work(payload)
             elif path == "/v1/ide/command":
                 result = self.bridge.handle_command(payload)
             else:
@@ -163,5 +173,24 @@ def decode_command(payload: dict[str, object]) -> IDECommand:
         kind=IDECommandKind(str(payload["kind"])),
         arguments=arguments,
         context=_context(payload) if payload.get("context") is not None else None,
+        metadata=payload.get("metadata", {}),
+    )
+
+    
+def decode_work_request(payload: dict[str, object]) -> IDEWorkRequest:
+    objective = payload.get("objective")
+    agent_id = payload.get("agent_id")
+    model_ids = payload.get("model_ids", [])
+    if not isinstance(objective, str) or not objective.strip():
+        raise ValueError("objective must be a non-empty string")
+    if not isinstance(agent_id, str) or not agent_id.strip():
+        raise ValueError("agent_id must be a non-empty string")
+    if not isinstance(model_ids, list) or not all(isinstance(item, str) for item in model_ids):
+        raise ValueError("model_ids must be a list of strings")
+    return IDEWorkRequest(
+        context=_context(payload),
+        objective=objective,
+        agent_id=agent_id,
+        model_ids=tuple(model_ids),
         metadata=payload.get("metadata", {}),
     )
