@@ -4,6 +4,7 @@ from pathlib import Path
 
 from core.contracts import AgentContract, ModelSpec, WorkUnit, WorkStatus
 from core.contracts.model_runtime import ModelResponse
+from core.contracts.ide import IDEKind
 from runtime.vyrelon import VYRELONRuntime
 
 
@@ -62,6 +63,17 @@ class VYRELONRuntimeTests(unittest.TestCase):
             self.assertEqual(persisted.status, WorkStatus.COMPLETED)
             self.assertEqual(persisted.assigned_agents, ["executor"])
             self.assertEqual(persisted.metadata["cwd"], str(root))
+
+    def test_ide_bridge_is_owned_by_vyrelon_runtime(self):
+        runtime = VYRELONRuntime()
+        server = runtime.start_ide_bridge(token="secret", port=0)
+        try:
+            self.assertIs(runtime.ide_bridge_server, server)
+            self.assertEqual(server.server.server_address[0], "127.0.0.1")
+            self.assertEqual(runtime.ide._contexts, {})
+        finally:
+            runtime.stop_ide_bridge()
+        self.assertIsNone(runtime.ide_bridge_server)
 
     def test_run_model_uses_provider_neutral_adapter(self):
         class Adapter:
