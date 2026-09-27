@@ -13,6 +13,14 @@ class IDEKind(StrEnum):
     ANDROID_STUDIO = "android_studio"
 
 
+class IDEEventKind(StrEnum):
+    CONTEXT_CHANGED = "context_changed"
+    SELECTION_CHANGED = "selection_changed"
+    FILE_OPENED = "file_opened"
+    FILE_SAVED = "file_saved"
+    WORKSPACE_OPENED = "workspace_opened"
+
+
 class IDECommandKind(StrEnum):
     OPEN_WORKSPACE = "open_workspace"
     OPEN_FILE = "open_file"
@@ -34,6 +42,16 @@ class IDEContext:
     selection_start: int | None = None
     selection_end: int | None = None
     language_id: str | None = None
+    metadata: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class IDEEvent:
+    """Normalized event sent from an IDE adapter to VYRELON."""
+
+    kind: IDEEventKind
+    context: IDEContext
+    payload: dict[str, object] = field(default_factory=dict)
     metadata: dict[str, object] = field(default_factory=dict)
 
 
@@ -71,4 +89,11 @@ class IDEAdapter(Protocol):
         ...
 
     def execute(self, command: IDECommand) -> IDECommandResult:
+        ...
+
+
+class IDEEventSink(Protocol):
+    """Consumer for normalized IDE events flowing into VYRELON."""
+
+    def handle(self, event: IDEEvent) -> object:
         ...

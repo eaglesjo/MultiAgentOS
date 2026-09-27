@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from core.contracts.ide import IDECommand, IDECommandKind, IDECommandResult, IDEContext, IDEKind
+from core.contracts.ide import IDECommand, IDECommandKind, IDECommandResult, IDEContext, IDEEvent, IDEEventKind, IDEKind
 from runtime.ide.registry import IDEAdapterRegistry
 from runtime.ide.runtime import IDERuntime
 
@@ -43,6 +43,13 @@ class IDERuntimeTests(unittest.TestCase):
         self.assertEqual(runtime.context(IDEKind.VS_CODE).kind, IDEKind.VS_CODE)
         result = runtime.execute(IDEKind.VS_CODE, IDECommand(kind=IDECommandKind.SHOW_MESSAGE))
         self.assertTrue(result.ok)
+
+    def test_ide_event_is_distinct_from_vyrelon_command(self) -> None:
+        runtime = IDERuntime()
+        context = IDEContext(kind=IDEKind.VS_CODE, project_root="/workspace", file_path="/workspace/main.py")
+        event = IDEEvent(kind=IDEEventKind.SELECTION_CHANGED, context=context, payload={"text": "hello"})
+        self.assertIs(runtime.ingest_event(event), event)
+        self.assertEqual(event.kind, IDEEventKind.SELECTION_CHANGED)
 
     def test_contract_is_provider_neutral(self) -> None:
         context = IDEContext(kind=IDEKind.ANDROID_STUDIO, project_root="/workspace", file_path="app/src/main/kotlin/Main.kt", selection_start=10, selection_end=20)

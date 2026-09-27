@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.contracts.ide import IDEAdapter, IDECommand, IDECommandResult, IDEContext, IDEKind
+from core.contracts.ide import IDEAdapter, IDECommand, IDECommandResult, IDEContext, IDEEvent, IDEKind
 from runtime.ide.registry import IDEAdapterRegistry
 
 
@@ -20,6 +20,10 @@ class IDERuntime:
 
     def execute(self, kind: IDEKind, command: IDECommand) -> IDECommandResult:
         return self.registry.get(kind).execute(command)
+
+    def ingest_event(self, event: IDEEvent) -> object:
+        """Accept an IDE-originated event without treating it as a command."""
+        return event
 
     def capabilities(self, kind: IDEKind) -> frozenset[str]:
         return self.registry.get(kind).capabilities()
