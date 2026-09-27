@@ -1,4 +1,6 @@
 """MCP runtime for VYRELON."""
 from .client import MCPClient, MCPError, MCPProtocolError
 from .config import MCPConfigLoader
-__all__ = ["MCPClient", "MCPConfigLoader", "MCPError", "MCPProtocolError"]
+from .proxy import MCPToolProxy
+from .session import MCPSessionRegistry
+__all__=["MCPClient","MCPConfigLoader","MCPError","MCPProtocolError","MCPToolProxy","MCPSessionRegistry"]
