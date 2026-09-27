@@ -5,7 +5,9 @@ from enum import Enum
 
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
-from runtime.quota import QuotaSnapshot, quota_available, quota_score
+from core.contracts.health import ModelHealth
+from core.contracts.quota import QuotaSnapshot
+from runtime.quota import quota_available, quota_score
 
 
 class RoutingStrategy(str, Enum):
@@ -27,30 +29,37 @@ class AIRouter:
         models: list[ModelSpec],
         preferred_model_ids: list[str] | None = None,
         strategy: RoutingStrategy | str = RoutingStrategy.POOL,
+        quota_snapshots: dict[str, QuotaSnapshot] | None = None,
+        health_snapshots: dict[str, ModelHealth] | None = None,
     ) -> Assignment:
         strategy = RoutingStrategy(strategy)
         preferred = preferred_model_ids if preferred_model_ids is not None else list(agent.model_ids)
         by_id = {model.id: model for model in models}
         quota_snapshots = quota_snapshots or {}
+        health_snapshots = health_snapshots or {}
 
-        if strategy in {RoutingStrategy.EXPLICIT, RoutingStrategy.POOL}:
-            for model_id in preferred:
-                model = by_id.get(model_id)
-                if model and self._compatible(agent, model):
-                    snapshot = quota_snapshots.get(model.id)
-                    if snapshot is None or quota_available(snapshot):
-                        return Assignment(agent.id, model.id)
-            if strategy is RoutingStrategy.EXPLICIT:
-                raise LookupError(f"No explicitly assigned compatible model for agent: {agent.id}")
-
-        if strategy in {RoutingStrategy.POOL, RoutingStrategy.AUTO}:
-            compatible = [
-                model for model in models
-                if self._compatible(agent, model)
+        def available(model: ModelSpec) -> bool:
+            health = health_snapshots.get(model.id)
+            return (
+                (health is None or health.available)
                 and (
                     quota_snapshots.get(model.id) is None
                     or quota_available(quota_snapshots[model.id])
                 )
+            )
+
+        if strategy in {RoutingStrategy.EXPLICIT, RoutingStrategy.POOL}:
+            for model_id in preferred:
+                model = by_id.get(model_id)
+                if model and self.compatible(agent, model) and available(model):
+                    return Assignment(agent.id, model.id)
+            if strategy is RoutingStrategy.EXPLICIT:
+                raise LookupError(f"No explicitly assigned available model for agent: {agent.id}")
+
+        if strategy in {RoutingStrategy.POOL, RoutingStrategy.AUTO}:
+            compatible = [
+                model for model in models
+                if self.compatible(agent, model) and available(model)
             ]
             compatible.sort(
                 key=lambda model: quota_score(quota_snapshots[model.id])
@@ -60,8 +69,10 @@ class AIRouter:
             if compatible:
                 return Assignment(agent.id, compatible[0].id)
 
-        raise LookupError(f"No compatible model for agent: {agent.id}")
+        raise LookupError(f"No compatible available model for agent: {agent.id}")
 
     @staticmethod
-    def _compatible(agent: AgentContract, model: ModelSpec) -> bool:
+    def compatible(agent: AgentContract, model: ModelSpec) -> bool:
         return not agent.capabilities or agent.capabilities.issubset(model.capabilities)
+
+    _compatible = compatible
