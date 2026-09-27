@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from uuid import uuid4
 
 from agents.registry import build_registry
 from core.contracts.agent import AgentContract
+from core.contracts.ide import IDECommand, IDECommandKind, IDEWorkRequest
 from core.contracts.ai import AIProvider, ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.work_unit import WorkStatus, WorkUnit
@@ -85,6 +87,7 @@ class VYRELONRuntime:
         bridge = IDEBridge(
             policy=IDEBridgePolicy(token=token, allow_remote=allow_remote),
             runtime=self.ide,
+            work_handler=self.submit_ide_work,
         )
         self.ide_bridge_server = IDEBridgeServer(bridge, host=host, port=port)
         self.ide_bridge_server.start()
