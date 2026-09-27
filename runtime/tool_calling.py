@@ -107,6 +107,7 @@ class ToolCallingRuntime:
         yield emit(RuntimeEventKind.REQUEST, {"model_id": model_id})
         result = self.execute(request, model_id=model_id, session=session, work_unit_id=work_unit_id, granted_permissions=granted_permissions, approved=approved)
         for item in result.tool_results:
+            yield emit(RuntimeEventKind.TOOL_CALL, {"tool_id": item.tool_id})
             yield emit(RuntimeEventKind.TOOL_RESULT, item)
         yield emit(RuntimeEventKind.MESSAGE, {"model_id": result.model_id, "text": result.response.text})
         yield emit(RuntimeEventKind.COMPLETED, {"model_id": result.model_id, "rounds": result.rounds})
