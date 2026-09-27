@@ -120,7 +120,7 @@ class GeminiGenerateContentToolAdapter:
         for turn in history if isinstance(history, (list, tuple)) else ():
             calls = [{"functionCall": {"name": _tool_name(str(c["tool_id"])), "args": c["arguments"]}} for c in turn.get("tool_calls", ())]
             if calls: contents.append({"role": "model", "parts": calls})
-            results = [{"functionResponse": {"name": _tool_name(str(r["tool_id"])), "response": {"ok": r.get("ok"), "output": r.get("output"), "error": r.get("error")}}} for r in turn.get("tool_results", ()))]
+            results = [{"functionResponse": {"name": _tool_name(str(r["tool_id"])), "response": {"ok": r.get("ok"), "output": r.get("output"), "error": r.get("error")}}} for r in turn.get("tool_results", ())]
             if results: contents.append({"role": "user", "parts": results})
         payload: dict[str, Any] = {"contents": contents}
         if request.system: payload["systemInstruction"] = {"parts": [{"text": request.system}]}
