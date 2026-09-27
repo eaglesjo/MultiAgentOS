@@ -5,6 +5,7 @@ from core.contracts.ai import AIProvider, ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier, ReviewDecision
 from core.contracts.mcp import MCPServerSpec, MCPSession, MCPTool, MCPToolCall, MCPToolResult
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
+from core.contracts.health import HealthStatus, ModelHealth
 from core.contracts.runtime import ExecutionRequest, RuntimeExecutor
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.profile import DetectionResult, ProfileSpec
@@ -15,6 +16,7 @@ __all__ = [
     "AgentExecutor", "ResultVerifier", "ResultReviewer", "ReviewDecision",
     "MCPServerSpec", "MCPSession", "MCPTool", "MCPToolCall", "MCPToolResult",
     "ModelAdapter", "ModelRequest", "ModelResponse",
+    "HealthStatus", "ModelHealth",
     "ExecutionRequest", "RuntimeExecutor",
     "DetectionResult", "ProfileSpec", "PlanStep", "WorkPlan",
     "WorkStatus", "WorkUnit",
