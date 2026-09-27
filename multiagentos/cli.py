@@ -288,6 +288,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "models":
         root = Path(args.path).expanduser().resolve()
+        if args.models_command == "quota":
+            return _model_quota(root)
         if args.models_command == "run":
             return _model_run(
                 root,
