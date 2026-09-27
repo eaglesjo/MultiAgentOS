@@ -129,7 +129,7 @@ class IDECodeChangeTests(unittest.TestCase):
             )
             runtime.ide.register(adapter)
             runtime.agent_profile = lambda project_root, agent_id: AgentContract(
-                id=agent_id, role="coder", model_ids=("fake-model",)
+                id=agent_id, role="coder", model_ids=("fake-model",), permissions=frozenset({"filesystem.write"})
             )
 
             class PatchModel:
