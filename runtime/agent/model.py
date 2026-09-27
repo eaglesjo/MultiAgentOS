@@ -5,7 +5,7 @@ from __future__ import annotations
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor
-from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
+from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse\nfrom runtime.quota import QuotaIntelligence
 from runtime.tool_calling import ToolCallingExecution, ToolCallingRuntime, ToolRuntime
 from core.contracts.work_unit import WorkUnit
 
