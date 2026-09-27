@@ -5,7 +5,8 @@ from __future__ import annotations
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor
-from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse\nfrom runtime.quota import QuotaIntelligence
+from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
+from runtime.quota import QuotaIntelligence
 from runtime.tool_calling import ToolCallingExecution, ToolCallingRuntime, ToolRuntime
 from core.contracts.work_unit import WorkUnit
 
@@ -19,11 +20,13 @@ class ModelAgentExecutor(AgentExecutor):
         models: list[ModelSpec],
         system_prompt: str | None = None,
         fallback_model_ids: tuple[str, ...] = (),
+        quota_intelligence: QuotaIntelligence | None = None,
     ):
         self.adapters = dict(adapters)
         self.models = {model.id: model for model in models}
         self.system_prompt = system_prompt
         self.fallback_model_ids = tuple(fallback_model_ids)
+        self.quota_intelligence = quota_intelligence
 
     def _candidate_model_ids(self, model_id: str) -> tuple[str, ...]:
         return tuple(dict.fromkeys((model_id, *self.fallback_model_ids)))
@@ -74,6 +77,15 @@ class ModelAgentExecutor(AgentExecutor):
                 work_unit.metadata["model_id"] = response.model_id
                 work_unit.metadata["model_adapter"] = adapter_id
                 work_unit.metadata["model_attempts"] = tuple(attempts)
+                if self.quota_intelligence is not None:
+                    snapshot = self.quota_intelligence.observe_response(model, metadata)
+                    work_unit.metadata["quota_snapshot"] = {
+                        "confidence": snapshot.confidence.value,
+                        "dimensions": {
+                            item.name: {"remaining": item.remaining, "limit": item.limit}
+                            for item in snapshot.dimensions
+                        },
+                    }
                 return response
             except Exception as exc:
                 attempts.append(candidate_id)
