@@ -50,7 +50,9 @@ class RepositoryRuntime:
         return checkpoint
 
     def recover(self, project_root: Path, checkpoint: RepositoryCheckpoint) -> RecoveryResult:
-        if not bool(checkpoint.metadata.get("stashed", False)):\n            return RecoveryResult(checkpoint.id, True, "No local changes required recovery", "")\n        result = self.git.stash(project_root.as_posix(), "pop")
+        if not bool(checkpoint.metadata.get("stashed", False)):
+            return RecoveryResult(checkpoint.id, True, "No local changes required recovery", "")
+        result = self.git.stash(project_root.as_posix(), "pop")
         if result.returncode == 0:
             return RecoveryResult(checkpoint.id, True, result.stdout, "")
         return RecoveryResult(checkpoint.id, False, result.stdout, result.stderr)
