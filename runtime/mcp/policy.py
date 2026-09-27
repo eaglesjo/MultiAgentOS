@@ -24,7 +24,7 @@ class MCPToolProfileLoader:
                 denied_tools=frozenset(item.get("deny_tools", [])),
                 required_permissions=frozenset(item.get("permissions", [])),
                 allowed_side_effects=frozenset(ToolSideEffect(value) for value in item.get("side_effects", ["read"])),
-                metadata=item.get("metadata", {}),
+                metadata=item.get("metadata", {}),\n                tool_side_effects={key: ToolSideEffect(value) for key, value in item.get("tool_side_effects", {}).items()},
             ))
         return tuple(result)
 
