@@ -49,6 +49,7 @@ from runtime.tool_calling import ToolRuntime
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.repository_tools import GitToolBindings, MCPToolBindings
 from runtime.quota import QuotaIntelligence, QuotaStore
+from runtime.health import ModelHealthRegistry, ModelHealthStore
 
 
 class VYRELONRuntime:
@@ -347,6 +348,10 @@ class VYRELONRuntime:
         """Return the project-scoped persistent model quota store."""
         return QuotaStore(Path(project_root) / ".multiagentos" / "quota")
 
+    def health_registry(self, project_root: Path):
+        """Return the project-scoped persistent model health registry."""
+        return ModelHealthRegistry(ModelHealthStore(Path(project_root) / ".multiagentos" / "health"))
+
     def agents(self, project_root: Path):
         """Return the legacy AgentRegistry for compatibility."""
         detections = self.inspect(project_root)
@@ -475,27 +480,40 @@ class VYRELONRuntime:
             # Project-aware automatic routing also considers the latest persisted quota.
             router = AIRouter()
             quota_store = self.quota_store(project_root)
+            health_registry = self.health_registry(project_root)
             quota_snapshots = {
                 model.id: quota_store.load(model.id)
                 for model in models
                 if quota_store.exists(model.id)
+            }
+            health_snapshots = {
+                model.id: health_registry.get(model.id)
+                for model in models
+                if health_registry.get(model.id) is not None
             }
             assignment = router.assign(
                 agent,
                 models,
                 strategy=RoutingStrategy(routing_strategy),
                 quota_snapshots=quota_snapshots,
+                health_snapshots=health_snapshots,
             )
             preferred_model_ids = [assignment.model_id]
             fallback_model_ids = tuple(
                 model.id
                 for model in models
                 if model.id != assignment.model_id
-                and router._compatible(agent, model)
+                and router.compatible(agent, model)
+                and health_registry.available(model.id)
+                and (
+                    not quota_store.exists(model.id)
+                    or __import__("runtime.quota", fromlist=["quota_available"]).quota_available(quota_store.load(model.id))
+                )
             )
 
         from runtime.agent.model import ModelAgentExecutor
         quota_intelligence = QuotaIntelligence(self.quota_store(project_root))
+        health_registry = self.health_registry(project_root)
 
         tool_runtime = ToolRuntime(self.policy)
         BuiltinToolBindings(str(project_root), tool_runtime)
@@ -515,6 +533,7 @@ class VYRELONRuntime:
             system_prompt=system_prompt,
             fallback_model_ids=fallback_model_ids,
             quota_intelligence=quota_intelligence,
+            health_registry=health_registry,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,
