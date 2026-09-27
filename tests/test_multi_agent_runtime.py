@@ -62,7 +62,7 @@ class MultiAgentRuntimeTests(unittest.TestCase):
         model = ModelSpec("code", "local")
         executor = RecordingExecutor("coder")
         with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaises(RuntimeError):
+            with self.assertRaises(ValueError):
                 MultiAgentRuntime().run(
                     Path(tmp),
                     WorkUnit("wu-dep", "feature"),
