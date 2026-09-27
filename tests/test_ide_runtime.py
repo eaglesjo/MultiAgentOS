@@ -142,7 +142,7 @@ class IDECodeChangeTests(unittest.TestCase):
                 def generate_with_tools(self, model, request, tools):
                     self.calls += 1
                     if self.calls == 1:
-                        patch = "diff --git a/hello.py b/hello.py\\n--- a/hello.py\\n+++ b/hello.py\\n@@ -1 +1 @@\\n-value = 1\\n+value = 2\\n"
+                        patch = "diff --git a/hello.py b/hello.py\n--- a/hello.py\n+++ b/hello.py\n@@ -1 +1 @@\n-value = 1\n+value = 2\n"
                         return ModelResponse(
                             text="requesting patch",
                             model_id=model.id,
