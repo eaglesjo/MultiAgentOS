@@ -567,6 +567,7 @@ class VYRELONRuntime:
             )
         work_unit.metadata["resume_count"] = int(work_unit.metadata.get("resume_count", 0)) + 1
         work_unit.metadata["resumed"] = True
+        store.save(work_unit)
         return self.run_configured_work(
             project_root,
             objective=work_unit.objective,
