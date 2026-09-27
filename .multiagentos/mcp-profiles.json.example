@@ -10,6 +10,7 @@
       ],
       "permissions": ["mcp.mobile.read", "mcp.mobile.interact"],
       "side_effects": ["read", "write"],
+      "tool_side_effects": {"take_screenshot": "read", "get_ui_tree": "read", "tap": "write", "swipe": "write"},
       "metadata": {"purpose": "controlled mobile validation"}
     },
     "mobile-observer": {
