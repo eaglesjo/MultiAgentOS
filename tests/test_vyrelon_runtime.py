@@ -140,9 +140,13 @@ class VYRELONRuntimeTests(unittest.TestCase):
         class FailingAdapter:
             def generate(self, model, request):
                 raise RuntimeError("temporary failure")
+            def generate_with_tools(self, model, request, tools):
+                raise RuntimeError("temporary failure")
 
         class WorkingAdapter:
             def generate(self, model, request):
+                return ModelResponse(text="resumed", model_id=model.id)
+            def generate_with_tools(self, model, request, tools):
                 return ModelResponse(text="resumed", model_id=model.id)
 
         with tempfile.TemporaryDirectory() as temp:
