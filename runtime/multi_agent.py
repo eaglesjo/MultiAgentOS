@@ -113,6 +113,7 @@ class MultiAgentRuntime:
                     )
                 store.save(work_unit)
 
+            work_unit.transition(WorkStatus.VERIFYING)
             work_unit.transition(WorkStatus.HANDOFF)
             work_unit.transition(WorkStatus.COMPLETED)
             store.save(work_unit)
