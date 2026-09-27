@@ -104,7 +104,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--objective", required=True)
     run.add_argument("--agent", default="executor")
     run.add_argument("--id", dest="work_unit_id")
-    run.add_argument("--model")
+    run.add_argument("--model", help="pin a model; omit to route automatically")
     run.add_argument("--apply-changes", action="store_true")
     run.add_argument("--validate", action="append", default=[])
     run.add_argument("--mcp", action="append", default=[])
@@ -262,8 +262,8 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.path).expanduser().resolve()
 
     if args.command == "run":
-        if bool(args.model) == bool(args.process_command):
-            raise ValueError("Specify exactly one of --model or --command")
+        if args.model and args.process_command:
+            raise ValueError("Specify at most one of --model or --command")
         work = WorkUnit(
             id=args.work_unit_id or uuid.uuid4().hex,
             objective=args.objective,
@@ -278,16 +278,17 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from runtime.vyrelon import VYRELONRuntime
             runtime = VYRELONRuntime()
-            if args.model:
+            if args.model or not args.process_command:
                 work.metadata["runtime"] = "configured-model"
-                work.metadata["model_id"] = args.model
                 work.metadata["agent_id"] = args.agent
+                if args.model:
+                    work.metadata["model_id"] = args.model
                 result = runtime.run_configured_work(
                     root,
                     objective=args.objective,
                     agent_id=args.agent,
                     work_unit_id=work.id,
-                    preferred_model_ids=[args.model],
+                    preferred_model_ids=[args.model] if args.model else None,
                     apply_changes=args.apply_changes,
                     validation_commands=tuple(args.validate),
                     mcp_server_ids=tuple(args.mcp),
