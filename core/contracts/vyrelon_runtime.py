@@ -38,6 +38,15 @@ class SessionSpec:
     metadata: dict[str, object] = field(default_factory=dict)
 
 
+@dataclass
+class SessionState:
+    """Persisted development-session state spanning multiple WorkUnits."""
+
+    spec: SessionSpec
+    work_unit_ids: list[str] = field(default_factory=list)
+    status: str = "active"
+    metadata: dict[str, object] = field(default_factory=dict)
+
 @dataclass(frozen=True)
 class ToolSpec:
     """Explicit executable capability exposed to an agent."""

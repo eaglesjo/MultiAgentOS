@@ -193,5 +193,21 @@ class VYRELONRuntimeTests(unittest.TestCase):
             self.assertEqual(resumed.status, WorkStatus.COMPLETED)
             self.assertEqual(resumed.metadata["resume_count"], 1)
 
+    def test_session_spans_work_units_and_recovery(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = VYRELONRuntime()
+            session = runtime.create_session(root, agent_id="developer")
+            work = WorkUnit(id="session-work", objective="continue")
+            work.transition(WorkStatus.EXECUTING)
+            work.transition(WorkStatus.FAILED)
+            runtime.state_store(root).save(work)
+            runtime.attach_work_unit(root, session.spec.id, work.id)
+            state = runtime.load_session(root, session.spec.id)
+            self.assertEqual(state.work_unit_ids, ["session-work"])
+            recovered_state, recoverable = runtime.session_recover(root, session.spec.id)
+            self.assertEqual(recovered_state.status, "recoverable")
+            self.assertEqual(tuple(item.id for item in recoverable), ("session-work",))
+
 if __name__ == "__main__":
     unittest.main()

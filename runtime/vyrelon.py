@@ -11,9 +11,10 @@ from core.contracts.ide import IDECommand, IDECommandKind, IDEWorkRequest
 from core.contracts.ai import AIProvider, ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.work_unit import WorkStatus, WorkUnit
+from core.contracts.vyrelon_runtime import SessionSpec, SessionState
 from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
-from core.state import WorkStateStore
+from core.state import SessionStateStore, WorkStateStore
 from core.orchestrator import OrchestrationResult, Orchestrator
 from profiles.detector import ProfileDetector
 from profiles.resolver import ProfileResolver
@@ -268,6 +269,75 @@ class VYRELONRuntime:
     def plan(self, work_unit: WorkUnit, steps):
         return BasicPlanner().plan(work_unit, steps)
 
+    def session_store(self, project_root: Path) -> SessionStateStore:
+        return SessionStateStore(Path(project_root).resolve() / ".multiagentos" / "sessions")
+
+    def create_session(
+        self,
+        project_root: Path,
+        *,
+        session_id: str | None = None,
+        agent_id: str | None = None,
+        model_id: str | None = None,
+        checkpoint_id: str | None = None,
+        metadata: dict[str, object] | None = None,
+    ) -> SessionState:
+        root = Path(project_root).resolve()
+        state = SessionState(
+            spec=SessionSpec(
+                id=session_id or f"session-{uuid4().hex}",
+                project_root=str(root),
+                agent_id=agent_id,
+                model_id=model_id,
+                checkpoint_id=checkpoint_id,
+                metadata=dict(metadata or {}),
+            )
+        )
+        self.session_store(root).save(state)
+        return state
+
+    def load_session(self, project_root: Path, session_id: str) -> SessionState:
+        return self.session_store(project_root).load(session_id)
+
+    def attach_work_unit(self, project_root: Path, session_id: str, work_unit_id: str) -> SessionState:
+        store = self.session_store(project_root)
+        state = store.load(session_id)
+        if work_unit_id not in state.work_unit_ids:
+            state.work_unit_ids.append(work_unit_id)
+        state.metadata["last_work_unit_id"] = work_unit_id
+        store.save(state)
+        return state
+
+    def session_checkpoint(self, project_root: Path, session_id: str, *, metadata: dict[str, object] | None = None) -> SessionState:
+        root = Path(project_root).resolve()
+        state = self.load_session(root, session_id)
+        checkpoint = self.repository_checkpoint(root, metadata={"session_id": session_id, **dict(metadata or {})})
+        state.spec = SessionSpec(
+            id=state.spec.id,
+            project_root=state.spec.project_root,
+            agent_id=state.spec.agent_id,
+            model_id=state.spec.model_id,
+            checkpoint_id=checkpoint.id,
+            metadata=state.spec.metadata,
+        )
+        state.metadata["checkpoint_id"] = checkpoint.id
+        self.session_store(root).save(state)
+        return state
+
+    def session_recover(self, project_root: Path, session_id: str) -> tuple[SessionState, tuple[WorkUnit, ...]]:
+        root = Path(project_root).resolve()
+        state = self.load_session(root, session_id)
+        recoverable = []
+        work_store = self.state_store(root)
+        for work_id in state.work_unit_ids:
+            if work_store.exists(work_id):
+                work = work_store.load(work_id)
+                if work.status in {WorkStatus.FAILED, WorkStatus.PENDING}:
+                    recoverable.append(work)
+        state.status = "recoverable" if recoverable else state.status
+        self.session_store(root).save(state)
+        return state, tuple(recoverable)
+
     def state_store(self, project_root: Path):
         return WorkStateStore(project_root / ".multiagentos" / "state")
 
@@ -365,6 +435,7 @@ class VYRELONRuntime:
         objective: str,
         agent_id: str,
         work_unit_id: str | None = None,
+        session_id: str | None = None,
         preferred_model_ids: list[str] | None = None,
         validation_commands: tuple[str, ...] = (),
         apply_changes: bool = False,
@@ -438,6 +509,7 @@ class VYRELONRuntime:
                 "agent_id": agent_id,
                 "apply_changes": apply_changes,
                 "runtime": "configured-model",
+                "session_id": session_id,
             })
         else:
             work_unit = WorkUnit(
@@ -448,8 +520,11 @@ class VYRELONRuntime:
                     "agent_id": agent_id,
                     "apply_changes": apply_changes,
                     "runtime": "configured-model",
+                    "session_id": session_id,
                 },
             )
+        if session_id:
+            self.attach_work_unit(project_root, session_id, work_unit.id)
         return self.run_persistent(
             project_root=project_root,
             work_unit=work_unit,
