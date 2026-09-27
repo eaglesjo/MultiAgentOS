@@ -34,9 +34,10 @@ def _request(endpoint: str, payload: dict[str, Any], headers: dict[str, str], po
     req = urllib.request.Request(endpoint, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json", **headers}, method="POST")
     with urllib.request.urlopen(req, timeout=300) as response:
         data = json.loads(response.read().decode())
+        response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
     if not isinstance(data, dict):
         raise ValueError("provider response must be a JSON object")
-    return data
+    return data, response_headers
 
 @dataclass(frozen=True)
 class OpenAIResponsesToolAdapter:
