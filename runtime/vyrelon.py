@@ -371,6 +371,7 @@ class VYRELONRuntime:
         system_prompt: str | None = None,
         adapter_overrides: dict[str, object] | None = None,
         mcp_server_ids: tuple[str, ...] = (),
+        fallback_model_ids: tuple[str, ...] = (),
         routing_strategy="pool",
     ) -> OrchestrationResult:
         """Run project-configured work without caller-side provider/model wiring."""
@@ -410,6 +411,7 @@ class VYRELONRuntime:
             },
             models=models,
             system_prompt=system_prompt,
+            fallback_model_ids=fallback_model_ids,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,
