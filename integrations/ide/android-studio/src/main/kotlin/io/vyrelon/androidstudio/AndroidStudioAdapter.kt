@@ -13,8 +13,8 @@ data class IdeContext(
 )
 
 class AndroidStudioAdapter(
-    private val endpoint: String = "http://127.0.0.1:8787",
-    private val token: String? = null,
+    private val endpoint: String = System.getenv("VYRELON_IDE_ENDPOINT") ?: "http://127.0.0.1:8787",
+    private val token: String? = System.getenv("VYRELON_IDE_TOKEN")?.takeIf { it.isNotBlank() },
 ) {
     fun context(project: Project, file: VirtualFile? = null): IdeContext =
         IdeContext(
