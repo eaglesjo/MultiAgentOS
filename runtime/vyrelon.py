@@ -427,16 +427,27 @@ class VYRELONRuntime:
                 commands=validation_commands,
                 policy=self.policy,
             )
-        work_unit = WorkUnit(
-            id=work_unit_id or f"work-{uuid4().hex}",
-            objective=objective,
-            metadata={
+        store = self.state_store(project_root)
+        if work_unit_id and store.exists(work_unit_id):
+            work_unit = store.load(work_unit_id)
+            work_unit.objective = objective
+            work_unit.metadata.update({
                 "source": "configured-runtime",
                 "agent_id": agent_id,
                 "apply_changes": apply_changes,
                 "runtime": "configured-model",
-            },
-        )
+            })
+        else:
+            work_unit = WorkUnit(
+                id=work_unit_id or f"work-{uuid4().hex}",
+                objective=objective,
+                metadata={
+                    "source": "configured-runtime",
+                    "agent_id": agent_id,
+                    "apply_changes": apply_changes,
+                    "runtime": "configured-model",
+                },
+            )
         return self.run_persistent(
             project_root=project_root,
             work_unit=work_unit,
