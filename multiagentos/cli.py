@@ -92,6 +92,8 @@ def build_parser() -> argparse.ArgumentParser:
     model_sub = models.add_subparsers(dest="models_command", required=True)
     models_quota = model_sub.add_parser("quota", help="show observed and estimated model quota")
     models_quota.add_argument("path", nargs="?", default=".")
+    models_health = model_sub.add_parser("health", help="show model health and cooldown state")
+    models_health.add_argument("path", nargs="?", default=".")
 
     models_run = model_sub.add_parser("run", help="run a configured model through VYRELON")
     models_run.add_argument("path", nargs="?", default=".")
@@ -193,6 +195,38 @@ def _model_quota(root: Path) -> int:
     print(json.dumps(payload, indent=2))
     return 0
 
+def _model_health(root: Path) -> int:
+    runtime = _provider_runtime(root)
+    registry = runtime.health_registry(root)
+    payload = []
+    for model in runtime.configured_models():
+        health = registry.get(model.id)
+        if health is None:
+            payload.append({
+                "model": model.id,
+                "provider": model.provider_id,
+                "status": "healthy",
+                "available": True,
+                "consecutive_failures": 0,
+                "successes": 0,
+            })
+            continue
+        payload.append({
+            "model": health.model_id,
+            "provider": health.provider_id,
+            "status": health.status.value,
+            "available": health.available,
+            "consecutive_failures": health.consecutive_failures,
+            "successes": health.successes,
+            "last_error": health.last_error,
+            "last_failure_at": health.last_failure_at.isoformat() if health.last_failure_at else None,
+            "last_success_at": health.last_success_at.isoformat() if health.last_success_at else None,
+            "cooldown_until": health.cooldown_until.isoformat() if health.cooldown_until else None,
+        })
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
 def _model_run(root: Path, model_id: str, objective: str, agent_id: str, *, apply_changes: bool = False, validation_commands: list[str] | None = None, mcp_server_ids: list[str] | None = None) -> int:
     from runtime.vyrelon import VYRELONRuntime
 
@@ -290,6 +324,8 @@ def main(argv: list[str] | None = None) -> int:
         root = Path(args.path).expanduser().resolve()
         if args.models_command == "quota":
             return _model_quota(root)
+        if args.models_command == "health":
+            return _model_health(root)
         if args.models_command == "run":
             return _model_run(
                 root,
