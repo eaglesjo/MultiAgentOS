@@ -1,0 +1,41 @@
+{
+  "name": "vyrelon-vscode",
+  "displayName": "VYRELON",
+  "description": "VS Code adapter for the VYRELON local development runtime.",
+  "version": "0.1.0",
+  "publisher": "vyrelon",
+  "engines": { "vscode": "^1.95.0" },
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "vyrelon.showContext", "title": "VYRELON: Show Context" },
+      { "command": "vyrelon.sendSelection", "title": "VYRELON: Send Selection" }
+    ],
+    "configuration": {
+      "title": "VYRELON",
+      "properties": {
+        "vyrelon.endpoint": {
+          "type": "string",
+          "default": "http://127.0.0.1:8787",
+          "description": "Loopback-only VYRELON bridge endpoint."
+        },
+        "vyrelon.token": {
+          "type": "string",
+          "default": "",
+          "description": "Optional bearer token for the local VYRELON bridge.",
+          "scope": "machine"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "check": "tsc --noEmit -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.95.0",
+    "typescript": "^5.7.0"
+  }
+}

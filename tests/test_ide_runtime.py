@@ -2,14 +2,9 @@ from __future__ import annotations
 
 import unittest
 
-from core.contracts.ide import (
-    IDECommand,
-    IDECommandKind,
-    IDECommandResult,
-    IDEContext,
-    IDEKind,
-)
+from core.contracts.ide import IDECommand, IDECommandKind, IDECommandResult, IDEContext, IDEKind
 from runtime.ide.registry import IDEAdapterRegistry
+from runtime.ide.runtime import IDERuntime
 
 
 class FakeIDEAdapter:
@@ -37,25 +32,21 @@ class IDERuntimeTests(unittest.TestCase):
         vscode = FakeIDEAdapter(IDEKind.VS_CODE)
         registry.register(xcode)
         registry.register(vscode)
-
         self.assertIs(registry.get(IDEKind.XCODE), xcode)
         self.assertIs(registry.get(IDEKind.VS_CODE), vscode)
         self.assertEqual(registry.list(), (IDEKind.XCODE, IDEKind.VS_CODE))
 
-    def test_contract_is_provider_neutral(self) -> None:
-        context = IDEContext(
-            kind=IDEKind.ANDROID_STUDIO,
-            project_root="/workspace",
-            file_path="app/src/main/kotlin/Main.kt",
-            selection_start=10,
-            selection_end=20,
-        )
-        command = IDECommand(
-            kind=IDECommandKind.REPLACE_SELECTION,
-            arguments={"text": "updated"},
-            context=context,
-        )
+    def test_runtime_delegates_to_adapter(self) -> None:
+        runtime = IDERuntime()
+        adapter = FakeIDEAdapter(IDEKind.VS_CODE)
+        runtime.register(adapter)
+        self.assertEqual(runtime.context(IDEKind.VS_CODE).kind, IDEKind.VS_CODE)
+        result = runtime.execute(IDEKind.VS_CODE, IDECommand(kind=IDECommandKind.SHOW_MESSAGE))
+        self.assertTrue(result.ok)
 
+    def test_contract_is_provider_neutral(self) -> None:
+        context = IDEContext(kind=IDEKind.ANDROID_STUDIO, project_root="/workspace", file_path="app/src/main/kotlin/Main.kt", selection_start=10, selection_end=20)
+        command = IDECommand(kind=IDECommandKind.REPLACE_SELECTION, arguments={"text": "updated"}, context=context)
         self.assertEqual(command.context.kind, IDEKind.ANDROID_STUDIO)
         self.assertEqual(command.arguments["text"], "updated")
 
