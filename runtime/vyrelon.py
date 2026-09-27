@@ -37,6 +37,8 @@ from runtime.policy import ExecutionPolicy
 from runtime.validation import ValidationReport, ValidationRuntime, ValidationStep
 from runtime.repository import RepositoryRuntime
 from runtime.multi_agent import MultiAgentResult, MultiAgentRuntime
+from runtime.ide.runtime import IDERuntime
+from runtime.ide.bridge import IDEBridge, IDEBridgePolicy, IDEBridgeServer
 
 
 class VYRELONRuntime:
@@ -66,6 +68,33 @@ class VYRELONRuntime:
         self.validation = ValidationRuntime(self.policy)
         self.repository = RepositoryRuntime(self.git, self.github, self.policy)
         self.multi_agent = MultiAgentRuntime(self.orchestrator)
+        self.ide = IDERuntime()
+        self.ide_bridge_server: IDEBridgeServer | None = None
+
+    def start_ide_bridge(
+        self,
+        *,
+        token: str,
+        host: str = "127.0.0.1",
+        port: int = 8787,
+        allow_remote: bool = False,
+    ) -> IDEBridgeServer:
+        """Start the local IDE bridge against this VYRELON runtime."""
+        if self.ide_bridge_server is not None:
+            return self.ide_bridge_server
+        bridge = IDEBridge(
+            policy=IDEBridgePolicy(token=token, allow_remote=allow_remote),
+            runtime=self.ide,
+        )
+        self.ide_bridge_server = IDEBridgeServer(bridge, host=host, port=port)
+        self.ide_bridge_server.start()
+        return self.ide_bridge_server
+
+    def stop_ide_bridge(self) -> None:
+        """Stop the VYRELON IDE bridge when it is running."""
+        if self.ide_bridge_server is not None:
+            self.ide_bridge_server.stop()
+            self.ide_bridge_server = None
 
     def load_mcp_config(self, project_root: Path):
         """Load external MCP server definitions from the project configuration."""
