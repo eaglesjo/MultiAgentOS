@@ -36,6 +36,7 @@ from runtime.mcp.config import MCPConfigLoader
 from runtime.policy import ExecutionPolicy
 from runtime.validation import ValidationReport, ValidationRuntime, ValidationStep
 from runtime.repository import RepositoryRuntime
+from runtime.multi_agent import MultiAgentResult, MultiAgentRuntime
 
 
 class VYRELONRuntime:
@@ -64,6 +65,7 @@ class VYRELONRuntime:
         self.mcp_clients: dict[str, MCPClient] = {}
         self.validation = ValidationRuntime(self.policy)
         self.repository = RepositoryRuntime(self.git, self.github, self.policy)
+        self.multi_agent = MultiAgentRuntime(self.orchestrator)
 
     def load_mcp_config(self, project_root: Path):
         """Load external MCP server definitions from the project configuration."""
@@ -117,6 +119,9 @@ class VYRELONRuntime:
             policy=self.policy,
             paths=PathPolicy((str(project_root),)),
         )
+
+    def run_multi_agent(self, project_root: Path, work_unit: WorkUnit, steps, agents: dict[str, AgentContract], models: list[ModelSpec], executors: dict[str, AgentExecutor], *, preferred_model_ids=None, verifiers=None, reviewers=None) -> MultiAgentResult:
+        return self.multi_agent.run(project_root, work_unit, steps, agents, models, executors, preferred_model_ids=preferred_model_ids, verifiers=verifiers, reviewers=reviewers)
 
     def repository_checkpoint(self, project_root: Path, *, metadata: dict[str, object] | None = None):
         return self.repository.checkpoint(project_root, metadata=metadata)
