@@ -468,12 +468,19 @@ class VYRELONRuntime:
             preferred_model_ids = list(agent.model_ids)
         else:
             # Project-aware automatic routing is the default when no model is pinned.
-            assignment = AIRouter().assign(
+            router = AIRouter()
+            assignment = router.assign(
                 agent,
                 models,
                 strategy=RoutingStrategy(routing_strategy),
             )
             preferred_model_ids = [assignment.model_id]
+            fallback_model_ids = tuple(
+                model.id
+                for model in models
+                if model.id != assignment.model_id
+                and router._compatible(agent, model)
+            )
 
         from runtime.agent.model import ModelAgentExecutor
 
