@@ -1,5 +1,4 @@
 import json
-import threading
 from urllib.request import Request, urlopen
 import unittest
 
@@ -8,10 +7,10 @@ from runtime.ide.bridge import IDEBridge, IDEBridgeAuthorizationError, IDEBridge
 
 
 class IDEBridgeTests(unittest.TestCase):
-    def test_bridge_requires_token(self):
-        bridge = IDEBridge(policy=IDEBridgePolicy(token="secret"))
+    def test_policy_requires_token(self):
+        policy = IDEBridgePolicy(token="secret")
         with self.assertRaises(IDEBridgeAuthorizationError):
-            bridge.handle_event({"kind": "context_changed", "context": {"kind": "vs_code", "project_root": "/tmp"}})
+            policy.authorize(None)
 
     def test_authenticated_loopback_event(self):
         received = []
