@@ -393,3 +393,18 @@ class VYRELONRuntime:
         reviewer_runner,
     ) -> ReviewPanelResult:
         return ReviewPanel().review(work_unit_id, reviewers, reviewer_runner)
+
+    def mcp_authorizer(self, project_root: Path):
+        """Build the project-scoped MCP tool authorizer."""
+        from runtime.mcp.policy import MCPToolAuthorizer, MCPToolProfileLoader
+        return MCPToolAuthorizer(MCPToolProfileLoader().load(project_root))
+
+    def mcp_tools(self, project_root: Path, agent: AgentContract | None = None, profile_id: str | None = None):
+        """List connected MCP tools, optionally filtered by agent/profile policy."""
+        from runtime.mcp.proxy import MCPToolProxy
+        return MCPToolProxy(self.mcp_clients, self.mcp_authorizer(project_root)).list_tools(agent, profile_id)
+
+    def call_mcp_tool(self, project_root: Path, request, agent: AgentContract | None = None, profile_id: str | None = None):
+        """Invoke an MCP tool after applying the VYRELON agent/profile policy."""
+        from runtime.mcp.proxy import MCPToolProxy
+        return MCPToolProxy(self.mcp_clients, self.mcp_authorizer(project_root)).call(request, agent, profile_id)
