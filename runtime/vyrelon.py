@@ -378,10 +378,11 @@ class VYRELONRuntime:
         models = self.configured_models()
         if not models:
             raise ValueError("No configured models found")
-        self.configure_model_adapters()
         if adapter_overrides:
             for adapter_id, adapter in adapter_overrides.items():
-                self.register_model_adapter(adapter_id, adapter)
+                if adapter_id not in self.model_adapters.list():
+                    self.register_model_adapter(adapter_id, adapter)
+        self.configure_model_adapters()
 
         agent = self.agent_profile(project_root, agent_id)
         if preferred_model_ids:
