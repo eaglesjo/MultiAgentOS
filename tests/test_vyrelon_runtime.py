@@ -118,7 +118,7 @@ class VYRELONRuntimeTests(unittest.TestCase):
                     "kind": "openai",
                     "models": [{
                         "id": "test-model",
-                        "capabilities": ["code"],
+                        "capabilities": ["code", "react-native"],
                         "metadata": {"adapter_id": "test-adapter"},
                     }],
                 }]
