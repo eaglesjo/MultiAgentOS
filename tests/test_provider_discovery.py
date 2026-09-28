@@ -59,6 +59,20 @@ class ProviderDiscoveryTests(unittest.TestCase):
         self.assertEqual(result.quotas[0].dimension("requests").remaining, 75)
         self.assertEqual(result.quotas[0].confidence, QuotaConfidence.ACTUAL)
 
+    def test_builtin_gemini_discovery_normalizes_model_name(self):
+        provider = AIProvider(id="gemini", kind="gemini", models=(ModelSpec("gemini-3.8-flash", "gemini"),))
+        payload = {"models": [{"name": "models/gemini-3.8-flash", "supportedGenerationMethods": ["generateContent"]}]}
+        seen = {}
+        def fetch(endpoint, headers):
+            seen["endpoint"] = endpoint
+            seen["headers"] = headers
+            return payload
+        adapter = ProviderDiscoveryAdapter(fetch=fetch)
+        result = adapter.discover(provider)
+        self.assertEqual(result.capabilities[0].model_id, "gemini-3.8-flash")
+        self.assertIn("chat", result.capabilities[0].capabilities)
+        self.assertEqual(seen["endpoint"], "https://generativelanguage.googleapis.com/v1beta/models")
+
     def test_discovery_without_endpoint_is_non_network_and_empty(self):
         provider = AIProvider(
             id="local",
