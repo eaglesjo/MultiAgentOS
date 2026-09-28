@@ -1,0 +1,67 @@
+import io
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from multiagentos.cli import build_parser
+from runtime.mcp.server import VYRELONMCPServer
+
+
+class VYRELONMCPServerTests(unittest.TestCase):
+    def test_cli_exposes_mcp_serve(self):
+        args = build_parser().parse_args(["mcp", "serve", "--path", "/tmp/project"])
+        self.assertEqual(args.command, "mcp")
+        self.assertEqual(args.mcp_command, "serve")
+        self.assertFalse(args.allow_write)
+        self.assertFalse(args.allow_process)
+
+    def test_default_server_is_read_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "hello.txt").write_text("hello", encoding="utf-8")
+            server = VYRELONMCPServer(root)
+            tools = server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
+            names = {item["name"] for item in tools["result"]["tools"]}
+            self.assertIn("filesystem.read", names)
+            self.assertNotIn("filesystem.write", names)
+            self.assertNotIn("patch.apply", names)
+            self.assertNotIn("shell.run", names)
+
+            response = server.handle({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {"name": "filesystem.read", "arguments": {"path": "hello.txt"}},
+            })
+            self.assertFalse(response["result"]["isError"])
+            self.assertEqual(response["result"]["content"][0]["text"], "hello")
+
+    def test_write_and_process_require_explicit_flags(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            server = VYRELONMCPServer(root, allow_write=True, allow_process=True)
+            tools = server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
+            names = {item["name"] for item in tools["result"]["tools"]}
+            self.assertTrue({"filesystem.write", "patch.apply", "shell.run"} <= names)
+
+    def test_stdio_round_trip(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "hello.txt").write_text("hello", encoding="utf-8")
+            payload = "\n".join([
+                json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}),
+                json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
+                json.dumps({"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "filesystem.read", "arguments": {"path": "hello.txt"}}}),
+            ]) + "\n"
+            stdin = io.StringIO(payload)
+            stdout = io.StringIO()
+            VYRELONMCPServer(root).serve_forever(stdin, stdout)
+            responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
+            self.assertEqual(responses[0]["result"]["serverInfo"]["name"], "VYRELON")
+            self.assertIn("filesystem.read", {x["name"] for x in responses[1]["result"]["tools"]})
+            self.assertEqual(responses[2]["result"]["content"][0]["text"], "hello")
+
+
+if __name__ == "__main__":
+    unittest.main()
