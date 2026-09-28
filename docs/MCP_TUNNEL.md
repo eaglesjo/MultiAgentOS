@@ -79,7 +79,23 @@ The exact workspace and permission model is controlled by OpenAI. Keep the resul
 
 ## 4. Configure the local runtime
 
-For a local stdio MCP server, the tunnel-client documentation provides an initialization pattern similar to:
+For a local stdio MCP server, the current managed-runtime path is:
+
+```bash
+tunnel-client runtimes connect \
+  --alias vyrelon-local \
+  --tunnel-id tunnel_... \
+  --runtime-api-key env:CONTROL_PLANE_API_KEY \
+  --mcp-command "multiagentos mcp serve --path /absolute/path/to/project"
+```
+
+Validate the managed runtime:
+
+```bash
+tunnel-client runtimes status vyrelon-local --json
+```
+
+For older/profile-based tunnel-client workflows, the equivalent foreground setup is:
 
 ```bash
 tunnel-client init \
@@ -87,16 +103,12 @@ tunnel-client init \
   --profile vyrelon-local \
   --tunnel-id tunnel_... \
   --mcp-command "multiagentos mcp serve --path /absolute/path/to/project"
+
+tunnel-client doctor --profile vyrelon-local --explain
+tunnel-client run --profile vyrelon-local
 ```
 
-Validate before running:
-
-```bash
-tunnel-client doctor --profile local-stdio --explain
-tunnel-client run --profile local-stdio
-```
-
-Keep the tunnel process running while ChatGPT uses the connector.
+Keep the tunnel runtime/process running while ChatGPT uses the connector.
 
 ## 5. ChatGPT connector configuration
 
