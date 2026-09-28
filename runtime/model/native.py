@@ -5,7 +5,7 @@ import os
 import re
 import urllib.parse
 import urllib.request
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from dataclasses import dataclass
 from typing import Any
 from core.contracts.ai import ModelSpec
@@ -39,7 +39,7 @@ def _request(endpoint: str, payload: dict[str, Any], headers: dict[str, str], po
             response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
     except HTTPError as exc:
         raise RuntimeError(f"provider request failed with HTTP {exc.code}") from exc
-    except urllib.error.URLError as exc:
+    except URLError as exc:
         raise RuntimeError("provider request failed: network error") from exc
     if not isinstance(data, dict):
         raise ValueError("provider response must be a JSON object")
