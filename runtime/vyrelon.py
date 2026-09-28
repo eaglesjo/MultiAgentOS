@@ -764,6 +764,7 @@ class VYRELONRuntime:
                 reviewer=reviewer,
                 preferred_model_ids=preferred_model_ids,
                 routing_strategy=routing_strategy,
+                project_root=project_root,
             )
             output = result.output
             work_unit.metadata["output"] = str(output)
