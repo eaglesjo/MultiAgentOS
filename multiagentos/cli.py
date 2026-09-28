@@ -583,6 +583,8 @@ def main(argv: list[str] | None = None) -> int:
             )
             work.metadata["command"] = args.process_command
             work.metadata["runtime"] = "local-process"
+            work.metadata["execution_agent_id"] = agent.id
+            work.metadata["execution_model_id"] = model.id
             result = runtime.run_persistent(
                 root,
                 work,
