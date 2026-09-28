@@ -5,7 +5,8 @@ __pycache__/
 venv/
 
 # Local VYRELON runtime state
-.multiagentos/state/
+.multiagentos/
+!.multiagentos/.gitkeep
 
 # Local credentials and environment
 .env
