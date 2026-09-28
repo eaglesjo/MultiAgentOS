@@ -30,6 +30,9 @@ VYRELON currently includes:
 - read-only project status and durable checkpoint inspection
 - project-scoped execution configuration for selecting the CLI Agent/Model
 - direct project Chat Agent CLI with optional persistent conversation sessions
+- provider capability discovery with OpenAI, Anthropic, and Gemini native defaults
+- persistent model capability, quota, and health intelligence with cooldown-aware routing
+- unified model control-plane inspection and provider-neutral routing explainability
 
 ## CLI
 
@@ -48,6 +51,12 @@ After installation:
     multiagentos chat --path . --execute --objective "run the smoke test" -- python -m unittest discover -s tests -v
     multiagentos chat --path . --objective "continue our conversation" --session project-1
     multiagentos github probe eaglesjo/MultiAgentOS
+    multiagentos models discover .
+    multiagentos models control .
+    multiagentos models capabilities .
+    multiagentos models quota .
+    multiagentos models health .
+    multiagentos models explain . --agent developer
 
 The initializer supports independent installation:
 
