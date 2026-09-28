@@ -1,14 +1,17 @@
-"""Deterministic AI assignment and multi-AI routing."""
+from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.health import ModelHealth
 from core.contracts.quota import QuotaSnapshot
-from runtime.capability import CapabilityRegistry
 from runtime.quota import quota_available, quota_score
+
+if TYPE_CHECKING:
+    from runtime.capability import CapabilityRegistry
 
 
 class RoutingStrategy(str, Enum):
