@@ -182,16 +182,7 @@ class ProviderDiscoveryAdapter:
                 continue
             base = configured.get(model_id)
             capabilities = set(base.capabilities if base else ())
-            capabilities.update(_string_list(item.get("capabilities")))
-            capabilities.update(_string_list(item.get("input_modalities")))
-            capabilities.update(_string_list(item.get("output_modalities")))
-            for field, capability in (
-                ("supports_tools", "tools"),
-                ("supports_reasoning", "reasoning"),
-                ("supports_vision", "vision"),
-            ):
-                if item.get(field) is True:
-                    capabilities.add(capability)
+            capabilities.update(_normalize_capabilities(item))
             profiles.append(
                 ModelCapabilityProfile(
                     model_id=model_id,
@@ -258,7 +249,6 @@ class ProviderDiscoveryAdapter:
         return _path(payload, tuple(str(item) for item in value))
 
     @staticmethod
-    @staticmethod
     def _headers(discovery: dict[str, object]) -> dict[str, str]:
         result = {str(k): str(v) for k, v in (discovery.get("headers", {}) or {}).items()}
         prefixes = discovery.get("header_prefix", {}) or {}
@@ -284,6 +274,42 @@ class ProviderDiscoveryAdapter:
         if not isinstance(payload, dict):
             raise ValueError("provider discovery response must be a JSON object")
         return payload, response_headers
+
+def _normalize_capabilities(item: dict[str, object]) -> frozenset[str]:
+    """Normalize provider-specific metadata to VYRELON routing vocabulary."""
+    aliases = {
+        "generatecontent": "chat",
+        "generate_content": "chat",
+        "chat": "chat",
+        "embedcontent": "embeddings",
+        "embed_content": "embeddings",
+        "embeddings": "embeddings",
+        "predictlongrunning": "predict",
+        "counttokens": "token_count",
+        "function_calling": "tools",
+        "function-calling": "tools",
+        "structured-outputs": "structured_output",
+    }
+    result: set[str] = set()
+    for field in ("capabilities", "supportedGenerationMethods"):
+        for value in _string_list(item.get(field)):
+            key = value.strip().lower().replace(" ", "_")
+            result.add(aliases.get(key, key))
+    for field in ("input_modalities", "output_modalities", "modalities"):
+        for value in _string_list(item.get(field)):
+            key = value.strip().lower()
+            result.add(aliases.get(key, key))
+    for field, capability in (
+        ("supports_tools", "tools"),
+        ("supports_reasoning", "reasoning"),
+        ("supports_vision", "vision"),
+        ("supports_audio", "audio"),
+        ("supports_image", "image"),
+        ("supports_structured_output", "structured_output"),
+    ):
+        if item.get(field) is True:
+            result.add(capability)
+    return frozenset(result)
 
 
 def _as_int(value: object) -> int | None:
