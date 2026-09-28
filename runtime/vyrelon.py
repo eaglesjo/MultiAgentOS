@@ -406,6 +406,43 @@ class VYRELONRuntime:
         self.load_provider_config(path)
         return True
 
+    def discover_models(self, project_root: Path, *, refresh: bool = True):
+        """Discover and persist provider capabilities and quota metadata."""
+        root = Path(project_root).resolve()
+        self.load_project_provider_config(root)
+        capability_registry = self.capability_registry(root)
+        quota_store = self.quota_store(root)
+        adapter = ProviderDiscoveryAdapter(policy=self.policy)
+        results = []
+        for provider in self.providers.providers():
+            if not refresh:
+                results.append({"provider": provider.id, "status": "skipped"})
+                continue
+            result, error = adapter.discover_safe(
+                provider,
+                models=tuple(provider.models),
+            )
+            if error is not None:
+                results.append({
+                    "provider": provider.id,
+                    "status": "error",
+                    "message": error.message,
+                    "retryable": error.retryable,
+                })
+                continue
+            for profile in result.capabilities:
+                capability_registry.merge(profile)
+            for snapshot in result.quotas:
+                quota_store.merge(snapshot)
+            results.append({
+                "provider": provider.id,
+                "status": "ok",
+                "capabilities": len(result.capabilities),
+                "quotas": len(result.quotas),
+                "source": result.source,
+            })
+        return tuple(results)
+
     def credential_checks(self) -> dict[str, tuple[object, ...]]:
         """Check configured environment-variable credentials without exposing values."""
         result: dict[str, tuple[object, ...]] = {}
