@@ -91,6 +91,38 @@ class QuotaStore:
         return tuple(sorted(path.stem for path in self.root.glob("*.json")))
 
 
+    def merge(self, snapshot: QuotaSnapshot) -> QuotaSnapshot:
+        """Merge a newer snapshot while preserving stronger existing dimensions."""
+        if not self.exists(snapshot.model_id):
+            self.save(snapshot)
+            return snapshot
+        current = self.load(snapshot.model_id)
+        if current.provider_id != snapshot.provider_id:
+            raise ValueError(f"Quota provider mismatch for {snapshot.model_id}")
+        rank = {
+            QuotaConfidence.UNKNOWN: 0,
+            QuotaConfidence.OBSERVED: 1,
+            QuotaConfidence.ESTIMATED: 2,
+            QuotaConfidence.ACTUAL: 3,
+        }
+        merged = {item.name: item for item in current.dimensions}
+        for item in snapshot.dimensions:
+            existing = merged.get(item.name)
+            if existing is None or rank[item.confidence] >= rank[existing.confidence]:
+                merged[item.name] = item
+        combined = QuotaSnapshot(
+            model_id=snapshot.model_id,
+            provider_id=snapshot.provider_id,
+            observed_at=max(current.observed_at, snapshot.observed_at),
+            dimensions=tuple(merged.values()),
+            scope=snapshot.scope or current.scope,
+            metadata={**current.metadata, **snapshot.metadata},
+        )
+        self.save(combined)
+        return combined
+
+
+
 class QuotaIntelligence:
     """Turn provider metadata and configured limits into normalized snapshots."""
 
@@ -179,8 +211,7 @@ class QuotaIntelligence:
             dimensions=tuple(merged.values()),
             scope=str(model.metadata.get("quota_scope", "model")),
         )
-        self.store.save(snapshot)
-        return snapshot
+        return self.store.merge(snapshot)
 
 
 def _number(value: object) -> int | float | None:
