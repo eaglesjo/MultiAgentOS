@@ -8,6 +8,7 @@ from core.contracts.execution import AgentExecutor
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
 from runtime.quota import QuotaIntelligence
 from runtime.health import ModelHealthRegistry
+from runtime.model_control import ModelControlPlane
 from runtime.tool_calling import ToolCallingExecution, ToolCallingRuntime, ToolRuntime
 from core.contracts.work_unit import WorkUnit
 
@@ -23,6 +24,7 @@ class ModelAgentExecutor(AgentExecutor):
         fallback_model_ids: tuple[str, ...] = (),
         quota_intelligence: QuotaIntelligence | None = None,
         health_registry: ModelHealthRegistry | None = None,
+        model_control: ModelControlPlane | None = None,
     ):
         self.adapters = dict(adapters)
         self.models = {model.id: model for model in models}
@@ -30,6 +32,7 @@ class ModelAgentExecutor(AgentExecutor):
         self.fallback_model_ids = tuple(fallback_model_ids)
         self.quota_intelligence = quota_intelligence
         self.health_registry = health_registry
+        self.model_control = model_control
 
     def _candidate_model_ids(self, model_id: str) -> tuple[str, ...]:
         return tuple(dict.fromkeys((model_id, *self.fallback_model_ids)))
@@ -89,13 +92,17 @@ class ModelAgentExecutor(AgentExecutor):
                             for item in snapshot.dimensions
                         },
                     }
-                if self.health_registry is not None:
+                if self.model_control is not None:
+                    self.model_control.record_success(model, metadata)
+                elif self.health_registry is not None:
                     self.health_registry.record_success(candidate_id, model.provider_id)
                 return response
             except Exception as exc:
                 attempts.append(candidate_id)
                 last_error = exc
-                if self.health_registry is not None and candidate_id in self.models:
+                if self.model_control is not None and candidate_id in self.models:
+                    self.model_control.record_failure(self.models[candidate_id], exc)
+                elif self.health_registry is not None and candidate_id in self.models:
                     self.health_registry.record_failure(candidate_id, self.models[candidate_id].provider_id, exc)
                 if not self._is_failover_error(exc):
                     raise
@@ -163,13 +170,17 @@ class ModelAgentExecutor(AgentExecutor):
                             for item in snapshot.dimensions
                         },
                     }
-                if self.health_registry is not None:
+                if self.model_control is not None:
+                    self.model_control.record_success(model, dict(result.response.metadata))
+                elif self.health_registry is not None:
                     self.health_registry.record_success(candidate_id, model.provider_id)
                 return result
             except Exception as exc:
                 attempts.append(candidate_id)
                 last_error = exc
-                if self.health_registry is not None and candidate_id in self.models:
+                if self.model_control is not None and candidate_id in self.models:
+                    self.model_control.record_failure(self.models[candidate_id], exc)
+                elif self.health_registry is not None and candidate_id in self.models:
                     self.health_registry.record_failure(candidate_id, self.models[candidate_id].provider_id, exc)
                 if not self._is_failover_error(exc):
                     raise
