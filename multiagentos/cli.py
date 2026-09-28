@@ -246,6 +246,11 @@ def build_parser() -> argparse.ArgumentParser:
     models_control = model_sub.add_parser("control", help="show unified model control-plane state")
     models_control.add_argument("path", nargs="?", default=".")
     models_control.add_argument("--events", action="store_true", help="include recent control-plane events")
+    models_explain = model_sub.add_parser("explain", help="explain model routing eligibility and selection")
+    models_explain.add_argument("path", nargs="?", default=".")
+    models_explain.add_argument("--agent", default="executor")
+    models_explain.add_argument("--model", action="append", dest="preferred_models", default=None)
+    models_explain.add_argument("--strategy", choices=("explicit", "pool", "auto"), default="pool")
 
     models_run = model_sub.add_parser("run", help="run a configured model through VYRELON")
     models_run.add_argument("path", nargs="?", default=".")
@@ -417,6 +422,37 @@ def _model_control(root: Path, include_events: bool = False) -> int:
     return 0
 
 
+def _model_explain(root: Path, agent_id: str, preferred_models=None, strategy: str = "pool") -> int:
+    runtime = _provider_runtime(root)
+    explanation = runtime.explain_model_routing(
+        root,
+        agent_id=agent_id,
+        preferred_model_ids=preferred_models,
+        routing_strategy=strategy,
+    )
+    print(json.dumps({
+        "agent": explanation.agent_id,
+        "strategy": explanation.strategy.value,
+        "selected_model": explanation.selected_model_id,
+        "candidates": [
+            {
+                "model": candidate.model_id,
+                "provider": candidate.provider_id,
+                "selected": candidate.selected,
+                "compatible": candidate.compatible,
+                "health_available": candidate.health_available,
+                "quota_available": candidate.quota_available,
+                "capability_score": candidate.capability_score,
+                "quota_score": candidate.quota_score,
+                "missing_capabilities": sorted(candidate.missing_capabilities),
+                "rejection_reasons": list(candidate.rejection_reasons),
+            }
+            for candidate in explanation.candidates
+        ],
+    }, indent=2, ensure_ascii=False))
+    return 0
+
+
 def _model_run(root: Path, model_id: str, objective: str, agent_id: str, *, apply_changes: bool = False, validation_commands: list[str] | None = None, mcp_server_ids: list[str] | None = None) -> int:
     from runtime.vyrelon import VYRELONRuntime
 
@@ -537,6 +573,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.models_command == "control":
             return _model_control(root, args.events)
+        if args.models_command == "explain":
+            return _model_explain(root, args.agent, args.preferred_models, args.strategy)
         if args.models_command == "run":
             return _model_run(
                 root,
