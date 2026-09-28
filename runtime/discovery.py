@@ -52,7 +52,8 @@ class ProviderDiscoveryAdapter:
         models: tuple[ModelSpec, ...] | None = None,
     ) -> ProviderDiscoveryResult:
         metadata = provider.metadata
-        discovery = metadata.get("discovery", {})
+        discovery = dict(metadata.get("discovery", {}) or {})
+        self._apply_builtin_defaults(provider, discovery)
         if not isinstance(discovery, dict):
             return ProviderDiscoveryResult(provider.id, source="model_spec")
 
@@ -61,13 +62,20 @@ class ProviderDiscoveryAdapter:
             return ProviderDiscoveryResult(provider.id, source="model_spec")
 
         headers = self._headers(discovery)
-        payload = self.fetch(endpoint, headers)
+        self._query_env = discovery.get("query_env", {})
+        fetched = self.fetch(endpoint, headers)
+        response_headers = {}
+        if isinstance(fetched, tuple):
+            payload, response_headers = fetched
+        else:
+            payload = fetched
         model_payload = self._extract(payload, discovery.get("models_path", ["data"]))
         quota_payload = self._extract(payload, discovery.get("quota_path", []))
 
         configured = {model.id: model for model in (models or provider.models)}
         profiles = self._capabilities(provider, model_payload, configured)
         quotas = self._quotas(provider, quota_payload, configured)
+        quotas.extend(self._header_quotas(provider, response_headers, configured))
         return ProviderDiscoveryResult(
             provider_id=provider.id,
             capabilities=tuple(profiles),
@@ -92,6 +100,55 @@ class ProviderDiscoveryAdapter:
                 retryable=isinstance(exc, OSError),
             )
 
+    @staticmethod
+    def _apply_builtin_defaults(provider: AIProvider, discovery: dict[str, object]) -> None:
+        if discovery.get("endpoint"):
+            return
+        presets = {
+            "openai": ("https://api.openai.com/v1/models", "OPENAI_API_KEY", "openai"),
+            "anthropic": ("https://api.anthropic.com/v1/models", "ANTHROPIC_API_KEY", "anthropic"),
+            "gemini": ("https://generativelanguage.googleapis.com/v1beta/models", "GEMINI_API_KEY", "gemini"),
+        }
+        preset = presets.get(provider.kind.lower()) or presets.get(provider.id.lower())
+        if not preset:
+            return
+        endpoint, key_env, kind = preset
+        discovery["endpoint"] = endpoint
+        discovery["models_path"] = ["data"]
+        if kind == "gemini":
+            discovery["query_env"] = {"key": key_env}
+        elif kind == "openai":
+            discovery["header_env"] = {"Authorization": key_env}
+        else:
+            discovery["header_env"] = {"x-api-key": key_env}
+            discovery["headers"] = {"anthropic-version": "2023-06-01"}
+
+    @staticmethod
+    def _header_quotas(provider: AIProvider, headers: dict[str, str], configured: dict[str, ModelSpec]) -> list[QuotaSnapshot]:
+        mappings = {
+            "openai": (
+                ("requests", "x-ratelimit-limit-requests", "x-ratelimit-remaining-requests"),
+                ("tokens", "x-ratelimit-limit-tokens", "x-ratelimit-remaining-tokens"),
+            ),
+            "anthropic": (
+                ("requests", "anthropic-ratelimit-requests-limit", "anthropic-ratelimit-requests-remaining"),
+                ("input_tokens", "anthropic-ratelimit-input-tokens-limit", "anthropic-ratelimit-input-tokens-remaining"),
+                ("output_tokens", "anthropic-ratelimit-output-tokens-limit", "anthropic-ratelimit-output-tokens-remaining"),
+            ),
+        }
+        rows = mappings.get(provider.kind.lower(), ())
+        dimensions = []
+        for name, limit_key, remaining_key in rows:
+            limit, remaining = _as_int(headers.get(limit_key)), _as_int(headers.get(remaining_key))
+            if limit is None and remaining is None:
+                continue
+            dimensions.append(QuotaDimension(name=name, limit=limit, used=(limit - remaining) if limit is not None and remaining is not None else None,
+                remaining=remaining, confidence=QuotaConfidence.ACTUAL, source="provider_response_headers"))
+        if not dimensions:
+            return []
+        return [QuotaSnapshot(model_id=model_id, provider_id=provider.id, observed_at=_now(), dimensions=tuple(dimensions),
+            scope="provider", metadata={"source": "provider_response_headers"}) for model_id in configured]
+    
     def _capabilities(
         self,
         provider: AIProvider,
@@ -192,15 +249,22 @@ class ProviderDiscoveryAdapter:
                 result[str(header)] = os.environ[env_name]
         return result
 
-    def _fetch(self, endpoint: str, headers: dict[str, str]) -> dict[str, Any]:
+    def _fetch(self, endpoint: str, headers: dict[str, str]) -> tuple[dict[str, Any], dict[str, str]]:
         if not self.policy.permits("network"):
             raise PermissionError("Network discovery is disabled by policy")
+        query_env = getattr(self, "_query_env", {})
+        if query_env:
+            from urllib.parse import urlencode, urlsplit, urlunsplit
+            parts = urlsplit(endpoint)
+            query = {key: os.environ.get(env, "") for key, env in query_env.items()}
+            endpoint = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
         request = urllib.request.Request(endpoint, headers=headers, method="GET")
         with urllib.request.urlopen(request, timeout=30) as response:
             payload = json.loads(response.read().decode("utf-8"))
+            response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
         if not isinstance(payload, dict):
             raise ValueError("provider discovery response must be a JSON object")
-        return payload
+        return payload, response_headers
 
 
 def _as_int(value: object) -> int | None:
