@@ -16,4 +16,4 @@ chatgpt = ["openai>=1.0"]
 multiagentos = "multiagentos.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["core*", "integrations*", "runtime*", "profiles*", "installer*", "multiagentos*"]
+include = ["agents*", "core*", "integrations*", "runtime*", "profiles*", "installer*", "multiagentos*"]
