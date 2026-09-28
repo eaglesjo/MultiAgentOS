@@ -50,6 +50,7 @@ from runtime.builtin_tools import BuiltinToolBindings
 from runtime.repository_tools import GitToolBindings, MCPToolBindings
 from runtime.quota import QuotaIntelligence, QuotaStore, quota_available
 from runtime.health import ModelHealthRegistry, ModelHealthStore
+from runtime.model_control import ModelControlPlane
 
 
 class VYRELONRuntime:
@@ -352,6 +353,10 @@ class VYRELONRuntime:
         """Return the project-scoped persistent model health registry."""
         return ModelHealthRegistry(ModelHealthStore(Path(project_root) / ".multiagentos" / "health"))
 
+    def model_control_plane(self, project_root: Path) -> ModelControlPlane:
+        """Return the project-scoped unified model control plane."""
+        return ModelControlPlane(Path(project_root).resolve())
+
     def agents(self, project_root: Path):
         """Return the legacy AgentRegistry for compatibility."""
         detections = self.inspect(project_root)
@@ -512,8 +517,9 @@ class VYRELONRuntime:
             )
 
         from runtime.agent.model import ModelAgentExecutor
-        quota_intelligence = QuotaIntelligence(self.quota_store(project_root))
-        health_registry = self.health_registry(project_root)
+        control_plane = self.model_control_plane(project_root)
+        quota_intelligence = QuotaIntelligence(control_plane.quota_store)
+        health_registry = control_plane.health_registry
 
         tool_runtime = ToolRuntime(self.policy)
         BuiltinToolBindings(str(project_root), tool_runtime)
@@ -534,6 +540,7 @@ class VYRELONRuntime:
             fallback_model_ids=fallback_model_ids,
             quota_intelligence=quota_intelligence,
             health_registry=health_registry,
+            model_control=control_plane,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,
