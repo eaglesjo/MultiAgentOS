@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from core.contracts.checkpoint import WorkflowCheckpoint
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.vyrelon_runtime import SessionSpec, SessionState
 
@@ -13,6 +14,8 @@ class WorkStateStore:
     def __init__(self, root: Path) -> None:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
+        self.checkpoint_root = self.root / "checkpoints"
+        self.checkpoint_root.mkdir(parents=True, exist_ok=True)
 
     def save(self, work_unit: WorkUnit) -> Path:
         path = self.root / f"{work_unit.id}.json"
@@ -105,7 +108,6 @@ class WorkStateStore:
 
 
 
-class SessionStateStore
 class SessionStateStore:
     """Persist SessionState independently from WorkUnit state."""
 
