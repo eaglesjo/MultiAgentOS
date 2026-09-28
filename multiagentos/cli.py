@@ -240,6 +240,9 @@ def build_parser() -> argparse.ArgumentParser:
     models_health.add_argument("path", nargs="?", default=".")
     models_capabilities = model_sub.add_parser("capabilities", help="show normalized model capabilities")
     models_capabilities.add_argument("path", nargs="?", default=".")
+    models_discover = model_sub.add_parser("discover", help="refresh provider model capabilities and quota")
+    models_discover.add_argument("path", nargs="?", default=".")
+    models_discover.add_argument("--no-refresh", action="store_true")
     models_control = model_sub.add_parser("control", help="show unified model control-plane state")
     models_control.add_argument("path", nargs="?", default=".")
     models_control.add_argument("--events", action="store_true", help="include recent control-plane events")
@@ -528,6 +531,10 @@ def main(argv: list[str] | None = None) -> int:
             return _model_health(root)
         if args.models_command == "capabilities":
             return _model_capabilities(root)
+        if args.models_command == "discover":
+            runtime = _provider_runtime(root)
+            print(json.dumps(list(runtime.discover_models(root, refresh=not args.no_refresh)), indent=2, default=str))
+            return 0
         if args.models_command == "control":
             return _model_control(root, args.events)
         if args.models_command == "run":
