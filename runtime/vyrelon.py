@@ -6,6 +6,16 @@ from pathlib import Path
 from uuid import uuid4
 
 from agents.registry import build_registry
+from core.chat_agent_bridge import ChatAgentBridge, ChatAgentExecutionResult, ChatAgentRequest, ChatAgentResponse
+from core.chat_agent_registry import default_chat_agents
+from core.chat_agent_router import ChatAgentAssignment, ChatAgentRouter, ChatAgentRoutingStrategy
+from core.chat_session import ChatSession, ChatSessionStore
+from core.contracts.human_review import HumanReviewDecision
+from core.contracts.resume import WorkflowResumeContext
+from core.multi_agent_workflow import MultiAgentWorkflow, MultiAgentWorkflowResult
+from core.artifacts import ArtifactStore
+from runtime.chat_config import load_chat_config
+from runtime.chat_adapter_registry import resolve_project_chat_adapter
 from core.contracts.agent import AgentContract
 from core.contracts.ide import IDECommand, IDECommandKind, IDEWorkRequest
 from core.contracts.ai import AIProvider, ModelSpec
