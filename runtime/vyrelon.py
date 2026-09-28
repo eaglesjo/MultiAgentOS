@@ -49,6 +49,7 @@ from runtime.tool_calling import ToolRuntime
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.repository_tools import GitToolBindings, MCPToolBindings
 from runtime.quota import QuotaIntelligence, QuotaStore, quota_available
+from runtime.capability import CapabilityRegistry, CapabilityStore
 from runtime.health import ModelHealthRegistry, ModelHealthStore
 from runtime.model_control import ModelControlPlane
 
@@ -486,6 +487,7 @@ class VYRELONRuntime:
             router = AIRouter()
             quota_store = self.quota_store(project_root)
             health_registry = self.health_registry(project_root)
+            capability_registry = self.capability_registry(project_root)
             quota_snapshots = {
                 model.id: quota_store.load(model.id)
                 for model in models
@@ -502,6 +504,7 @@ class VYRELONRuntime:
                 strategy=RoutingStrategy(routing_strategy),
                 quota_snapshots=quota_snapshots,
                 health_snapshots=health_snapshots,
+                capability_registry=capability_registry,
             )
             preferred_model_ids = [assignment.model_id]
             fallback_model_ids = tuple(
