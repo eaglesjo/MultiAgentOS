@@ -53,6 +53,7 @@ After installation:
     multiagentos chat --path . --objective "continue our conversation" --session project-1
     multiagentos mcp serve --path .
     multiagentos mcp serve --path . --allow-write --allow-process
+    python tests/mcp_stdio_smoke.py
     multiagentos github probe eaglesjo/MultiAgentOS
     multiagentos models discover .
     multiagentos models control .
@@ -172,6 +173,6 @@ For a clean-machine installation and the distinction between local GitHub access
 - **ChatGPT local/private VYRELON:** ChatGPT -> Secure MCP Tunnel -> `tunnel-client` -> `multiagentos mcp serve`.
 - **Codex tunnel operations:** Codex -> `tunnel-mcp` plugin -> `tunnel-client`.
 
-The VYRELON MCP server is implemented and covered by CI. End-to-end ChatGPT connector verification still requires a real OpenAI Secure MCP Tunnel runtime and workspace configuration.
+The VYRELON MCP server is implemented and covered by CI. A dependency-free stdio smoke client validates the real subprocess JSON-RPC path, including initialize, tools/list, and filesystem.read. End-to-end ChatGPT/Codex connector verification remains a separate optional Secure MCP Tunnel validation.
 
 Do not expose a local MCP URL directly to the public internet or put GitHub/provider/tunnel credentials in project files.
