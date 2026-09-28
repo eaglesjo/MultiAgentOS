@@ -9,7 +9,8 @@ class BasicPlanner:
         work_unit.transition(WorkStatus.PLANNING)
         plan = WorkPlan(work_unit.id, work_unit.objective, tuple(steps))
         plan.validate()
-        work_unit.metadata["plan_steps"] = [
+        work_unit.metadata["plan_steps"] = [step.id for step in plan.steps]
+        work_unit.metadata["plan_details"] = [
             {
                 "id": step.id,
                 "objective": step.objective,
