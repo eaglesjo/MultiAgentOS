@@ -5,6 +5,7 @@ import os
 import re
 import urllib.parse
 import urllib.request
+from urllib.error import HTTPError, URLError
 from dataclasses import dataclass
 from typing import Any
 from core.contracts.ai import ModelSpec
@@ -32,9 +33,14 @@ def _request(endpoint: str, payload: dict[str, Any], headers: dict[str, str], po
     if not policy.permits("network"):
         raise PermissionError("Network model execution is disabled by policy")
     req = urllib.request.Request(endpoint, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json", **headers}, method="POST")
-    with urllib.request.urlopen(req, timeout=300) as response:
-        data = json.loads(response.read().decode())
-        response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
+    try:
+        with urllib.request.urlopen(req, timeout=300) as response:
+            data = json.loads(response.read().decode())
+            response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
+    except HTTPError as exc:
+        raise RuntimeError(f"provider request failed with HTTP {exc.code}") from exc
+    except URLError as exc:
+        raise RuntimeError("provider request failed: network error") from exc
     if not isinstance(data, dict):
         raise ValueError("provider response must be a JSON object")
     return data, response_headers
