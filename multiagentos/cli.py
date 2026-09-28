@@ -558,7 +558,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from runtime.vyrelon import VYRELONRuntime
             runtime = VYRELONRuntime()
-            if args.model or not args.process_command:
+            if not args.process_command:
                 work.metadata["runtime"] = "configured-model"
                 work.metadata["agent_id"] = args.agent
                 if args.model:
@@ -577,7 +577,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
             model = ModelSpec(
-                id="local-process",
+                id=args.model or "local-process",
                 provider_id="vyrelon-local",
                 capabilities=frozenset({"execution"}),
             )
@@ -589,7 +589,7 @@ def main(argv: list[str] | None = None) -> int:
                 agent,
                 [model],
                 ProcessAgentExecutor(args.process_command),
-                preferred_model_ids=["local-process"],
+                preferred_model_ids=[model.id],
             )
             if result.output.returncode == 0:
                 print(result.output.stdout, end="")
