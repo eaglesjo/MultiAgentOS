@@ -48,7 +48,7 @@ class ModelAgentExecutor(AgentExecutor):
         transient_codes = (
             "rate_limit", "rate-limit", "quota", "resource_exhausted",
             "too_many_requests", "temporarily_unavailable",
-            "service_unavailable", "overloaded", "timeout",
+            "service_unavailable", "unavailable", "overloaded", "timeout",
         )
         return any(token in code or token in message for token in transient_codes)
 
