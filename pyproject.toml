@@ -9,6 +9,9 @@ description = "Local-first, GitHub-native multi-agent orchestration foundation f
 requires-python = ">=3.10"
 dependencies = []
 
+[project.optional-dependencies]
+chatgpt = ["openai>=1.0"]
+
 [project.scripts]
 multiagentos = "multiagentos.cli:main"
 
