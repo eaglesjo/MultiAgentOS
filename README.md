@@ -141,3 +141,22 @@ VYRELON resolves the configured Chat Agent through a provider-neutral adapter re
             +-- Claude -> provider adapter when registered
 
 The core does not require a provider SDK. The OpenAI/ChatGPT adapter remains optional and obtains credentials from the provider's normal environment/authentication mechanism. A Chat Agent can propose intent and plans, but actual filesystem, Git, GitHub, process, verification, review, and approval actions remain VYRELON responsibilities.
+
+
+## User setup and integrations
+
+For a clean-machine installation and the distinction between local GitHub access, ChatGPT GitHub access, Secure MCP Tunnel, and Codex integration, start with:
+
+- [Getting Started](docs/GETTING_STARTED.md)
+- [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
+- [VYRELON GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
+
+### Integration boundaries
+
+- **Local GitHub:** VYRELON -> authenticated `gh` CLI -> GitHub.
+- **ChatGPT GitHub:** ChatGPT -> GitHub app -> repositories explicitly authorized by the user.
+- **ChatGPT local/private MCP:** ChatGPT -> Secure MCP Tunnel -> `tunnel-client` -> MCP server.
+- **Codex tunnel operations:** Codex -> `tunnel-mcp` plugin -> `tunnel-client`.
+- **ChatGPT -> VYRELON directly:** not yet a completed feature; the current release provides MCP client/proxy support, not a VYRELON MCP server endpoint.
+
+Do not expose a local MCP URL directly to the public internet or put GitHub/provider/tunnel credentials in project files.
