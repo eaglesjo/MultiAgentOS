@@ -30,8 +30,8 @@ class PlanningStateTests(unittest.TestCase):
             path = store.save(work)
             restored = store.load("wu-state")
             self.assertTrue(path.exists())
-            self.assertEqual(restored.status, WorkStatus.EXECUTING)
-            self.assertEqual(restored.assigned_agents, ["developer"])
+        self.assertEqual(restored.status, WorkStatus.EXECUTING)
+        self.assertEqual(restored.assigned_agents, ["developer"])
 
 
 if __name__ == "__main__":

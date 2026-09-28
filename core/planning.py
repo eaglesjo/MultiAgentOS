@@ -10,4 +10,13 @@ class BasicPlanner:
         plan = WorkPlan(work_unit.id, work_unit.objective, tuple(steps))
         plan.validate()
         work_unit.metadata["plan_steps"] = [step.id for step in plan.steps]
+        work_unit.metadata["plan_details"] = [
+            {
+                "id": step.id,
+                "objective": step.objective,
+                "agent_id": step.agent_id,
+                "depends_on": list(step.depends_on),
+            }
+            for step in plan.steps
+        ]
         return plan

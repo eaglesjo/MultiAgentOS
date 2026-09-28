@@ -10,11 +10,154 @@ from pathlib import Path
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.work_unit import WorkStatus, WorkUnit
+from runtime.execution_registry import resolve_execution_contracts
+from runtime.execution_config import load_execution_config
+from core.chat_agent_bridge import ChatAgentRequest
 from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
 from runtime.github_probe import probe
 from runtime.process import ProcessRuntime
+from runtime.status import project_status
+from runtime.vyrelon import VYRELONRuntime
 from runtime.agent.process import ProcessAgentExecutor
+
+
+def _execution_contracts(root: Path, agent_override: str | None, model_override: str | None):
+    config = load_execution_config(root)
+    if config.runtime != "process":
+        raise ValueError(f"unsupported CLI execution runtime: {config.runtime}")
+    agent_id = agent_override or config.agent_id
+    model_id = model_override or config.model_id
+    agent, model = resolve_execution_contracts(agent_id, model_id)
+    return config, agent, [model]
+
+def _chat_request(root: Path, objective: str, session_id: str | None) -> ChatAgentRequest:
+    inputs: dict[str, object] = {}
+    if session_id:
+        store = VYRELONRuntime().chat_session_store(root)
+        try:
+            session = store.load(session_id)
+        except FileNotFoundError:
+            session = None
+        if session is not None:
+            inputs["conversation"] = tuple(
+                {"role": turn.get("role"), "content": turn.get("content")}
+                for turn in session.turns
+            )
+    return ChatAgentRequest(objective=objective, inputs=inputs)
+
+def _run_chat(
+    root: Path,
+    objective: str,
+    agent_override: str | None,
+    model_override: str | None,
+    session_id: str | None,
+    execute: bool = False,
+    exec_command: list[str] | None = None,
+) -> int:
+    runtime = VYRELONRuntime()
+    configured_agent, configured_model = runtime.project_chat_agent(root)
+    agent_id = agent_override or configured_agent.id
+    agent = runtime.chat_agent_registry().get(agent_id)
+    model = model_override or (configured_model if agent_id == configured_agent.id else None)
+
+    if agent_id == configured_agent.id and model == configured_model:
+        _, adapter = runtime.project_chat_adapter(root)
+    else:
+        from runtime.chat_adapter_registry import resolve_project_chat_adapter
+        adapter = resolve_project_chat_adapter(agent, model=model)
+
+    session = None
+    if session_id:
+        store = runtime.chat_session_store(root)
+        try:
+            session = store.load(session_id)
+        except FileNotFoundError:
+            session = runtime.create_chat_session(session_id, chat_agent_id=agent.id)
+
+    request = _chat_request(root, objective, session_id)
+
+    if execute:
+        command = list(exec_command or [])
+        while command and command[0] == "--":
+            command.pop(0)
+        if not command:
+            raise SystemExit("chat --execute requires an explicit command after --")
+        config, execution_agent, models = _execution_contracts(root, None, model_override)
+
+        class CommandExecutor:
+            def execute(self, *, agent, model_id, work_unit):
+                result = ProcessRuntime(runtime.policy).run(
+                    list(work_unit.inputs["command"]), cwd=str(root)
+                )
+                work_unit.metadata["process_returncode"] = result.returncode
+                work_unit.metadata["process_stdout"] = result.stdout
+                work_unit.metadata["process_stderr"] = result.stderr
+                if result.returncode != 0:
+                    raise RuntimeError(f"command failed with exit code {result.returncode}")
+                return result
+
+        request = ChatAgentRequest(
+            objective=objective,
+            inputs={**(request.inputs or {}), "command": command},
+            work_unit_id=request.work_unit_id,
+        )
+        result = runtime.execute_chat_request(
+            request=request,
+            adapter=adapter,
+            agent=execution_agent,
+            models=models,
+            executor=CommandExecutor(),
+            chat_agent_id=agent.id,
+            preferred_model_ids=[models[0].id],
+            session=session,
+            project_root=root,
+        )
+        if session is not None:
+            session.add_turn("user", objective)
+            session.add_turn("assistant", result.chat_response.summary)
+            session.metadata["last_plan_steps"] = [step.id for step in result.plan.steps]
+            runtime.chat_session_store(root).save(session)
+        print(json.dumps({
+            "mode": "execute",
+            "chat_agent_id": agent.id,
+            "provider": agent.provider.value,
+            "summary": result.chat_response.summary,
+            "work_unit_id": result.work_unit.id,
+            "status": result.work_unit.status.value,
+            "execution_agent_id": execution_agent.id,
+            "execution_model_id": result.orchestration.delegation.assignment.model_id,
+            "execution_evidence": result.work_unit.metadata.get("execution_evidence", []),
+            "verification_evidence": result.work_unit.metadata.get("verification_evidence", []),
+            "review_evidence": result.work_unit.metadata.get("review_evidence", []),
+            "session_id": session.id if session is not None else None,
+        }, indent=2, ensure_ascii=False))
+        return 0
+
+    _, plan, response = runtime.chat_request(request, adapter, agent_id=agent.id)
+    if session is None and session_id:
+        session = runtime.create_chat_session(session_id, chat_agent_id=agent.id)
+    if session is not None:
+        session.add_turn("user", objective)
+        session.add_turn("assistant", response.summary)
+        session.metadata["last_plan_steps"] = [step.id for step in plan.steps]
+        runtime.chat_session_store(root).save(session)
+
+    print(json.dumps({
+        "mode": "chat",
+        "chat_agent_id": agent.id,
+        "provider": agent.provider.value,
+        "summary": response.summary,
+        "steps": [
+            {"id": step.id, "objective": step.objective, "agent_id": step.agent_id, "depends_on": list(step.depends_on)}
+            for step in plan.steps
+        ],
+        "findings": list(response.findings),
+        "artifacts": list(response.artifacts),
+        "evidence": list(response.evidence),
+        "session_id": session.id if session is not None else None,
+    }, indent=2, ensure_ascii=False))
+    return 0
 
 
 def _work_state(root: Path):
@@ -76,6 +219,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     init = subparsers.add_parser("init", help="initialize VYRELON in a project")
     init.add_argument("path", nargs="?", default=".")
+    init.add_argument("--component", choices=("vyrelon", "multi-agent", "all"), default="all")
 
     providers = subparsers.add_parser(
         "providers", help="inspect configured AI providers and models"
@@ -110,7 +254,8 @@ def build_parser() -> argparse.ArgumentParser:
     models_run.add_argument("--mcp", action="append", default=[])
 
     run = subparsers.add_parser("run", help="create and execute a persistent WorkUnit")
-    run.add_argument("path", nargs="?", default=".")
+    run.add_argument("path_arg", nargs="?", default=None)
+    run.add_argument("--path", dest="path", default=None)
     run.add_argument("--objective", required=True)
     run.add_argument("--agent", default="executor")
     run.add_argument("--id", dest="work_unit_id")
@@ -118,19 +263,27 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--apply-changes", action="store_true")
     run.add_argument("--validate", action="append", default=[])
     run.add_argument("--mcp", action="append", default=[])
-    run.add_argument(
-        "--command",
-        dest="process_command",
-        nargs=argparse.REMAINDER,
-    )
+    run.add_argument("--command", dest="process_command", nargs=argparse.REMAINDER)
 
     resume = subparsers.add_parser("resume", help="resume a persisted WorkUnit")
     resume.add_argument("work_unit_id")
-    resume.add_argument("path", nargs="?", default=".")
+    resume.add_argument("path_arg", nargs="?", default=None)
+    resume.add_argument("--path", dest="path", default=None)
 
-    status = subparsers.add_parser("status", help="show a persisted WorkUnit")
-    status.add_argument("work_unit_id")
-    status.add_argument("path", nargs="?", default=".")
+    status = subparsers.add_parser("status", help="show project state or a persisted WorkUnit")
+    status.add_argument("target", nargs="?", default=".")
+    status.add_argument("path", nargs="?", default=None)
+
+
+
+    chat = subparsers.add_parser("chat", help="send a request to the project's configured Chat Agent")
+    chat.add_argument("--path", default=".")
+    chat.add_argument("--objective", required=True, help="request for the Chat Agent")
+    chat.add_argument("--agent", help="override the configured Chat Agent id")
+    chat.add_argument("--model", help="override the configured Chat Agent model")
+    chat.add_argument("--session", help="persist conversation turns in this session id")
+    chat.add_argument("--execute", action="store_true", help="execute the explicit command after -- through VYRELON")
+    chat.add_argument("exec_command", nargs=argparse.REMAINDER, help="explicit command after -- when using --execute")
 
     github = subparsers.add_parser("github", help="use VYRELON GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
@@ -310,7 +463,20 @@ def _provider_validate(root: Path) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if argv is not None:
+        argv = list(argv)
+        if argv and argv[0] == "run" and "--" in argv:
+            argv[argv.index("--")] = "--command"
     args = build_parser().parse_args(argv)
+
+    if args.command == "status":
+        root = Path(args.path or args.target).expanduser().resolve()
+        print(json.dumps(project_status(root), indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "chat":
+        root = Path(args.path).expanduser().resolve()
+        return _run_chat(root, args.objective, args.agent, args.model, args.session, args.execute, args.exec_command)
 
     if args.command == "github" and args.github_command == "probe":
         print(json.dumps(probe(args.repository), indent=2))
@@ -375,11 +541,9 @@ def main(argv: list[str] | None = None) -> int:
                 mcp_server_ids=args.mcp,
             )
 
-    root = Path(args.path).expanduser().resolve()
+    root = Path(getattr(args, "path", None) or getattr(args, "path_arg", None) or ".").expanduser().resolve()
 
     if args.command == "run":
-        if args.model and args.process_command:
-            raise ValueError("Specify at most one of --model or --command")
         work = WorkUnit(
             id=args.work_unit_id or uuid.uuid4().hex,
             objective=args.objective,
@@ -394,7 +558,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from runtime.vyrelon import VYRELONRuntime
             runtime = VYRELONRuntime()
-            if args.model or not args.process_command:
+            if not args.process_command:
                 work.metadata["runtime"] = "configured-model"
                 work.metadata["agent_id"] = args.agent
                 if args.model:
@@ -413,19 +577,21 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
 
             model = ModelSpec(
-                id="local-process",
+                id=args.model or "local-process",
                 provider_id="vyrelon-local",
                 capabilities=frozenset({"execution"}),
             )
             work.metadata["command"] = args.process_command
             work.metadata["runtime"] = "local-process"
+            work.metadata["execution_agent_id"] = agent.id
+            work.metadata["execution_model_id"] = model.id
             result = runtime.run_persistent(
                 root,
                 work,
                 agent,
                 [model],
                 ProcessAgentExecutor(args.process_command),
-                preferred_model_ids=["local-process"],
+                preferred_model_ids=[model.id],
             )
             if result.output.returncode == 0:
                 print(result.output.stdout, end="")
@@ -494,19 +660,13 @@ def main(argv: list[str] | None = None) -> int:
         return result.output.returncode
 
     if args.command == "status":
-        work = _work_state(root).load(args.work_unit_id)
-        print(
-            json.dumps(
-                {
-                    "id": work.id,
-                    "objective": work.objective,
-                    "status": work.status.value,
-                    "assigned_agents": work.assigned_agents,
-                    "metadata": work.metadata,
-                },
-                indent=2,
-            )
-        )
+        target = Path(args.target).expanduser().resolve() if args.path is None else Path(args.path).expanduser().resolve()
+        if args.path is None and target.is_dir():
+            print(json.dumps(project_status(target), indent=2, ensure_ascii=False))
+            return 0
+        work_id = args.target
+        work = _work_state(target).load(work_id)
+        print(json.dumps({"id": work.id, "objective": work.objective, "status": work.status.value, "assigned_agents": work.assigned_agents, "metadata": work.metadata}, indent=2))
         return 0
 
     detector = ProfileDetector()
@@ -528,7 +688,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    config = ProjectInitializer().apply(root, detections)
+    config = ProjectInitializer().apply(root, detections, component=args.component)
     print(f"Initialized VYRELON: {config}")
     return 0
 

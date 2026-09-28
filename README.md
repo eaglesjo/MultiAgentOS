@@ -1,369 +1,134 @@
 # MultiAgentOS
 
-MultiAgentOS is the integration base for **VYRELON**, a local-first, GitHub-native AI development runtime with optional Multi-Agent orchestration.
+MultiAgentOS is the foundation for VYRELON, a local-first, GitHub-native multi-agent development orchestrator.
 
-VYRELON absorbs and generalizes the strongest capabilities of three source systems:
+## Core principles
 
-- `free-claude-code` — provider/model/protocol/harness, streaming, tool calling and fallback
-- `luna-chat-coder` — repository continuity, recovery, validation and evidence
-- `chatgpt-local-coder` — local filesystem, shell/process, Git, patch, permissions, checkpoints and MCP
+- Local-first: filesystem, shell, processes and Git are first-class.
+- GitHub-native: repository, branch, commit, issue, pull request, review and CI lifecycle are first-class.
+- Chat-Agent agnostic with ChatGPT as the default primary conversational agent; Gemini, Claude and other providers can participate.
+- Multi-AI assignment: agents can use explicit, pool/fallback, or automatic model routing.
+- Executable lifecycle: Understand -> Plan -> Delegate -> Execute -> Verify -> Review -> Handoff.
+- Profile-driven: React Native, Android Native and iOS Native extend the common core.
+- Policy-controlled writes: repository and GitHub mutations are explicit runtime capabilities.
 
-Multi-Agent is an **extension layer** on top of VYRELON. It does not define the core runtime.
+## Current runtime
 
-## What VYRELON is
+VYRELON currently includes:
 
-The target runtime is:
-
-```text
-                              VYRELON
-                                 │
-       ┌─────────────────────────┼─────────────────────────┐
-       │                         │                         │
-   AI Runtime              Local Runtime           Repository Runtime
-       │                         │                         │
- Provider / Model          Filesystem / Shell       Git / GitHub
- Protocol / Streaming      Process / Patch          Recovery / CI
- Tool Calling / Reasoning  Permission / Path        Checkpoint / Evidence
- Fallback
-       │                         │                         │
-       └─────────────────────────┼─────────────────────────┘
-                                 │
-                           Session / Tool
-                                 │
-                         Optional Multi-Agent
-                    Planner / Coder / Reviewer
-```
-
-The runtime is designed so that a project can use VYRELON alone or enable Multi-Agent orchestration when needed.
-
-## ChatGPT Web as the VYRELON entry point
-
-A primary VYRELON usage model is **ChatGPT Web controlling a development environment**.
-
-There are two complementary ChatGPT-to-project paths:
-
-1. **ChatGPT Web → local machine through MCP**
-2. **ChatGPT Web → GitHub through the GitHub app/connection**
-
-These paths are intentionally separate. Local machine access is a tool-execution path; GitHub access is a repository-data and repository-operation path.
-
-### 1. ChatGPT Web → Local machine through MCP Tunnel
-
-ChatGPT cannot directly connect to a local MCP server. A local VYRELON MCP server therefore needs a secure remote transport such as an OpenAI Secure MCP Tunnel. The tunnel connects ChatGPT Web to the MCP server without requiring the local development machine to expose its MCP port publicly.
-
-The intended flow is:
-
-```text
-┌──────────────────┐
-│   ChatGPT Web    │
-│  browser chat    │
-└────────┬─────────┘
-         │ MCP over HTTPS
-         ▼
-┌──────────────────┐
-│  Secure MCP      │
-│     Tunnel       │
-└────────┬─────────┘
-         │ localhost
-         ▼
-┌──────────────────┐
-│ VYRELON MCP      │
-│ Local Runtime    │
-└────────┬─────────┘
-         │
-    ┌────┼──────────────┐
-    ▼    ▼              ▼
- Files  Shell/Process   Git/Patch
-```
-
-This is the architecture being absorbed from `chatgpt-local-coder`. Its MCP server exposes structured local tools such as filesystem operations, shell commands, Git operations and patch application.
-
-#### Local MCP security model
-
-The local endpoint must be treated as a privileged development interface:
-
-- bind the MCP server to loopback where possible;
-- expose only the MCP port through the tunnel;
-- never expose a local administration port through the tunnel;
-- use an MCP authentication token when the transport supports path/token authentication;
-- keep tunnel credentials separate from repository credentials;
-- enforce VYRELON filesystem/path policy before executing a tool;
-- enforce explicit write/process/Git permissions;
-- record mutation and execution evidence;
-- never persist raw secrets in WorkUnit/session state.
-
-The MCP tunnel is transport. **VYRELON Local Tool Runtime remains the security and execution boundary.**
-
-> ChatGPT's current MCP availability and write/modify capabilities depend on plan and workspace configuration. OpenAI documents full MCP support as rolling out for supported ChatGPT Business and Enterprise/Edu workspaces; availability and UI can change.
-
-### Local MCP setup pattern
-
-The concrete local setup follows this sequence:
-
-1. Install/start the VYRELON MCP server on the development machine.
-2. Bind it to localhost.
-3. Configure the project/workspace root.
-4. Generate an MCP authentication token.
-5. Start the secure MCP tunnel.
-6. Register the MCP endpoint as a ChatGPT custom MCP app/connector.
-7. Enable that app in the ChatGPT conversation.
-8. Ask ChatGPT to inspect, edit, test or operate the local project through VYRELON tools.
-
-For example:
-
-```text
-ChatGPT:
-  "Read the project README, run the tests, fix the failing test,
-   show the diff, and stop before committing."
-
-          ↓
-
-MCP Tool Calls:
-  filesystem.read
-  shell.run
-  patch.apply
-  git.diff
-
-          ↓
-
-VYRELON Policy
-  path check
-  permission check
-  execution
-  evidence
-
-          ↓
-
-ChatGPT receives structured results
-```
-
-The exact tunnel command is environment-specific and should be kept in the MCP runtime documentation rather than hard-coded into the core runtime.
-
-### 2. ChatGPT Web → GitHub
-
-ChatGPT can also connect directly to GitHub through its supported GitHub app/connection. The connection allows ChatGPT to retrieve permitted repository content such as source code, README files and documentation on demand.
-
-The intended repository flow is:
-
-```text
-ChatGPT Web
-     │
-     │ GitHub connection
-     ▼
-GitHub
-     │
- ┌───┼───────────────┐
- ▼   ▼               ▼
-Code README       Issues / repository data
-     │
-     ▼
-VYRELON reasoning / planning
-     │
-     ├── local MCP → local workspace
-     │
-     └── GitHub runtime / approved repository actions
-```
-
-For standard GitHub access, connect the GitHub app in ChatGPT and grant it access to the repositories that ChatGPT should be allowed to read. Private or newly created repositories may require the GitHub app installation/configuration to explicitly include that repository.
-
-For **write/modify workflows**, use an explicitly authorized GitHub runtime or custom MCP app with the required permissions. Do not assume that the standard GitHub connection provides arbitrary repository writes.
-
-This distinction is important:
-
-| Path | Primary purpose |
-|---|---|
-| ChatGPT → GitHub connection | Search/read/cite authorized repository content |
-| ChatGPT → VYRELON MCP | Execute local tools on the development machine |
-| VYRELON GitHub Runtime | Controlled repository mutations and GitHub lifecycle |
-| ChatGPT → VYRELON + both | Full local + repository development workflow |
-
-## Current VYRELON runtime
-
-Implemented foundation:
-
-- provider-neutral WorkUnit, Agent, Model, Runtime and Profile contracts
-- Harness / Session / Tool / ToolRequest / ToolResult contracts
-- normalized RuntimeEvent and ProtocolAdapter contracts
-- deterministic model routing
-- generic CLI and HTTP model adapters
+- provider-neutral WorkUnit, Agent, Model, Runtime, Profile, and GitHub contracts
+- deterministic multi-AI routing
+- model adapters for generic CLI and HTTP JSON endpoints
 - model-backed agent execution
-- declarative provider/model configuration
-- environment-backed credential validation without storing secrets
 - policy-controlled local process and GitHub runtimes
-- ProjectProfile and AgentProfile resolution
-- persistent WorkUnit lifecycle
-- GitHub runtime facade
-- Local Tool Runtime foundation:
-  - path security
-  - filesystem read/write/list/create/delete
-  - persistent working-directory shell state
-  - environment state
-  - unified patch check/apply
-  - Git status/diff/log/add/restore/stash/branch/commit/push/pull
-  - explicit local write/process/Git policy
-- GitHub Actions CI validation
+- evidence-based technology profile detection
+- executable project bootstrap via the MultiAgentOS CLI
+- explicit planning contracts and persistent WorkUnit state
+- unified VYRELON runtime facade for project, Git, and GitHub control
+- provider-neutral Chat Agent contracts and persistent VYRELON agent rules
+- local stdlib unittest validation plus GitHub Actions CI
+- read-only project status and durable checkpoint inspection
+- project-scoped execution configuration for selecting the CLI Agent/Model
+- direct project Chat Agent CLI with optional persistent conversation sessions
 
 ## CLI
 
-```bash
-multiagentos detect .
-multiagentos profile .
-multiagentos init .
-multiagentos providers list .
-multiagentos providers validate .
-multiagentos models run . --model <model-id> --objective "..."
-multiagentos github probe eaglesjo/MultiAgentOS
-```
+After installation:
 
-Optional provider/model definitions live at:
+    multiagentos detect .
+    multiagentos init .
+    multiagentos init . --component vyrelon
+    multiagentos init . --component multi-agent
+    multiagentos init . --component all
+    multiagentos status .
+    multiagentos run --path . --objective "run tests" -- python -m unittest discover -s tests -v
+    multiagentos run --path . --agent custom-executor --model custom-process --objective "run tests" -- python -m unittest discover -s tests -v
+    multiagentos resume <work-unit-id> --path .
+    multiagentos chat --path . --objective "inspect the current project"
+    multiagentos chat --path . --execute --objective "run the smoke test" -- python -m unittest discover -s tests -v
+    multiagentos chat --path . --objective "continue our conversation" --session project-1
+    multiagentos github probe eaglesjo/MultiAgentOS
 
-```text
-.multiagentos/providers.json
-```
+The initializer supports independent installation:
 
-Provider credentials are referenced through environment variables. VYRELON never writes credential values to project configuration or WorkUnit state.
+- `vyrelon`: VYRELON runtime, policy, lifecycle, planning/state, project profile and execution configuration.
+- `multi-agent`: role catalog and profile-specific multi-agent definitions.
+- `all`: both components.
 
-## Local Tool Runtime
+The selected mode is recorded in:
 
-The first runtime layer is intentionally independent of any AI provider.
+    .multiagentos/components.json
 
-```text
-Agent / Harness
-      │
-      ▼
-Tool Request
-      │
-      ▼
-Permission + Path Security
-      │
-      ▼
-Local Tool Runtime
- ├── Filesystem
- ├── Shell / Process
- ├── Patch
- └── Git
-      │
-      ▼
-Tool Result / Evidence
-```
+VYRELON installation also writes:
 
-The local runtime can be used directly by Python integrations and will later be exposed through the VYRELON MCP runtime.
+    .multiagentos/execution.json
+    .multiagentos/chat.json
 
-Example:
+The default execution configuration is:
 
-```python
-from pathlib import Path
+    {
+      "version": 1,
+      "runtime": "process",
+      "agent_id": "cli-executor",
+      "model_id": "local-process"
+    }
 
-from runtime.vyrelon import VYRELONRuntime
+The `run` and `resume` commands load Agent/Model IDs from this project configuration and resolve them through VYRELON's provider-neutral Agent/AI registries. `--agent` and `--model` are explicit per-invocation overrides. An unknown or incompatible Agent/Model pair is rejected instead of silently constructing a new execution contract. The runtime and process capability remain controlled by VYRELON; the configuration does not contain credentials or executable command definitions.
 
-runtime = VYRELONRuntime()
-root = Path("/path/to/project")
+Multi-agent installation additionally writes:
 
-filesystem = runtime.local_filesystem(root)
-shell = runtime.local_shell(root)
-patch = runtime.local_patch(root)
+    .multiagentos/agents.json
 
-print(filesystem.read_text("README.md"))
-print(shell.run("python -m unittest discover -s tests -v").returncode)
-```
+The project Chat Agent defaults to ChatGPT and is resolved through VYRELON's provider-neutral Chat Agent registry. Gemini, Claude, and other registered providers can be selected by changing `chat.json`; the selected Chat Agent still has no execution authority above VYRELON.
 
-## Development sequence
+The `chat` command sends a conversational request through the configured Chat Agent and returns its summary, proposed plan steps, findings, artifacts, and provider evidence as JSON. It does not execute filesystem, Git, GitHub, process, verification, or review actions unless --execute is explicitly supplied with a user-provided command. In execution mode, the Chat Agent still only supplies intent/plan; VYRELON's configured execution Agent/Model owns the explicit command and lifecycle. Use `--session <id>` to persist conversation turns under `.multiagentos/sessions/`; credentials are never stored there. Provider SDKs remain optional and CI tests use injected adapters.
 
-VYRELON implementation proceeds in this order:
+No provider credentials or API keys are written to the project.
 
-1. **Local Tool Runtime**
-   - Filesystem
-   - Shell / Process
-   - Git
-   - Patch
-   - Permission / Path Security
+The read-only `status` command reports installed components, detected profiles, execution configuration, agent catalog entries, WorkUnits, and durable workflow checkpoints. The `run` command executes a local command through the VYRELON WorkUnit lifecycle, while `resume` reloads a durable orchestration checkpoint and continues it. It makes interrupted or resumable work visible without granting the CLI any additional execution authority.
 
-2. **AI Runtime**
-   - Provider / Model
-   - Protocol
-   - Streaming / Event
-   - Tool Calling
-   - Reasoning
-   - Fallback
+## Architecture
 
-3. **Repository Runtime**
-   - GitHub
-   - Recovery
-   - Checkpoint
-   - Evidence
-   - CI / Actions
-
-4. **MCP Runtime**
-   - MCP Upstream
-   - Session
-   - Proxy
-   - OAuth
-   - Tool Profile
-
-5. **Validation Runtime**
-   - Post-edit hooks
-   - Test
-   - Lint
-   - Type Check
-   - Validation Evidence
-
-6. **Multi-Agent Runtime**
-   - Planner
-   - Delegation
-   - Coder
-   - Reviewer
-   - Handoff
-   - WorkUnit
-   - State / Recovery
-
-Only after these six layers are complete will VYRELON be evaluated for IDE-specific plugin/extension integrations.
+    Core Orchestration
+        |
+        +-- Agent Contracts
+        +-- AI Routing
+        +-- Lifecycle
+        |
+    Runtime Adapters
+        |
+        +-- Local Process
+        +-- Model CLI
+        +-- Model HTTP
+        +-- GitHub
+        |
+    Technology Profiles
+        |
+        +-- React Native
+        +-- Android Native
+        +-- iOS Native
 
 ## Validation
 
-Run the local test suite with:
+    python -m unittest discover -s tests -v
 
-```bash
-python -m unittest discover -s tests -v
-```
+GitHub Actions runs the same test suite on pull requests and pushes.
 
-GitHub Actions runs the repository validation suite for pull requests and pushes.
 
-## Security boundary
+### Chat Agent adapter resolution
 
-VYRELON treats local development access as privileged execution.
+VYRELON resolves the configured Chat Agent through a provider-neutral adapter registry:
 
-```text
-ChatGPT / Agent
-      │
-      ▼
-MCP / Runtime Tool
-      │
-      ▼
-Path + Permission Policy
-      │
-      ├── allow
-      └── deny
-      │
-      ▼
-Local Process / Filesystem / Git
-      │
-      ▼
-Audit / Evidence
-```
+    .multiagentos/chat.json
+            |
+            v
+    ChatAgentRegistry
+            |
+            v
+    ChatAdapterRegistry
+            |
+            +-- ChatGPT -> OpenAI adapter
+            +-- Gemini -> provider adapter when registered
+            +-- Claude -> provider adapter when registered
 
-Never expose an unrestricted local shell or filesystem server directly to the public internet. Use a controlled MCP transport and VYRELON policy boundary.
-
-## Source architecture
-
-Detailed capability mapping is maintained in:
-
-- `docs/architecture/VYRELON_SOURCE_INVENTORY.md`
-- `docs/architecture/VYRELON_TARGET_ARCHITECTURE.md`
-
-The source projects are reference implementations and capability sources. VYRELON absorbs behavior through provider-neutral contracts and runtime boundaries rather than copying source repositories wholesale.
-
-## References
-
-- ChatGPT Developer Mode and MCP apps: https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt
-- Connecting GitHub to ChatGPT: https://help.openai.com/en/articles/11145903-connecting-github-to-chatgpt
-- OpenAI Apps SDK: https://help.openai.com/en/articles/12515353-build-with-the-apps-sdk
+The core does not require a provider SDK. The OpenAI/ChatGPT adapter remains optional and obtains credentials from the provider's normal environment/authentication mechanism. A Chat Agent can propose intent and plans, but actual filesystem, Git, GitHub, process, verification, review, and approval actions remain VYRELON responsibilities.
