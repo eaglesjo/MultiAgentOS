@@ -1,8 +1,8 @@
 # VYRELON GitHub Connection
 
-VYRELON owns the GitHub integration path.
+VYRELON owns the **local** GitHub integration path.
 
-```text
+```
 VYRELON
   -> GitHubRuntime (policy)
   -> GitHubGatewayClient
@@ -12,7 +12,22 @@ VYRELON
 
 MultiAgentOS has no Luna-specific repository, agent, or runtime dependency.
 
-Authentication remains external to the repository. Authenticate the host with `gh auth login`, then verify access with:
+## Local VYRELON authentication
+
+Authentication remains external to the repository. Authenticate the host with:
+
+```bash
+gh auth login
+gh auth status
+```
+
+Then verify access with:
+
+```bash
+multiagentos github probe OWNER/REPOSITORY
+```
+
+Example:
 
 ```bash
 multiagentos github probe eaglesjo/MultiAgentOS
@@ -22,4 +37,47 @@ Expected output includes the repository, default branch, and current default-bra
 
 GitHub writes remain disabled unless the VYRELON execution policy enables `github.write`. Pull-request creation and merge additionally require explicit approval.
 
+## This is separate from ChatGPT's GitHub app
+
+There are two different GitHub access paths:
+
+### Local VYRELON
+
+```
+your machine
+  -> VYRELON
+  -> gh auth
+  -> GitHub
+```
+
+This gives the local VYRELON runtime access to the repositories allowed by the authenticated GitHub CLI account.
+
+### ChatGPT
+
+```
+ChatGPT
+  -> GitHub app
+  -> GitHub authorization
+  -> repositories explicitly selected by the user
+```
+
+Connecting GitHub to ChatGPT does **not** grant ChatGPT access to your local filesystem or local VYRELON process.
+
+OpenAI's current GitHub connection flow sends the user to GitHub to install/authorize the ChatGPT app and select the repositories it may access.
+
+Official OpenAI guidance:
+https://help.openai.com/en/articles/11145903-connecting-github-to-chatgpt
+
+## Credentials
+
+Never commit:
+
+- GitHub personal access tokens
+- `gh` credential files
+- provider API keys
+- tunnel credentials
+- `.multiagentos/` runtime state
+
 This makes VYRELON the project-level orchestration path while keeping credentials outside source control.
+
+For the full user setup, see [Getting Started](GETTING_STARTED.md).
