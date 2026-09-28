@@ -17,6 +17,7 @@ from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
 from runtime.github_probe import probe
 from runtime.process import ProcessRuntime
+from runtime.status import project_status
 from runtime.vyrelon import VYRELONRuntime
 from runtime.agent.process import ProcessAgentExecutor
 
@@ -462,6 +463,11 @@ def _provider_validate(root: Path) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+
+    if args.command == "status":
+        root = Path(args.path or args.target).expanduser().resolve()
+        print(json.dumps(project_status(root), indent=2, ensure_ascii=False))
+        return 0
 
     if args.command == "chat":
         root = Path(args.path).expanduser().resolve()
