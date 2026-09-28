@@ -116,7 +116,7 @@ class ProviderDiscoveryAdapter:
             return
         endpoint, key_env, kind = preset
         discovery["endpoint"] = endpoint
-        discovery["models_path"] = ["data"]
+        discovery["models_path"] = ["models"] if kind == "gemini" else ["data"]
         if kind == "gemini":
             discovery["query_env"] = {"key": key_env}
         elif kind == "openai":
