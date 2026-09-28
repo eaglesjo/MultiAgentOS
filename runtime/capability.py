@@ -78,6 +78,50 @@ class CapabilityRegistry:
         self.store.save(profile)
         return profile
 
+    def merge(self, profile: ModelCapabilityProfile) -> ModelCapabilityProfile:
+        """Merge a discovered or observed profile with the persisted profile."""
+        if self.store.exists(profile.model_id):
+            current = self.store.load(profile.model_id)
+            if current.provider_id != profile.provider_id:
+                raise ValueError(f"Capability provider mismatch for {profile.model_id}")
+            confidence = (
+                CapabilityConfidence.OBSERVED
+                if CapabilityConfidence.OBSERVED in {current.confidence, profile.confidence}
+                else CapabilityConfidence.DECLARED
+                if CapabilityConfidence.DECLARED in {current.confidence, profile.confidence}
+                else CapabilityConfidence.UNKNOWN
+            )
+            metadata = dict(current.metadata)
+            metadata.update(profile.metadata)
+            merged = ModelCapabilityProfile(
+                model_id=profile.model_id,
+                provider_id=profile.provider_id,
+                capabilities=frozenset(current.capabilities | profile.capabilities),
+                confidence=confidence,
+                source=f"{current.source}+{profile.source}",
+                metadata=metadata,
+            )
+        else:
+            merged = profile
+        self.store.save(merged)
+        return merged
+
+    def observe_response(self, model: ModelSpec, metadata: dict[str, object]) -> ModelCapabilityProfile:
+        """Record capabilities directly evidenced by a successful model response."""
+        observed = {"chat"}
+        if "tool_calls" in metadata or metadata.get("tools_used") is True:
+            observed.add("tools")
+        if metadata.get("structured_output") is True:
+            observed.add("structured_output")
+        return self.merge(ModelCapabilityProfile(
+            model_id=model.id,
+            provider_id=model.provider_id,
+            capabilities=frozenset(observed),
+            confidence=CapabilityConfidence.OBSERVED,
+            source="runtime_observation",
+            metadata={"observed_capabilities": sorted(observed)},
+        ))
+
     def match(self, model: ModelSpec, requirements: frozenset[str]) -> CapabilityMatch:
         profile = self.profile(model)
         matched = profile.capabilities & requirements
