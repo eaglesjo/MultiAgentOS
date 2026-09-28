@@ -8,8 +8,6 @@ from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.health import ModelHealth
 from core.contracts.quota import QuotaSnapshot
-from runtime.quota import quota_available, quota_score
-
 if TYPE_CHECKING:
     from runtime.capability import CapabilityRegistry
 
@@ -37,6 +35,8 @@ class AIRouter:
         health_snapshots: dict[str, ModelHealth] | None = None,
         capability_registry: CapabilityRegistry | None = None,
     ) -> Assignment:
+        from runtime.quota import quota_available, quota_score
+
         strategy = RoutingStrategy(strategy)
         preferred = preferred_model_ids if preferred_model_ids is not None else list(agent.model_ids)
         by_id = {model.id: model for model in models}
