@@ -16,6 +16,7 @@ from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import SessionStateStore, WorkStateStore
 from core.orchestrator import OrchestrationResult, Orchestrator
+from core.routing import AIRouter, RoutingStrategy
 from profiles.detector import ProfileDetector
 from profiles.resolver import ProfileResolver
 from integrations.github.gateway import GitHubGatewayClient
@@ -47,6 +48,10 @@ from runtime.agent.ide import IDECodingExecutor, IDEValidationVerifier
 from runtime.tool_calling import ToolRuntime
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.repository_tools import GitToolBindings, MCPToolBindings
+from runtime.quota import QuotaIntelligence, QuotaStore, quota_available
+from runtime.capability import CapabilityRegistry, CapabilityStore
+from runtime.health import ModelHealthRegistry, ModelHealthStore
+from runtime.model_control import ModelControlPlane
 
 
 class VYRELONRuntime:
@@ -341,6 +346,18 @@ class VYRELONRuntime:
     def state_store(self, project_root: Path):
         return WorkStateStore(project_root / ".multiagentos" / "state")
 
+    def quota_store(self, project_root: Path):
+        """Return the project-scoped persistent model quota store."""
+        return QuotaStore(Path(project_root) / ".multiagentos" / "quota")
+
+    def health_registry(self, project_root: Path):
+        """Return the project-scoped persistent model health registry."""
+        return ModelHealthRegistry(ModelHealthStore(Path(project_root) / ".multiagentos" / "health"))
+
+    def model_control_plane(self, project_root: Path) -> ModelControlPlane:
+        """Return the project-scoped unified model control plane."""
+        return ModelControlPlane(Path(project_root).resolve())
+
     def agents(self, project_root: Path):
         """Return the legacy AgentRegistry for compatibility."""
         detections = self.inspect(project_root)
@@ -465,8 +482,47 @@ class VYRELONRuntime:
                 self.providers.get_model(model_id)
         elif agent.model_ids:
             preferred_model_ids = list(agent.model_ids)
+        else:
+            # Project-aware automatic routing also considers the latest persisted quota.
+            router = AIRouter()
+            quota_store = self.quota_store(project_root)
+            health_registry = self.health_registry(project_root)
+            capability_registry = self.capability_registry(project_root)
+            quota_snapshots = {
+                model.id: quota_store.load(model.id)
+                for model in models
+                if quota_store.exists(model.id)
+            }
+            health_snapshots = {}
+            for model in models:
+                health = health_registry.get(model.id)
+                if health is not None:
+                    health_snapshots[model.id] = health
+            assignment = router.assign(
+                agent,
+                models,
+                strategy=RoutingStrategy(routing_strategy),
+                quota_snapshots=quota_snapshots,
+                health_snapshots=health_snapshots,
+                capability_registry=capability_registry,
+            )
+            preferred_model_ids = [assignment.model_id]
+            fallback_model_ids = tuple(
+                model.id
+                for model in models
+                if model.id != assignment.model_id
+                and router.compatible(agent, model)
+                and health_registry.available(model.id)
+                and (
+                    not quota_store.exists(model.id)
+                    or quota_available(quota_store.load(model.id))
+                )
+            )
 
         from runtime.agent.model import ModelAgentExecutor
+        control_plane = self.model_control_plane(project_root)
+        quota_intelligence = QuotaIntelligence(control_plane.quota_store)
+        health_registry = control_plane.health_registry
 
         tool_runtime = ToolRuntime(self.policy)
         BuiltinToolBindings(str(project_root), tool_runtime)
@@ -485,6 +541,9 @@ class VYRELONRuntime:
             models=models,
             system_prompt=system_prompt,
             fallback_model_ids=fallback_model_ids,
+            quota_intelligence=quota_intelligence,
+            health_registry=health_registry,
+            model_control=control_plane,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,

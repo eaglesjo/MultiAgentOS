@@ -90,6 +90,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     models = subparsers.add_parser("models", help="execute configured AI models")
     model_sub = models.add_subparsers(dest="models_command", required=True)
+    models_quota = model_sub.add_parser("quota", help="show observed and estimated model quota")
+    models_quota.add_argument("path", nargs="?", default=".")
+    models_health = model_sub.add_parser("health", help="show model health and cooldown state")
+    models_health.add_argument("path", nargs="?", default=".")
+    models_capabilities = model_sub.add_parser("capabilities", help="show normalized model capabilities")
+    models_capabilities.add_argument("path", nargs="?", default=".")
+    models_control = model_sub.add_parser("control", help="show unified model control-plane state")
+    models_control.add_argument("path", nargs="?", default=".")
+    models_control.add_argument("--events", action="store_true", help="include recent control-plane events")
+
     models_run = model_sub.add_parser("run", help="run a configured model through VYRELON")
     models_run.add_argument("path", nargs="?", default=".")
     models_run.add_argument("--model", required=True)
@@ -104,7 +114,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--objective", required=True)
     run.add_argument("--agent", default="executor")
     run.add_argument("--id", dest="work_unit_id")
-    run.add_argument("--model")
+    run.add_argument("--model", help="pin a model; omit to route automatically")
     run.add_argument("--apply-changes", action="store_true")
     run.add_argument("--validate", action="append", default=[])
     run.add_argument("--mcp", action="append", default=[])
@@ -150,6 +160,104 @@ def _provider_list(root: Path) -> int:
         for provider in runtime.providers.providers()
     ]
     print(json.dumps(payload, indent=2))
+    return 0
+
+
+
+def _model_quota(root: Path) -> int:
+    runtime = _provider_runtime(root)
+    store = runtime.quota_store(root)
+    payload = []
+    for model in runtime.configured_models():
+        if not store.exists(model.id):
+            payload.append({
+                "model": model.id,
+                "provider": model.provider_id,
+                "status": "unknown",
+                "confidence": "unknown",
+                "dimensions": {},
+            })
+            continue
+        snapshot = store.load(model.id)
+        payload.append({
+            "model": snapshot.model_id,
+            "provider": snapshot.provider_id,
+            "scope": snapshot.scope,
+            "observed_at": snapshot.observed_at.isoformat(),
+            "confidence": snapshot.confidence.value,
+            "dimensions": {
+                item.name: {
+                    "limit": item.limit,
+                    "used": item.used,
+                    "remaining": item.remaining,
+                    "reset_at": item.reset_at.isoformat() if item.reset_at else None,
+                    "confidence": item.confidence.value,
+                    "source": item.source,
+                }
+                for item in snapshot.dimensions
+            },
+        })
+    print(json.dumps(payload, indent=2))
+    return 0
+
+def _model_health(root: Path) -> int:
+    runtime = _provider_runtime(root)
+    registry = runtime.health_registry(root)
+    payload = []
+    for model in runtime.configured_models():
+        health = registry.get(model.id)
+        if health is None:
+            payload.append({
+                "model": model.id,
+                "provider": model.provider_id,
+                "status": "healthy",
+                "available": True,
+                "consecutive_failures": 0,
+                "successes": 0,
+            })
+            continue
+        payload.append({
+            "model": health.model_id,
+            "provider": health.provider_id,
+            "status": health.status.value,
+            "available": health.available,
+            "consecutive_failures": health.consecutive_failures,
+            "successes": health.successes,
+            "last_error": health.last_error,
+            "last_failure_at": health.last_failure_at.isoformat() if health.last_failure_at else None,
+            "last_success_at": health.last_success_at.isoformat() if health.last_success_at else None,
+            "cooldown_until": health.cooldown_until.isoformat() if health.cooldown_until else None,
+        })
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _model_capabilities(root: Path) -> int:
+    runtime = _provider_runtime(root)
+    registry = runtime.capability_registry(root)
+    payload = []
+    for model in runtime.configured_models():
+        profile = registry.profile(model)
+        payload.append({
+            "model": profile.model_id,
+            "provider": profile.provider_id,
+            "capabilities": sorted(profile.capabilities),
+            "confidence": profile.confidence.value,
+            "source": profile.source,
+        })
+    print(json.dumps(payload, indent=2))
+    return 0
+
+def _model_control(root: Path, include_events: bool = False) -> int:
+    runtime = _provider_runtime(root)
+    control = runtime.model_control_plane(root)
+    models = runtime.configured_models()
+    payload = {
+        "models": list(control.dashboard(models)),
+    }
+    if include_events:
+        payload["events"] = list(control.events.recent())
+    print(json.dumps(payload, indent=2, default=str))
     return 0
 
 
@@ -248,6 +356,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "models":
         root = Path(args.path).expanduser().resolve()
+        if args.models_command == "quota":
+            return _model_quota(root)
+        if args.models_command == "health":
+            return _model_health(root)
+        if args.models_command == "capabilities":
+            return _model_capabilities(root)
+        if args.models_command == "control":
+            return _model_control(root, args.events)
         if args.models_command == "run":
             return _model_run(
                 root,
@@ -262,8 +378,8 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.path).expanduser().resolve()
 
     if args.command == "run":
-        if bool(args.model) == bool(args.process_command):
-            raise ValueError("Specify exactly one of --model or --command")
+        if args.model and args.process_command:
+            raise ValueError("Specify at most one of --model or --command")
         work = WorkUnit(
             id=args.work_unit_id or uuid.uuid4().hex,
             objective=args.objective,
@@ -278,16 +394,17 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from runtime.vyrelon import VYRELONRuntime
             runtime = VYRELONRuntime()
-            if args.model:
+            if args.model or not args.process_command:
                 work.metadata["runtime"] = "configured-model"
-                work.metadata["model_id"] = args.model
                 work.metadata["agent_id"] = args.agent
+                if args.model:
+                    work.metadata["model_id"] = args.model
                 result = runtime.run_configured_work(
                     root,
                     objective=args.objective,
                     agent_id=args.agent,
                     work_unit_id=work.id,
-                    preferred_model_ids=[args.model],
+                    preferred_model_ids=[args.model] if args.model else None,
                     apply_changes=args.apply_changes,
                     validation_commands=tuple(args.validate),
                     mcp_server_ids=tuple(args.mcp),
