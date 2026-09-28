@@ -406,6 +406,45 @@ class VYRELONRuntime:
         self.load_provider_config(path)
         return True
 
+    def explain_model_routing(
+        self,
+        project_root: Path,
+        *,
+        agent_id: str,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy: str = "pool",
+    ):
+        """Return provider-neutral routing evidence for a project agent."""
+        root = Path(project_root).resolve()
+        self.load_project_provider_config(root)
+        models = self.configured_models()
+        agent = self.agent_profile(root, agent_id)
+        preferred = preferred_model_ids
+        if preferred is None and agent.model_ids:
+            preferred = list(agent.model_ids)
+        quota_store = self.quota_store(root)
+        health_registry = self.health_registry(root)
+        capability_registry = self.capability_registry(root)
+        quota_snapshots = {
+            model.id: quota_store.load(model.id)
+            for model in models
+            if quota_store.exists(model.id)
+        }
+        health_snapshots = {
+            model.id: health
+            for model in models
+            if (health := health_registry.get(model.id)) is not None
+        }
+        return AIRouter().explain(
+            agent.to_contract() if hasattr(agent, "to_contract") else agent,
+            models,
+            preferred_model_ids=preferred,
+            strategy=RoutingStrategy(routing_strategy),
+            quota_snapshots=quota_snapshots,
+            health_snapshots=health_snapshots,
+            capability_registry=capability_registry,
+        )
+
     def discover_models(self, project_root: Path, *, refresh: bool = True):
         """Discover and persist provider capabilities and quota metadata."""
         root = Path(project_root).resolve()
