@@ -186,7 +186,7 @@ The final connector/runtime step remains environment-specific and must be valida
 
 ## Official references
 
-- OpenAI tunnel-client: https://github.com/openai/tunnel-client
-- Connector behavior: https://github.com/openai/tunnel-client/blob/master/docs/connectors.md
-- Permissions: https://github.com/openai/tunnel-client/blob/master/docs/permissions.md
-- End-user guide: https://github.com/openai/tunnel-client/blob/master/docs/end-user-guide.md
+- OpenAI Secure MCP Tunnel: https://developers.openai.com/api/docs/guides/secure-mcp-tunnels
+- tunnel-client repository: https://github.com/openai/tunnel-client
+- Latest tunnel-client release: https://github.com/openai/tunnel-client/releases/latest
+- tunnel-client end-user guide: https://github.com/openai/tunnel-client/blob/master/docs/end-user-guide.md
