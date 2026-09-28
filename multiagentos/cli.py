@@ -232,6 +232,22 @@ def _model_health(root: Path) -> int:
     return 0
 
 
+def _model_capabilities(root: Path) -> int:
+    runtime = _provider_runtime(root)
+    registry = runtime.capability_registry(root)
+    payload = []
+    for model in runtime.configured_models():
+        profile = registry.profile(model)
+        payload.append({
+            "model": profile.model_id,
+            "provider": profile.provider_id,
+            "capabilities": sorted(profile.capabilities),
+            "confidence": profile.confidence.value,
+            "source": profile.source,
+        })
+    print(json.dumps(payload, indent=2))
+    return 0
+
 def _model_control(root: Path, include_events: bool = False) -> int:
     runtime = _provider_runtime(root)
     control = runtime.model_control_plane(root)
@@ -344,6 +360,8 @@ def main(argv: list[str] | None = None) -> int:
             return _model_quota(root)
         if args.models_command == "health":
             return _model_health(root)
+        if args.models_command == "capabilities":
+            return _model_capabilities(root)
         if args.models_command == "control":
             return _model_control(root, args.events)
         if args.models_command == "run":
