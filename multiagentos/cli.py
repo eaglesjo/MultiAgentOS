@@ -94,6 +94,9 @@ def build_parser() -> argparse.ArgumentParser:
     models_quota.add_argument("path", nargs="?", default=".")
     models_health = model_sub.add_parser("health", help="show model health and cooldown state")
     models_health.add_argument("path", nargs="?", default=".")
+    models_control = model_sub.add_parser("control", help="show unified model control-plane state")
+    models_control.add_argument("path", nargs="?", default=".")
+    models_control.add_argument("--events", action="store_true", help="include recent control-plane events")
 
     models_run = model_sub.add_parser("run", help="run a configured model through VYRELON")
     models_run.add_argument("path", nargs="?", default=".")
@@ -227,6 +230,19 @@ def _model_health(root: Path) -> int:
     return 0
 
 
+def _model_control(root: Path, include_events: bool = False) -> int:
+    runtime = _provider_runtime(root)
+    control = runtime.model_control_plane(root)
+    models = runtime.configured_models()
+    payload = {
+        "models": list(control.dashboard(models)),
+    }
+    if include_events:
+        payload["events"] = list(control.events.recent())
+    print(json.dumps(payload, indent=2, default=str))
+    return 0
+
+
 def _model_run(root: Path, model_id: str, objective: str, agent_id: str, *, apply_changes: bool = False, validation_commands: list[str] | None = None, mcp_server_ids: list[str] | None = None) -> int:
     from runtime.vyrelon import VYRELONRuntime
 
@@ -326,6 +342,8 @@ def main(argv: list[str] | None = None) -> int:
             return _model_quota(root)
         if args.models_command == "health":
             return _model_health(root)
+        if args.models_command == "control":
+            return _model_control(root, args.events)
         if args.models_command == "run":
             return _model_run(
                 root,
