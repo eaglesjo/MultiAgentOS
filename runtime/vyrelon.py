@@ -31,6 +31,7 @@ from profiles.detector import ProfileDetector
 from profiles.resolver import ProfileResolver
 from integrations.github.gateway import GitHubGatewayClient
 from runtime.github import GitHubRuntime
+from runtime.discovery import ProviderDiscoveryAdapter
 from runtime.github_probe import probe
 from runtime.git import GitRuntime
 from runtime.local.filesystem import FilesystemRuntime
