@@ -27,6 +27,12 @@ def _send(proc: subprocess.Popen[str], message: dict[str, object]) -> dict[str, 
     return response
 
 
+def _notify(proc: subprocess.Popen[str], message: dict[str, object]) -> None:
+    assert proc.stdin is not None
+    proc.stdin.write(json.dumps(message, ensure_ascii=False) + "\n")
+    proc.stdin.flush()
+
+
 def run_smoke() -> None:
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp)
@@ -63,7 +69,7 @@ def run_smoke() -> None:
             )
             assert initialized["result"]["serverInfo"]["name"] == "VYRELON"
 
-            _send(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
+            _notify(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
 
             listed = _send(
                 proc,
