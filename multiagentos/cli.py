@@ -254,7 +254,8 @@ def build_parser() -> argparse.ArgumentParser:
     models_run.add_argument("--mcp", action="append", default=[])
 
     run = subparsers.add_parser("run", help="create and execute a persistent WorkUnit")
-    run.add_argument("path", nargs="?", default=".")
+    run.add_argument("path_arg", nargs="?", default=None)
+    run.add_argument("--path", dest="path", default=None)
     run.add_argument("--objective", required=True)
     run.add_argument("--agent", default="executor")
     run.add_argument("--id", dest="work_unit_id")
@@ -267,7 +268,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     resume = subparsers.add_parser("resume", help="resume a persisted WorkUnit")
     resume.add_argument("work_unit_id")
-    resume.add_argument("path", nargs="?", default=".")
+    resume.add_argument("path_arg", nargs="?", default=None)
+    resume.add_argument("--path", dest="path", default=None)
 
     status = subparsers.add_parser("status", help="show project state or a persisted WorkUnit")
     status.add_argument("target", nargs="?", default=".")
@@ -536,7 +538,7 @@ def main(argv: list[str] | None = None) -> int:
                 mcp_server_ids=args.mcp,
             )
 
-    root = Path(args.path).expanduser().resolve()
+    root = Path(args.path or getattr(args, "path_arg", None) or ".").expanduser().resolve()
 
     if args.command == "run":
         if args.model and args.process_command:
