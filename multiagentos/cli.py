@@ -263,7 +263,6 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--apply-changes", action="store_true")
     run.add_argument("--validate", action="append", default=[])
     run.add_argument("--mcp", action="append", default=[])
-    run.add_argument("exec_command", nargs=argparse.REMAINDER, help="explicit command after --")
     run.add_argument("--command", dest="process_command", nargs=argparse.REMAINDER)
 
     resume = subparsers.add_parser("resume", help="resume a persisted WorkUnit")
@@ -464,6 +463,10 @@ def _provider_validate(root: Path) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if argv is not None:
+        argv = list(argv)
+        if argv and argv[0] == "run" and "--" in argv:
+            argv[argv.index("--")] = "--command"
     args = build_parser().parse_args(argv)
 
     if args.command == "status":
@@ -659,8 +662,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "status":
         target = Path(args.target).expanduser().resolve() if args.path is None else Path(args.path).expanduser().resolve()
         if args.path is None and target.is_dir():
-            from runtime.status import project_status
-            print(json.dumps(project_status(target), indent=2, ensure_ascii=False))
+                print(json.dumps(project_status(target), indent=2, ensure_ascii=False))
             return 0
         work_id = args.target
         work = _work_state(target).load(work_id)
