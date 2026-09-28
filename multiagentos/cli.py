@@ -17,6 +17,7 @@ from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
 from runtime.github_probe import probe
 from runtime.process import ProcessRuntime
+from runtime.vyrelon import VYRELONRuntime
 from runtime.agent.process import ProcessAgentExecutor
 
 
@@ -260,11 +261,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--apply-changes", action="store_true")
     run.add_argument("--validate", action="append", default=[])
     run.add_argument("--mcp", action="append", default=[])
-    run.add_argument(
-        "--command",
-        dest="process_command",
-        nargs=argparse.REMAINDER,
-    )
+    run.add_argument("exec_command", nargs=argparse.REMAINDER, help="explicit command after --")
+    run.add_argument("--command", dest="process_command", nargs=argparse.REMAINDER)
 
     resume = subparsers.add_parser("resume", help="resume a persisted WorkUnit")
     resume.add_argument("work_unit_id")
