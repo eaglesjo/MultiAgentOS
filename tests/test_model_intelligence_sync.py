@@ -17,6 +17,7 @@ class ModelIntelligenceSyncTests(unittest.TestCase):
             registry = CapabilityRegistry(CapabilityStore(Path(tmp)))
             model = ModelSpec("demo-model", "demo", frozenset({"code"}))
 
+            registry.profile(model)
             discovered = registry.merge(ModelCapabilityProfile(
                 model_id=model.id,
                 provider_id=model.provider_id,
