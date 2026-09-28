@@ -40,7 +40,7 @@ class ProviderDiscoveryAdapter:
     def __init__(
         self,
         policy: ExecutionPolicy | None = None,
-        fetch: Callable[[str, dict[str, str]], dict[str, Any]] | None = None,
+        fetch: Callable[[str, dict[str, str]], dict[str, Any] | tuple[dict[str, Any], dict[str, str]]] | None = None,
     ) -> None:
         self.policy = policy or ExecutionPolicy()
         self.fetch = fetch or self._fetch
@@ -70,6 +70,8 @@ class ProviderDiscoveryAdapter:
         else:
             payload = fetched
         model_payload = self._extract(payload, discovery.get("models_path", ["data"]))
+        if provider.kind.lower() == "gemini" and isinstance(model_payload, list):
+            model_payload = [self._normalize_gemini_model(item) for item in model_payload]
         quota_payload = self._extract(payload, discovery.get("quota_path", []))
 
         configured = {model.id: model for model in (models or provider.models)}
@@ -119,6 +121,7 @@ class ProviderDiscoveryAdapter:
             discovery["query_env"] = {"key": key_env}
         elif kind == "openai":
             discovery["header_env"] = {"Authorization": key_env}
+            discovery["header_prefix"] = {"Authorization": "Bearer "}
         else:
             discovery["header_env"] = {"x-api-key": key_env}
             discovery["headers"] = {"anthropic-version": "2023-06-01"}
@@ -149,6 +152,19 @@ class ProviderDiscoveryAdapter:
         return [QuotaSnapshot(model_id=model_id, provider_id=provider.id, observed_at=_now(), dimensions=tuple(dimensions),
             scope="provider", metadata={"source": "provider_response_headers"}) for model_id in configured]
     
+    @staticmethod
+    def _normalize_gemini_model(item: object) -> object:
+        if not isinstance(item, dict):
+            return item
+        normalized = dict(item)
+        name = normalized.get("name")
+        if isinstance(name, str) and name.startswith("models/"):
+            normalized["id"] = name[len("models/"):]
+        methods = normalized.get("supportedGenerationMethods")
+        if isinstance(methods, list):
+            normalized["capabilities"] = ["chat" if str(method) == "generateContent" else str(method) for method in methods]
+        return normalized
+
     def _capabilities(
         self,
         provider: AIProvider,
@@ -242,11 +258,14 @@ class ProviderDiscoveryAdapter:
         return _path(payload, tuple(str(item) for item in value))
 
     @staticmethod
+    @staticmethod
     def _headers(discovery: dict[str, object]) -> dict[str, str]:
         result = {str(k): str(v) for k, v in (discovery.get("headers", {}) or {}).items()}
+        prefixes = discovery.get("header_prefix", {}) or {}
         for header, env_name in (discovery.get("header_env", {}) or {}).items():
             if isinstance(env_name, str) and os.environ.get(env_name):
-                result[str(header)] = os.environ[env_name]
+                prefix = prefixes.get(header, "") if isinstance(prefixes, dict) else ""
+                result[str(header)] = f"{prefix}{os.environ[env_name]}"
         return result
 
     def _fetch(self, endpoint: str, headers: dict[str, str]) -> tuple[dict[str, Any], dict[str, str]]:
