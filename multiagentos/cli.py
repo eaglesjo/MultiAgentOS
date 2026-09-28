@@ -485,6 +485,7 @@ def main(argv: list[str] | None = None) -> int:
         }, indent=2, ensure_ascii=False))
         return 0
 
+    root = Path(getattr(args, "path", None) or getattr(args, "path_arg", None) or ".").expanduser().resolve()
     detector = ProfileDetector()
     detections = detector.detect(root)
 
