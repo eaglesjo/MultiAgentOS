@@ -7,6 +7,7 @@ from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
 from runtime.quota import QuotaIntelligence
+from runtime.capability import CapabilityRegistry
 from runtime.health import ModelHealthRegistry
 from runtime.model_control import ModelControlPlane
 from runtime.tool_calling import ToolCallingExecution, ToolCallingRuntime, ToolRuntime
@@ -25,6 +26,7 @@ class ModelAgentExecutor(AgentExecutor):
         quota_intelligence: QuotaIntelligence | None = None,
         health_registry: ModelHealthRegistry | None = None,
         model_control: ModelControlPlane | None = None,
+        capability_registry: CapabilityRegistry | None = None,
     ):
         self.adapters = dict(adapters)
         self.models = {model.id: model for model in models}
@@ -33,6 +35,7 @@ class ModelAgentExecutor(AgentExecutor):
         self.quota_intelligence = quota_intelligence
         self.health_registry = health_registry
         self.model_control = model_control
+        self.capability_registry = capability_registry
 
     def _candidate_model_ids(self, model_id: str) -> tuple[str, ...]:
         return tuple(dict.fromkeys((model_id, *self.fallback_model_ids)))
@@ -83,6 +86,8 @@ class ModelAgentExecutor(AgentExecutor):
                 work_unit.metadata["model_id"] = response.model_id
                 work_unit.metadata["model_adapter"] = adapter_id
                 work_unit.metadata["model_attempts"] = tuple(attempts)
+                if self.capability_registry is not None:
+                    self.capability_registry.observe_response(model, metadata)
                 if self.quota_intelligence is not None:
                     snapshot = self.quota_intelligence.observe_response(model, metadata)
                     work_unit.metadata["quota_snapshot"] = {
@@ -161,6 +166,8 @@ class ModelAgentExecutor(AgentExecutor):
                 work_unit.metadata["tool_rounds"] = result.rounds
                 work_unit.metadata["tool_results"] = tuple(result.tool_results)
                 work_unit.metadata["model_attempts"] = tuple(attempts)
+                if self.capability_registry is not None:
+                    self.capability_registry.observe_response(model, dict(result.response.metadata))
                 if self.quota_intelligence is not None:
                     snapshot = self.quota_intelligence.observe_response(model, dict(result.response.metadata))
                     work_unit.metadata["quota_snapshot"] = {
