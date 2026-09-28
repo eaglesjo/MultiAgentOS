@@ -293,6 +293,13 @@ def build_parser() -> argparse.ArgumentParser:
     chat.add_argument("--execute", action="store_true", help="execute the explicit command after -- through VYRELON")
     chat.add_argument("exec_command", nargs=argparse.REMAINDER, help="explicit command after -- when using --execute")
 
+    mcp = subparsers.add_parser("mcp", help="serve or inspect VYRELON MCP")
+    mcp_sub = mcp.add_subparsers(dest="mcp_command", required=True)
+    mcp_serve = mcp_sub.add_parser("serve", help="run VYRELON as a stdio MCP server")
+    mcp_serve.add_argument("--path", default=".")
+    mcp_serve.add_argument("--allow-write", action="store_true", help="expose filesystem write and patch tools")
+    mcp_serve.add_argument("--allow-process", action="store_true", help="expose shell execution")
+
     github = subparsers.add_parser("github", help="use VYRELON GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
     probe_parser = github_sub.add_parser(
@@ -516,6 +523,16 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "chat":
         root = Path(args.path).expanduser().resolve()
         return _run_chat(root, args.objective, args.agent, args.model, args.session, args.execute, args.exec_command)
+
+    if args.command == "mcp" and args.mcp_command == "serve":
+        from runtime.mcp.server import VYRELONMCPServer
+        root = Path(args.path).expanduser().resolve()
+        VYRELONMCPServer(
+            root,
+            allow_write=args.allow_write,
+            allow_process=args.allow_process,
+        ).serve_forever()
+        return 0
 
     if args.command == "github" and args.github_command == "probe":
         print(json.dumps(probe(args.repository), indent=2))
