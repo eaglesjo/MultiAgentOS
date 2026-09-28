@@ -1,6 +1,7 @@
 """Minimal executable VYRELON orchestration loop."""
 
 from dataclasses import dataclass
+from collections.abc import Callable
 
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
@@ -34,6 +35,7 @@ class Orchestrator:
         verifier: ResultVerifier | None = None,
         reviewer: ResultReviewer | None = None,
         routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
+        checkpoint: Callable[[WorkUnit], None] | None = None,
     ) -> OrchestrationResult:
         delegation, output = self.lifecycle.run(
             work_unit,
@@ -44,5 +46,6 @@ class Orchestrator:
             reviewer,
             preferred_model_ids,
             routing_strategy,
+            checkpoint=checkpoint,
         )
         return OrchestrationResult(work_unit, delegation, output)
