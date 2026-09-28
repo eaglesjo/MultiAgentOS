@@ -365,6 +365,10 @@ class VYRELONRuntime:
         """Return the project-scoped persistent model health registry."""
         return ModelHealthRegistry(ModelHealthStore(Path(project_root) / ".multiagentos" / "health"))
 
+    def capability_registry(self, project_root: Path):
+        """Return the project-scoped persistent model capability registry."""
+        return CapabilityRegistry(CapabilityStore(Path(project_root) / ".multiagentos" / "capabilities"))
+
     def model_control_plane(self, project_root: Path) -> ModelControlPlane:
         """Return the project-scoped unified model control plane."""
         return ModelControlPlane(Path(project_root).resolve())
@@ -533,6 +537,7 @@ class VYRELONRuntime:
         from runtime.agent.model import ModelAgentExecutor
         control_plane = self.model_control_plane(project_root)
         quota_intelligence = QuotaIntelligence(control_plane.quota_store)
+        capability_registry = self.capability_registry(project_root)
         health_registry = control_plane.health_registry
 
         tool_runtime = ToolRuntime(self.policy)
@@ -555,6 +560,7 @@ class VYRELONRuntime:
             quota_intelligence=quota_intelligence,
             health_registry=health_registry,
             model_control=control_plane,
+            capability_registry=capability_registry,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,
