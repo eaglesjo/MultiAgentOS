@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import os
 import urllib.request
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -275,7 +275,7 @@ class ProviderDiscoveryAdapter:
                 response_headers = {str(k).lower(): str(v) for k, v in response.headers.items()}
         except HTTPError as exc:
             raise RuntimeError(f"provider discovery failed with HTTP {exc.code}") from exc
-        except urllib.error.URLError as exc:
+        except URLError as exc:
             raise RuntimeError("provider discovery failed: network error") from exc
         if not isinstance(payload, dict):
             raise ValueError("provider discovery response must be a JSON object")
