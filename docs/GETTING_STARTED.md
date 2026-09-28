@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide takes a new user from a clean machine to a validated MultiAgentOS/VYRELON development environment.
+This guide takes a new user from a clean machine to a validated MultiAgentOS/VYRELON development environment, including the VYRELON MCP server path for local/private access.
 
 ## 1. What you are installing
 
@@ -73,7 +73,25 @@ This path is **ChatGPT -> GitHub app -> allowed repositories**. It does not prov
 Official OpenAI guidance:
 https://help.openai.com/en/articles/11145903-connecting-github-to-chatgpt
 
-## 5. Local access from ChatGPT: Secure MCP Tunnel
+## 5. Start the VYRELON MCP server locally
+
+From the project you want to expose:
+
+```bash
+multiagentos mcp serve --path /absolute/path/to/project
+```
+
+The default MCP surface is read-only. To expose additional capabilities, opt in explicitly:
+
+```bash
+multiagentos mcp serve --path /absolute/path/to/project --allow-write --allow-process
+```
+
+- `--allow-write` exposes filesystem write and patch tools.
+- `--allow-process` exposes shell execution.
+- Without either flag, write/patch/process tools are not advertised.
+
+## 6. Local access from ChatGPT: Secure MCP Tunnel
 
 For ChatGPT to reach a private/local MCP server, use OpenAI Secure MCP Tunnel. Do not expose a localhost MCP endpoint directly to the public internet.
 
@@ -90,15 +108,31 @@ OpenAI Secure MCP Tunnel
   v
 tunnel-client
   |
+  | --mcp-command
   v
-local/private MCP server
+multiagentos mcp serve --path /absolute/path/to/project
+  |
+  v
+VYRELON local tool policy
 ```
 
 No inbound port is required for the tunnel itself; `tunnel-client` makes outbound HTTPS connections to OpenAI and separately reaches the configured MCP server.
 
 See [MCP Tunnel Setup](MCP_TUNNEL.md).
 
-## 6. Important current MultiAgentOS limitation
+## 7. Connect the ChatGPT connector
+
+In ChatGPT connector settings:
+
+1. Choose **Connection: Tunnel**.
+2. Select or enter the `tunnel_id`.
+3. Do **not** paste the private/local MCP URL into ChatGPT.
+4. Confirm the tunnel runtime is healthy.
+5. Start with a safe read-only VYRELON tool call.
+
+A local MCP server passing its own tests does not prove that the remote ChatGPT connector is configured; end-to-end validation requires a real tunnel runtime and workspace permissions.
+
+## 8. Codex integration
 
 The current MultiAgentOS release contains an MCP **client/proxy** runtime and policy layer. It can connect to MCP servers over stdio and Streamable HTTP.
 
@@ -124,7 +158,7 @@ ChatGPT -> Tunnel -> tunnel-client -> VYRELON MCP server endpoint
 
 Do not claim this last path is installed or working until a VYRELON MCP server adapter and end-to-end test have been added.
 
-## 7. Codex integration
+## 9. Codex integration
 
 The OpenAI `tunnel-client` project provides a Codex-local Tunnel MCP plugin.
 
@@ -143,7 +177,7 @@ See [MCP Tunnel Setup](MCP_TUNNEL.md) for the security/key separation and runtim
 Official tunnel-client documentation:
 https://github.com/openai/tunnel-client
 
-## 8. Verify the complete local installation
+## 10. Verify the complete local installation
 
 Run:
 
@@ -162,7 +196,7 @@ multiagentos github probe OWNER/REPOSITORY
 
 For tunnel-based access, verify the tunnel runtime with `tunnel-client` before testing connector discovery or tool calls.
 
-## 9. Credential rules
+## 11. Credential rules
 
 Never commit:
 
@@ -182,15 +216,15 @@ For Secure MCP Tunnel, keep the key split:
 
 Do not put an admin key into a long-lived daemon profile.
 
-## 10. Integration map
+## 12. Integration map
 
 | Need | Path |
 |---|---|
 | Local orchestration | MultiAgentOS -> VYRELON |
 | Local GitHub operations | VYRELON -> gh -> GitHub |
 | ChatGPT repository access | ChatGPT -> GitHub app |
-| ChatGPT local/private MCP | ChatGPT -> Secure MCP Tunnel -> tunnel-client -> MCP server |
+| ChatGPT local/private VYRELON | ChatGPT -> Secure MCP Tunnel -> tunnel-client -> `multiagentos mcp serve` |
 | Codex tunnel operations | Codex -> tunnel-mcp plugin -> tunnel-client |
-| ChatGPT directly controlling VYRELON | **Not yet implemented** |
 
-For the last row, follow the repository roadmap/issues rather than inventing a manual connector URL.
+
+The VYRELON MCP server is implemented locally; the remaining environment-specific step is configuring and validating the real Secure MCP Tunnel and ChatGPT workspace connector.

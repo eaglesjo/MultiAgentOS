@@ -1,6 +1,6 @@
 # Secure MCP Tunnel Setup
 
-This document describes the supported OpenAI Secure MCP Tunnel path and how it relates to MultiAgentOS.
+This document describes the supported OpenAI Secure MCP Tunnel path and how it connects to the VYRELON stdio MCP server.
 
 ## Architecture
 
@@ -16,7 +16,12 @@ OpenAI Secure MCP Tunnel
   v
 tunnel-client
   |
-  +--> local/private MCP server
+  | --mcp-command
+  v
+multiagentos mcp serve --path /absolute/path/to/project
+  |
+  v
+VYRELON local tool policy
 ```
 
 The tunnel client does not require an inbound port for the tunnel itself. It needs outbound HTTPS access to OpenAI and access to the configured MCP server.
@@ -26,11 +31,30 @@ The tunnel client does not require an inbound port for the tunnel itself. It nee
 - An OpenAI workspace with Secure MCP Tunnel access.
 - A `tunnel_id`.
 - A runtime API key with the permissions required to use the tunnel.
-- `tunnel-client` installed on the machine that can reach the local/private MCP server.
+- `tunnel-client` installed on the machine that can reach the local VYRELON project.
+- MultiAgentOS installed so `multiagentos mcp serve` is available on `PATH`.
 
 The current OpenAI tunnel documentation distinguishes runtime credentials from tunnel administration credentials.
 
-## Key separation
+## 1. Start VYRELON as an MCP server
+
+From the project you want to expose:
+
+```bash
+multiagentos mcp serve --path /absolute/path/to/project
+```
+
+The server uses stdio JSON-RPC and does not listen on a TCP port. By default it exposes read-only tools.
+
+Additional capabilities require explicit startup flags:
+
+```bash
+multiagentos mcp serve --path /absolute/path/to/project --allow-write --allow-process
+```
+
+Use these deliberately: `--allow-write` exposes filesystem write/patch tools and `--allow-process` exposes shell execution.
+
+## 2. Key separation
 
 Use separate credentials for separate jobs:
 
@@ -47,22 +71,22 @@ OPENAI_ADMIN_KEY
 
 Do not put `OPENAI_ADMIN_KEY` in a long-lived daemon configuration.
 
-## Create or select the tunnel
+## 3. Create or select the tunnel
 
 Tunnel administration is performed through the OpenAI Tunnels management surface or the `tunnel-client admin tunnels ...` commands when the operator has the required permissions.
 
 The exact workspace and permission model is controlled by OpenAI. Keep the resulting `tunnel_id` available for the connector configuration.
 
-## Configure the local runtime
+## 4. Configure the local runtime
 
 For a local stdio MCP server, the tunnel-client documentation provides an initialization pattern similar to:
 
 ```bash
 tunnel-client init \
   --sample sample_mcp_stdio_local \
-  --profile local-stdio \
+  --profile vyrelon-local \
   --tunnel-id tunnel_... \
-  --mcp-command "python /path/to/server.py"
+  --mcp-command "multiagentos mcp serve --path /absolute/path/to/project"
 ```
 
 Validate before running:
@@ -74,7 +98,7 @@ tunnel-client run --profile local-stdio
 
 Keep the tunnel process running while ChatGPT uses the connector.
 
-## ChatGPT connector configuration
+## 5. ChatGPT connector configuration
 
 In ChatGPT connector settings:
 
@@ -85,7 +109,7 @@ In ChatGPT connector settings:
 
 The current connector surface uses the tunnel ID rather than asking the user to expose the local MCP URL.
 
-## Readiness and troubleshooting
+## 6. Readiness and troubleshooting
 
 Before reporting that a tunnel connection works:
 
@@ -111,7 +135,7 @@ Check:
 
 If the tunnel is visible in OpenAI Platform but not in ChatGPT, verify the workspace association and connector permissions.
 
-## Codex plugin
+## 7. Codex plugin
 
 If Codex is installed locally and the tunnel-client binary is available:
 
@@ -132,10 +156,13 @@ If the plugin was installed while Codex was already running, restart the Codex s
 
 The plugin is an operator surface over native `tunnel-client runtimes ...` commands; tunnel protocol logic remains in the tunnel-client binary.
 
-## MultiAgentOS boundary
+## 8. MultiAgentOS boundary
 
 MultiAgentOS currently provides:
 
+- VYRELON stdio MCP server via `multiagentos mcp serve`
+- read-only-by-default MCP tool exposure
+- explicit write/process opt-in flags
 - MCP contracts
 - MCP stdio and Streamable HTTP client support
 - MCP session management
@@ -143,20 +170,19 @@ MultiAgentOS currently provides:
 - MCP tool proxying
 - local MCP configuration examples
 
-MultiAgentOS currently does **not** provide:
+MultiAgentOS does **not** provide:
 
-- a VYRELON MCP server endpoint that accepts ChatGPT connector traffic
 - a built-in `tunnel-client` binary
 - automatic OpenAI tunnel provisioning
 - automatic ChatGPT connector configuration
 
-Therefore, do not document the following as a completed setup:
+The supported implementation path is:
 
 ```
-ChatGPT -> Tunnel -> VYRELON
+ChatGPT -> Secure MCP Tunnel -> tunnel-client -> VYRELON MCP server
 ```
 
-The required next implementation is a VYRELON MCP server adapter exposing a deliberately scoped tool surface, followed by an end-to-end tunnel/connector test.
+The final connector/runtime step remains environment-specific and must be validated with the user's actual OpenAI workspace, tunnel ID, permissions, and running `tunnel-client` process.
 
 ## Official references
 
