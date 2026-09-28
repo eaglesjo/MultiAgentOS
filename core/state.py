@@ -14,7 +14,7 @@ class WorkStateStore:
     def __init__(self, root: Path) -> None:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
-        self.checkpoint_root = self.root / "checkpoints"
+        self.checkpoint_root = self.root.parent / "checkpoints"
         self.checkpoint_root.mkdir(parents=True, exist_ok=True)
 
     def save(self, work_unit: WorkUnit) -> Path:
