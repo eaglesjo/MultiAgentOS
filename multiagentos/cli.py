@@ -94,6 +94,8 @@ def build_parser() -> argparse.ArgumentParser:
     models_quota.add_argument("path", nargs="?", default=".")
     models_health = model_sub.add_parser("health", help="show model health and cooldown state")
     models_health.add_argument("path", nargs="?", default=".")
+    models_capabilities = model_sub.add_parser("capabilities", help="show normalized model capabilities")
+    models_capabilities.add_argument("path", nargs="?", default=".")
     models_control = model_sub.add_parser("control", help="show unified model control-plane state")
     models_control.add_argument("path", nargs="?", default=".")
     models_control.add_argument("--events", action="store_true", help="include recent control-plane events")
