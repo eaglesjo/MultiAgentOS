@@ -28,8 +28,8 @@ class NativeProviderToolCallingTests(unittest.TestCase):
     def test_openai_normalizes_function_call_and_history(self):
         adapter = OpenAIResponsesToolAdapter(policy=ExecutionPolicy(allow_network=True))
         with self.env, patch("runtime.model.native._request", side_effect=[
-            {"output": [{"type": "function_call", "call_id": "c1", "name": "patch_apply", "arguments": '{"patch":"x"}'}]},
-            {"output": [{"type": "message", "content": [{"type": "output_text", "text": "done"}]}]},
+            ({"output": [{"type": "function_call", "call_id": "c1", "name": "patch_apply", "arguments": '{"patch":"x"}'}]}, {}),
+            ({"output": [{"type": "message", "content": [{"type": "output_text", "text": "done"}]}]}, {}),
         ]) as request:
             first = adapter.generate_with_tools(self.model, self.request, (self.tool,))
             second = adapter.generate_with_tools(self.model, ModelRequest("change the file", metadata={
@@ -45,7 +45,7 @@ class NativeProviderToolCallingTests(unittest.TestCase):
         adapter = AnthropicMessagesToolAdapter(policy=ExecutionPolicy(allow_network=True))
         history = {"tool_calls": ({"call_id": "c1", "tool_id": "patch.apply", "arguments": {"patch": "x"}},),
                    "tool_results": ({"call_id": "c1", "tool_id": "patch.apply", "ok": True, "output": "applied"},)}
-        with self.env, patch("runtime.model.native._request", return_value={"content": [{"type": "text", "text": "done"}]}) as request:
+        with self.env, patch("runtime.model.native._request", return_value=({"content": [{"type": "text", "text": "done"}]}, {})) as request:
             response = adapter.generate_with_tools(self.model, ModelRequest("change", metadata={"tool_history": (history,)}), (self.tool,))
         self.assertEqual(response.text, "done")
         messages = request.call_args.args[1]["messages"]
@@ -56,7 +56,7 @@ class NativeProviderToolCallingTests(unittest.TestCase):
         adapter = GeminiGenerateContentToolAdapter(policy=ExecutionPolicy(allow_network=True))
         history = {"tool_calls": ({"call_id": "c1", "tool_id": "patch.apply", "arguments": {"patch": "x"}},),
                    "tool_results": ({"call_id": "c1", "tool_id": "patch.apply", "ok": True, "output": "applied"},)}
-        with self.env, patch("runtime.model.native._request", return_value={"candidates": [{"content": {"parts": [{"text": "done"}]}}]}) as request:
+        with self.env, patch("runtime.model.native._request", return_value=({"candidates": [{"content": {"parts": [{"text": "done"}]}}]}, {})) as request:
             response = adapter.generate_with_tools(self.model, ModelRequest("change", metadata={"tool_history": (history,)}), (self.tool,))
         self.assertEqual(response.text, "done")
         contents = request.call_args.args[1]["contents"]
