@@ -33,6 +33,7 @@ VYRELON currently includes:
 - provider capability discovery with OpenAI, Anthropic, and Gemini native defaults
 - persistent model capability, quota, and health intelligence with cooldown-aware routing
 - unified model control-plane inspection and provider-neutral routing explainability
+- VYRELON stdio MCP server with read-only-by-default local tool exposure
 
 ## CLI
 
@@ -50,6 +51,8 @@ After installation:
     multiagentos chat --path . --objective "inspect the current project"
     multiagentos chat --path . --execute --objective "run the smoke test" -- python -m unittest discover -s tests -v
     multiagentos chat --path . --objective "continue our conversation" --session project-1
+    multiagentos mcp serve --path .
+    multiagentos mcp serve --path . --allow-write --allow-process
     multiagentos github probe eaglesjo/MultiAgentOS
     multiagentos models discover .
     multiagentos models control .
@@ -110,6 +113,7 @@ The read-only `status` command reports installed components, detected profiles, 
         +-- Model CLI
         +-- Model HTTP
         +-- GitHub
+        +-- MCP Server
         |
     Technology Profiles
         |
@@ -143,6 +147,16 @@ VYRELON resolves the configured Chat Agent through a provider-neutral adapter re
 The core does not require a provider SDK. The OpenAI/ChatGPT adapter remains optional and obtains credentials from the provider's normal environment/authentication mechanism. A Chat Agent can propose intent and plans, but actual filesystem, Git, GitHub, process, verification, review, and approval actions remain VYRELON responsibilities.
 
 
+## VYRELON MCP server
+
+VYRELON can expose its local tool surface as a stdio MCP server:
+
+    multiagentos mcp serve --path /path/to/project
+
+The default surface is read-only. Filesystem write/patch tools require `--allow-write`, and shell execution requires `--allow-process`.
+
+This server is intended to be launched locally by a transport such as OpenAI Secure MCP Tunnel; MultiAgentOS does not open a public inbound MCP port or provision the tunnel automatically.
+
 ## User setup and integrations
 
 For a clean-machine installation and the distinction between local GitHub access, ChatGPT GitHub access, Secure MCP Tunnel, and Codex integration, start with:
@@ -155,8 +169,9 @@ For a clean-machine installation and the distinction between local GitHub access
 
 - **Local GitHub:** VYRELON -> authenticated `gh` CLI -> GitHub.
 - **ChatGPT GitHub:** ChatGPT -> GitHub app -> repositories explicitly authorized by the user.
-- **ChatGPT local/private MCP:** ChatGPT -> Secure MCP Tunnel -> `tunnel-client` -> MCP server.
+- **ChatGPT local/private VYRELON:** ChatGPT -> Secure MCP Tunnel -> `tunnel-client` -> `multiagentos mcp serve`.
 - **Codex tunnel operations:** Codex -> `tunnel-mcp` plugin -> `tunnel-client`.
-- **ChatGPT -> VYRELON directly:** not yet a completed feature; the current release provides MCP client/proxy support, not a VYRELON MCP server endpoint.
+
+The VYRELON MCP server is implemented and covered by CI. End-to-end ChatGPT connector verification still requires a real OpenAI Secure MCP Tunnel runtime and workspace configuration.
 
 Do not expose a local MCP URL directly to the public internet or put GitHub/provider/tunnel credentials in project files.
