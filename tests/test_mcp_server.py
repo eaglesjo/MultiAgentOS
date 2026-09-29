@@ -110,7 +110,7 @@ class AgentExecutionRuntimeMCPServerTests(unittest.TestCase):
             stdout = io.StringIO()
             AgentExecutionRuntimeMCPServer(root).serve_forever(stdin, stdout)
             responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
-            self.assertEqual(responses[0]["result"]["serverInfo"]["name"], "AGENT_EXECUTION_RUNTIME")
+            self.assertEqual(responses[0]["result"]["serverInfo"]["name"], "Agent Execution Runtime")
             self.assertEqual(
                 responses[0]["result"]["serverInfo"]["version"],
                 "0.0.0-dev",
