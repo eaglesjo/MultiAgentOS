@@ -57,6 +57,55 @@ The test is about **AI API cost**, not about whether an AI service account or pr
 | Paid AI API key | No |
 | Optional paid model/provider | Allowed |
 
+## Verified VYRELON client path
+
+A real Codex session successfully discovered the VYRELON MCP tool catalog and invoked the local runtime.
+
+### Filesystem WRITE/READ
+
+The AI client created and read back:
+
+```
+/Volumes/DevFiles/GitHubProject/MultiAgentOS/COSTFREE_TEST.md
+```
+
+Tools actually invoked:
+
+```
+mcp__vyrelon__filesystem_write
+mcp__vyrelon__filesystem_read
+```
+
+The returned file content matched the requested COSTFREE-001 test content. The file was not created through shell commands, Python, `cat`, or `echo`.
+
+**Result: PASS**
+
+### Shell/process execution
+
+The AI client discovered:
+
+```
+mcp__vyrelon__shell_run
+```
+
+and executed `pwd` through that MCP tool.
+
+Observed result:
+
+```
+returncode: 0
+stdout: /Volumes/DevFiles/GitHubProject/MultiAgentOS
+stderr: ""
+```
+
+**Result: PASS**
+
+### Patch
+
+The `patch.apply` MCP tool is exposed by VYRELON and was discovered by the AI client.
+
+**Actual patch application: PENDING**
+
 ## ChatGPT Web and Secure MCP Tunnel
 
 OpenAI Secure MCP Tunnel can connect a private/local MCP server to supported OpenAI products without exposing the local MCP server to the public Internet.
@@ -88,12 +137,15 @@ The ChatGPT Web path must be treated as an integration target, not as the only i
 - Local runtime health/readiness.
 - Automatic runtime recovery through launchd.
 - GitHub-connected development path.
+- AI-client VYRELON `filesystem.write` and `filesystem.read`.
+- AI-client VYRELON `shell_run`.
+- End-to-end COSTFREE-001 filesystem WRITE/READ path.
 
 ### Pending
 
+- Actual VYRELON `patch.apply` application and verification.
 - ChatGPT Web custom MCP discovery against `vyrelon-local`.
 - ChatGPT Web local filesystem WRITE through VYRELON.
-- End-to-end COSTFREE-001 using a non-paid-API development client.
 
 ## Design rule
 
@@ -113,11 +165,6 @@ as interchangeable AI-side choices while keeping the project workspace and VYREL
 
 ## Next verification step
 
-Use a client that can actually discover the VYRELON MCP tool catalog and invoke:
+The next concrete runtime test is an actual `patch.apply` operation through VYRELON, followed by a VYRELON `filesystem.read` verification and a VYRELON `shell_run` test.
 
-1. `filesystem.write`
-2. `filesystem.read`
-3. `patch.apply`
-4. process/test tooling
-
-The first concrete artifact should be `COSTFREE_TEST.md` created by the AI client through VYRELON. The file must not be created manually, because manual creation would bypass the WRITE test.
+Keep AI-client invocations minimal: once a capability is verified, reuse the evidence rather than spending additional client quota on redundant smoke tests.
