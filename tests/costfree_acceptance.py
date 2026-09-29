@@ -136,7 +136,7 @@ def run_acceptance() -> None:
                     },
                 },
             )
-            if initialized["result"]["serverInfo"]["name"] != "AGENT_EXECUTION_RUNTIME":
+            if initialized["result"]["serverInfo"]["name"] != "Agent Execution Runtime":
                 raise RuntimeError("unexpected MCP server identity")
 
             assert proc.stdin is not None
