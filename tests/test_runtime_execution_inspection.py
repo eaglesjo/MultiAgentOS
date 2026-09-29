@@ -1,4 +1,3 @@
-import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,14 +11,14 @@ from runtime.agent_execution_runtime import AgentExecutionRuntime
 class RuntimeExecutionInspectionTests(unittest.TestCase):
     def test_tool_call_is_durable_before_result(self):
         with tempfile.TemporaryDirectory() as temp:
-            store = RuntimeEventStore(Path(temp) / "events")
+            runtime = AgentExecutionRuntime()
+            root = Path(temp)
+            store = runtime.event_store(root)
             store.append(RuntimeEvent(
                 kind=RuntimeEventKind.TOOL_CALL,
                 work_unit_id="work-1",
                 payload={"call_id": "call-1", "tool_id": "filesystem.read"},
             ))
-            runtime = AgentExecutionRuntime()
-            root = Path(temp)
             state = runtime.state_store(root)
             state.save(WorkUnit("work-1", "inspect", WorkStatus.EXECUTING))
 
@@ -42,8 +41,6 @@ class RuntimeExecutionInspectionTests(unittest.TestCase):
                 work_unit_id="work-2",
                 payload={"call_id": "call-1", "tool_id": "filesystem.read", "ok": True},
             ))
-            runtime = AgentExecutionRuntime()
-            root = Path(temp)
             runtime.state_store(root).save(WorkUnit("work-2", "inspect", WorkStatus.EXECUTING))
 
             snapshot = runtime.inspect_work_unit(root, "work-2")
