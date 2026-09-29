@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -54,7 +55,7 @@ class LocalToolRuntimeTests(unittest.TestCase):
             shell.cd("child")
             shell.set_environment("VYRELON_TEST", "ok")
             result = shell.run(
-                "python -c \"import os; print(os.getcwd()); print(os.getenv('VYRELON_TEST'))\""
+                f"{sys.executable} -c \"import os; print(os.getcwd()); print(os.getenv('VYRELON_TEST'))\""
             )
             self.assertEqual(result.returncode, 0)
             self.assertIn(str(child), result.stdout)
