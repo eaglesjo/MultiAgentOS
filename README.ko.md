@@ -2,9 +2,9 @@
 
 > **Cost-Free Multi-Agent Development Orchestration**
 
-MultiAgentOS는 **VYRELON**을 중심으로 하는 로컬 우선 AI 개발 오케스트레이션 플랫폼입니다.
+MultiAgentOS는 **Agent Execution Runtime**을 중심으로 하는 로컬 우선 AI 개발 오케스트레이션 플랫폼입니다.
 
-Cost-Free 기본 경로에서는 **별도의 유료 AI API Key가 필요하지 않습니다.** MultiAgentOS는 이미 사용할 수 있는 AI 클라이언트와 GitHub, 로컬 프로젝트를 연결하고 실행 권한은 VYRELON 안에 유지합니다.
+Cost-Free 기본 경로에서는 **별도의 유료 AI API Key가 필요하지 않습니다.** MultiAgentOS는 이미 사용할 수 있는 AI 클라이언트와 GitHub, 로컬 프로젝트를 연결하고 실행 권한은 Agent Execution Runtime 안에 유지합니다.
 
 ## MultiAgentOS가 하는 일
 
@@ -12,10 +12,10 @@ MultiAgentOS는 **AI 협업**과 **실행 권한**을 분리합니다.
 
 - **ChatGPT Web** — 유일한 사용자 진입점
 - **ChatGPT Codex Connector** — 원격 GitHub Repository 연결
-- **VYRELON MCP / Secure Tunnel** — 로컬 프로젝트 연결
+- **Agent Execution Runtime MCP / Secure Tunnel** — 로컬 프로젝트 연결
 - **Orchestrator** — 전체 멀티 에이전트 협업 조정
 - **MultiAgentWorkflow** — Developer → Tester → Reviewer 실행
-- **VYRELON** — 권한 및 실행의 최종 경계
+- **Agent Execution Runtime** — 권한 및 실행의 최종 경계
 
 Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, Git 실행 권한을 직접 소유하지 않습니다.
 
@@ -30,7 +30,7 @@ Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, G
                     +---------+---------+
                     |                   |
                     v                   v
-       ChatGPT Codex Connector       VYRELON
+       ChatGPT Codex Connector       Agent Execution Runtime
                     |                MCP / Secure Tunnel
                     v                   |
             GitHub Repository            v
@@ -53,7 +53,7 @@ Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, G
                          Verification
                               |
                               v
-                           VYRELON
+                           Agent Execution Runtime
 ```
 
 ### 책임 경계
@@ -62,11 +62,11 @@ Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, G
 | --- | --- |
 | **ChatGPT Web** | 사용자 진입점 |
 | **ChatGPT Codex Connector** | 원격 GitHub Repository 접근 |
-| **VYRELON MCP / Secure Tunnel** | 로컬 프로젝트 연결 |
+| **Agent Execution Runtime MCP / Secure Tunnel** | 로컬 프로젝트 연결 |
 | **MultiAgentOS** | Agent 계약, 라우팅, 상태, 오케스트레이션 |
 | **Orchestrator** | 전체 협업 조정 |
 | **MultiAgentWorkflow** | 단계, handoff, review, rework 의미론 |
-| **VYRELON** | 권한 및 실행 제어 |
+| **Agent Execution Runtime** | 권한 및 실행 제어 |
 
 ## 멀티 에이전트 워크플로
 
@@ -96,7 +96,7 @@ Completed / Failed
 
 `Orchestrator.run_workflow()`가 안정적인 상위 오케스트레이션 진입점입니다. `MultiAgentWorkflow`가 구체적인 stage, handoff, review, rework 의미론을 담당하며, `MultiAgentRuntime`은 애플리케이션/runtime adapter로서 이 오케스트레이션 경계를 사용합니다.
 
-VYRELON은 permission, filesystem, patch, process, Git, verification을 담당하는 실행 경계로 유지됩니다.
+Agent Execution Runtime은 permission, filesystem, patch, process, Git, verification을 담당하는 실행 경계로 유지됩니다.
 
 ## 연결 모델
 
@@ -118,18 +118,22 @@ GitHub Repository
 ChatGPT Web
     |
     v
-VYRELON MCP / Secure Tunnel
+Agent Execution Runtime MCP / Secure Tunnel
     |
     v
-VYRELON
+Agent Execution Runtime
     |
     v
 Local Project
 ```
 
-VYRELON은 **하나의 MCP Server**만 사용합니다. Secure MCP Tunnel과 `tunnel-client`는 transport/connection infrastructure이며 별도의 MCP Server가 아닙니다.
+Agent Execution Runtime은 **하나의 MCP Server**만 사용합니다. Secure MCP Tunnel과 `tunnel-client`는 transport/connection infrastructure이며 별도의 MCP Server가 아닙니다.
 
-로컬 VYRELON MCP Server는 OpenAI, ChatGPT, tunnel 또는 유료 AI API Key 없이도 독립적으로 사용할 수 있습니다.
+로컬 Agent Execution Runtime MCP Server는 OpenAI, ChatGPT, tunnel 또는 유료 AI API Key 없이도 독립적으로 사용할 수 있습니다.
+
+## 용어 체계
+
+**Agent Execution Runtime**을 로컬 실행·권한 경계의 공식 설명 명칭으로 사용합니다. 기존 패키지, 통합, 프로토콜 이름에서 필요한 경우에만 `VYRELON`을 호환/구현 식별자로 유지합니다.
 
 ## Cost-Free 기본 경로
 
@@ -147,7 +151,7 @@ VYRELON은 **하나의 MCP Server**만 사용합니다. Secure MCP Tunnel과 `tu
 
 ### 검증된 기본 기능
 
-- VYRELON MCP stdio 초기화 및 tool discovery
+- Agent Execution Runtime MCP stdio 초기화 및 tool discovery
 - filesystem READ / WRITE
 - `patch.apply`
 - `shell.run`
@@ -185,7 +189,7 @@ multiagentos run --path . --objective "run tests" -- python -m unittest discover
 multiagentos chat --path . --objective "inspect the current project"
 ```
 
-### VYRELON MCP Server 실행
+### Agent Execution Runtime MCP Server 실행
 
 ```bash
 multiagentos mcp serve --path .
@@ -226,10 +230,10 @@ GitHub Actions에서도 저장소 CI를 검증합니다.
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [VYRELON Connection Guide](docs/VYRELON_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](docs/Agent Execution Runtime_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
-- [VYRELON GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
-- [VYRELON MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
+- [Agent Execution Runtime GitHub Connection](docs/Agent Execution Runtime_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
 영문 README를 canonical technical document로 유지하며, 각 locale README도 동일한 아키텍처, 용어, Cost-Free 기본 경로를 유지합니다.
 
