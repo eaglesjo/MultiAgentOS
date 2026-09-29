@@ -1,30 +1,30 @@
 {
-  "name": "vyrelon-vscode",
-  "displayName": "VYRELON",
-  "description": "VS Code adapter for the VYRELON local development runtime.",
+  "name": "agent-execution-runtime-vscode",
+  "displayName": "Agent Execution Runtime",
+  "description": "VS Code adapter for the Agent Execution Runtime local development runtime.",
   "version": "0.1.0",
-  "publisher": "vyrelon",
+  "publisher": "eaglesjo",
   "engines": { "vscode": "^1.95.0" },
   "categories": ["Other"],
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      { "command": "vyrelon.showContext", "title": "VYRELON: Show Context" },
-      { "command": "vyrelon.sendSelection", "title": "VYRELON: Send Selection" }
+      { "command": "agentExecutionRuntime.showContext", "title": "Agent Execution Runtime: Show Context" },
+      { "command": "agentExecutionRuntime.sendSelection", "title": "Agent Execution Runtime: Send Selection" }
     ],
     "configuration": {
-      "title": "VYRELON",
+      "title": "Agent Execution Runtime",
       "properties": {
-        "vyrelon.endpoint": {
+        "agentExecutionRuntime.endpoint": {
           "type": "string",
           "default": "http://127.0.0.1:8787",
-          "description": "Loopback-only VYRELON bridge endpoint."
+          "description": "Loopback-only Agent Execution Runtime bridge endpoint."
         },
-        "vyrelon.token": {
+        "agentExecutionRuntime.token": {
           "type": "string",
           "default": "",
-          "description": "Optional bearer token for the local VYRELON bridge.",
+          "description": "Optional bearer token for the local Agent Execution Runtime bridge.",
           "scope": "machine"
         }
       }
