@@ -125,4 +125,4 @@ OpenAI Secure MCP Tunnel currently forwards MCP JSON-RPC requests from the OpenA
 
 ## Terminology migration
 
-The architectural role formerly described as VYRELON is now called **Agent Execution Runtime**. Existing implementation identifiers may retain `VYRELON` for compatibility. See [Terminology](TERMINOLOGY.md).
+The canonical architectural role is **Agent Execution Runtime**. See [Terminology](TERMINOLOGY.md).
