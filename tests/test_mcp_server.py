@@ -1,5 +1,6 @@
 import io
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -50,12 +51,10 @@ class VYRELONMCPServerTests(unittest.TestCase):
             root = Path(temp)
             target = root / "README.md"
             target.write_text("before\n", encoding="utf-8")
-            import subprocess
             subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
             server = VYRELONMCPServer(root, allow_write=True)
 
             patch = """diff --git a/README.md b/README.md
-index 7a2c2e3..9f4c5a1 100644
 --- a/README.md
 +++ b/README.md
 @@ -1 +1 @@
@@ -77,6 +76,7 @@ index 7a2c2e3..9f4c5a1 100644
             payload = json.loads(response["result"]["content"][0]["text"])
             self.assertEqual(payload["returncode"], 0)
             self.assertEqual(target.read_text(encoding="utf-8"), "after\n")
+
     def test_stdio_round_trip(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
