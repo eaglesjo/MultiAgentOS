@@ -1,6 +1,6 @@
-# VYRELON Multi-Agent Runtime
+# Multi-Agent Runtime
 
-Multi-Agent Runtime is the orchestration layer above the existing VYRELON runtimes.
+Multi-Agent Runtime is the orchestration layer above the existing Agent Execution Runtime runtimes.
 
 ## Stage model
 
@@ -42,7 +42,7 @@ No Harness abstraction is introduced.
 
 ## Handoff
 
-After each completed stage, VYRELON records a handoff artifact identifying the previous and next agents. Stage outputs are recorded in the parent WorkUnit metadata.
+After each completed stage, Agent Execution Runtime records a handoff artifact identifying the previous and next agents. Stage outputs are recorded in the parent WorkUnit metadata.
 
 ## Failure and recovery
 
