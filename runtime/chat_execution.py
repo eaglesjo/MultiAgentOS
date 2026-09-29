@@ -10,6 +10,9 @@ from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from runtime import AgentExecutionRuntime
 
+# Legacy compatibility import surface for existing tests/integrations.
+VYRELONRuntime = AgentExecutionRuntime
+
 
 def execute_project_chat_request(
     project_root: Path,
