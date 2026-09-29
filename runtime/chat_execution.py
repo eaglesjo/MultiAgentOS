@@ -6,7 +6,6 @@ from pathlib import Path
 
 from core.chat_agent_bridge import ChatAgentExecutionResult, ChatAgentRequest
 from core.contracts.agent import AgentContract
-from core.chat_agent_bridge import ChatAgentAdapter
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from runtime.vyrelon import VYRELONRuntime
