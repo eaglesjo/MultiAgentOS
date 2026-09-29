@@ -1,117 +1,154 @@
 # MultiAgentOS
 
-**ローカルファースト、GitHubネイティブのAI開発基盤です。**
+> **Cost-Free Multi-Agent Development Orchestration**
 
-MultiAgentOSは **VYRELON** の基盤ランタイムであり、マルチエージェント開発オーケストレーターです。リモートGitHubリポジトリと開発者のローカルプロジェクトを明確に分離しながら、対話型AIが実際のプロジェクトで作業できるようにします。
+MultiAgentOSは **VYRELON** を中心とするローカルファーストのAI開発オーケストレーション基盤です。
 
-> **2つの接続には、それぞれ異なる役割があります。**
-> - **GitHub URL → ChatGPT GitHubアプリ → リモートGitHubリポジトリ**
-> - **VYRELON → MCP / Secure MCP Tunnel → ローカルプロジェクト**
+Cost-freeの基本パスでは、**別途の有料AI API Keyを必要としません**。MultiAgentOSは利用可能なAIクライアント、GitHub、ローカルプロジェクトを連携し、実行権限をVYRELONに保持します。
 
-## 重要な接続モデル
+## 中核構成
 
-**GitHub URLはローカルプロジェクトへの接続ではありません。**
+- **ChatGPT Web** — 唯一のユーザーエントリーポイント
+- **ChatGPT Codex Connector** — リモートGitHub Repositoryへの接続
+- **VYRELON MCP / Secure Tunnel** — ローカルプロジェクトへの接続
+- **Orchestrator** — マルチエージェント協調の全体調整
+- **MultiAgentWorkflow** — Developer → Tester → Reviewer
+- Verification / Handoff / Review / Rework
+- VYRELONによるfilesystem / patch / process / Git実行権限の制御
 
-GitHub URLまたはrepository nameは、ChatGPT GitHub連携で**どのリモートリポジトリを対象にするか**を指定します。
+## アーキテクチャ
 
-VYRELONは**ローカル実行境界**です。明示的に許可された場合、filesystem、`patch.apply`、process実行、テスト、MCP tool surfaceなどを提供します。
+`text
+                         Web Browser
+                              |
+                              v
+                         ChatGPT Web
+                              |
+                    +---------+---------+
+                    |                   |
+                    v                   v
+       ChatGPT Codex Connector       VYRELON
+                    |                MCP / Secure Tunnel
+                    v                   |
+            GitHub Repository            v
+                                  Local Project
+                    |                   |
+                    +---------+---------+
+                              |
+                              v
+                        MultiAgentOS
+                              |
+                              v
+                         Orchestrator
+                              |
+                              v
+                    MultiAgentWorkflow
+                     /       |       \\
+               Developer   Tester   Reviewer
+                              |
+                              v
+                         Verification
+                              |
+                              v
+                           VYRELON
+`
 
-```text
-                  MultiAgentOS
-                       |
-            +----------+----------+
-            |                     |
-            v                     v
-       GitHub path            Local path
-            |                     |
- GitHub URL / repository      VYRELON runtime
-            |                     |
- ChatGPT GitHub app       MCP / Secure MCP Tunnel
-            |                     |
-            v                     v
-   Remote GitHub repo         Local project
-```
+Agentは意図・計画・結果を提供しますが、filesystem/process/Gitの実行権限を直接所有しません。
 
-## ChatGPT + GitHub
+## マルチエージェントワークフロー
 
-1. ChatGPTの **Settings → Apps** を開きます。
-2. **GitHub**を接続し、GitHub認証を完了します。
-3. ChatGPTから検索できるrepositoryへのアクセスを許可します。
-4. 新しいChatGPT conversationを開始します。
-5. **GitHub URLまたはrepository nameを一度指定**します。
-6. 対象repositoryへの作業を依頼します。
+`text
+Request
+  |
+  v
+Orchestrator
+  |
+  v
+MultiAgentWorkflow
+  |
+  +--> Developer
+  +--> Tester
+  +--> Reviewer
+  +--> 必要に応じて Rework
+  |
+  v
+Verification
+  |
+  v
+Completed / Failed
+`
 
-例:
+`Orchestrator.run_workflow()` が安定した上位オーケストレーション入口で、`MultiAgentWorkflow` がstage、handoff、review、reworkの具体的な意味を管理します。
 
-> `https://github.com/eaglesjo/MultiAgentOS`を確認し、現在のVYRELON接続モデルとREADMEの改善点を分析してください。
+## 接続モデル
 
-URL/nameの指定は**リモートGitHub repositoryを会話の対象として識別するためのもの**です。これだけでローカルfilesystemへのアクセス権が付与されるわけではありません。
+### GitHub path
 
-## VYRELON + ローカルプロジェクト
+`text
+ChatGPT Web
+    |
+    v
+ChatGPT Codex Connector
+    |
+    v
+GitHub Repository
+`
 
-```bash
+### Local project path
+
+`text
+ChatGPT Web
+    |
+    v
+VYRELON MCP / Secure Tunnel
+    |
+    v
+VYRELON
+    |
+    v
+Local Project
+`
+
+VYRELONには**1つのMCP Server**だけがあります。Secure MCP Tunnelと`tunnel-client`はtransport/connection infrastructureであり、別のMCP Serverではありません。
+
+## Cost-Free baseline
+
+基本ランタイムには別途の有料AI API Key、Agent APIサブスクリプション、MultiAgentOS SaaSサブスクリプションを必要としません。
+
+検証済み:
+
+- VYRELON MCP stdio initialize / tool discovery
+- filesystem WRITE/READ
+- `patch.apply`
+- `shell.run`
+- local MCP/runtime tests
+- runtime health/readiness
+- Secure MCP Tunnel readiness
+
+詳細は [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md) を参照してください。
+
+## インストール
+
+`bash
 python -m pip install multiagentos
 
 cd your-project
 multiagentos init . --component all
 multiagentos status .
-```
+multiagentos run --path . --objective "run tests" -- python -m unittest discover -s tests -v
+multiagentos chat --path . --objective "inspect the current project"
+multiagentos mcp serve --path .
+`
 
-ローカルMCPサーバー:
+## ドキュメント
 
-```bash
-multiagentos mcp serve --path /absolute/path/to/project
-```
-
-writeとprocess capabilityが必要な場合:
-
-```bash
-multiagentos mcp serve \
-  --path /absolute/path/to/project \
-  --allow-write \
-  --allow-process
-```
-
-## ChatGPT/Codex + ローカルVYRELON
-
-```text
-ChatGPT / Codex
-       |
-Secure MCP Tunnel
-       |
- tunnel-client
-       |
-VYRELON MCP Server
-       |
-Local Project
-```
-
-Secure MCP Tunnelは新しいMCPサーバーではありません。同じVYRELON MCP Serverへ接続するためのtransport/connection infrastructureです。
-
-## Cost-free baseline
-
-MultiAgentOSの主要なローカル開発パスでは、有料AI provider API keyを必須としません。
-
-VYRELONはAI providerとは独立してfilesystem READ/WRITE、patch application、process/test execution、local MCP runtimeを提供できます。
-
-詳細は [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md) を参照してください。
-
-## Validation
-
-```bash
-python -m unittest discover -s tests -v
-```
-
-## Documentation
-
-- [English README](README.md)
-- [한국어 README](README.ko.md)
 - [Getting Started](docs/GETTING_STARTED.md)
+- [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
 - [VYRELON Connection Guide](docs/VYRELON_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
+- [VYRELON GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
+- [VYRELON MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
-## Localization
+英語READMEをcanonical technical documentとして維持し、各localeも同じアーキテクチャと技術的意味を保持します。
 
-英語版READMEをcanonical documentとして維持します。各localeでは、文章だけでなく技術用語と接続モデルの意味を維持します。
-
-VYRELON、MultiAgentOS、GitHub、MCP、Secure MCP Tunnel、`patch.apply`、filesystem、process、execution policy、permission boundary、Chat Agent、Model、Agent、Runtimeなどの用語は技術的意味を変更しません。
+[한국어](README.ko.md) · [简体中文](README.zh-CN.md)
