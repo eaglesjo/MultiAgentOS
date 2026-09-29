@@ -217,9 +217,9 @@ GitHub Actions 也会通过 CI 验证仓库。
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [Agent Execution Runtime Connection Guide](docs/VYRELON_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](docs/AGENT_EXECUTION_RUNTIME_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
-- [Agent Execution Runtime GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
 - [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
 英文 README 是 canonical technical document。各 locale README 保持相同的架构、术语和 Cost-Free 基线。
