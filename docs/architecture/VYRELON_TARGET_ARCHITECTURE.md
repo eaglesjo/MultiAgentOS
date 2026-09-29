@@ -1,8 +1,8 @@
-# VYRELON Target Architecture
+# MultiAgentOS Target Architecture
 
 ## Product boundary
 
-VYRELON is the core AI development runtime for MultiAgentOS.
+The Agent Execution Runtime is the execution boundary used by MultiAgentOS.
 
 Its job is to combine:
 
@@ -20,7 +20,7 @@ Multi-Agent is an orchestration extension on top of this runtime.
 ## Layered architecture
 
 ```text
-                         VYRELON
+                         Agent Execution Runtime
                             │
           ┌─────────────────┼─────────────────┐
           │                 │                 │
@@ -124,7 +124,7 @@ A compatibility adapter can still expose `ModelResponse.text` for simple consume
 
 ### Protocol
 
-A protocol adapter translates between normalized VYRELON requests/events and provider/harness wire formats.
+A protocol adapter translates between normalized Agent Execution Runtime requests/events and provider/harness wire formats.
 
 This isolates OpenAI Chat/Responses, Anthropic Messages, Gemini, local OpenAI-compatible servers, and future protocols.
 
@@ -156,7 +156,7 @@ Durable Repository State
           │
           │ recovery identity
           ▼
-VYRELON Session State
+Agent Execution Runtime Session State
   WorkUnit / checkpoint / event log
           │
           ▼
@@ -168,7 +168,7 @@ Recovery always prefers exact durable repository identity over conversational re
 
 ## Multi-Agent boundary
 
-Multi-Agent orchestration consumes VYRELON services:
+Multi-Agent orchestration consumes Agent Execution Runtime services:
 
 ```text
 Multi-Agent
@@ -178,7 +178,7 @@ Multi-Agent
  └─ Handoff
        │
        ▼
-VYRELON
+Agent Execution Runtime
  ├─ Agent Runtime
  ├─ Tool Runtime
  ├─ AI Runtime
@@ -205,7 +205,7 @@ Add provider-neutral contracts without breaking existing APIs:
 
 ### Phase B — local tool runtime
 
-Generalize the strongest pieces of chatgpt-local-coder into VYRELON:
+Generalize the strongest pieces of chatgpt-local-coder into Agent Execution Runtime:
 
 - path security
 - permissions
@@ -251,17 +251,17 @@ Add:
 
 ### Phase F — Multi-Agent
 
-Move current planner/delegation/review lifecycle onto the VYRELON runtime services.
+Move current planner/delegation/review lifecycle onto the Agent Execution Runtime runtime services.
 
 ## Compatibility policy
 
-Existing `ModelSpec`, `ModelAdapter`, `AgentContract`, `WorkUnit`, and `VYRELONRuntime` APIs remain usable during migration.
+Existing `ModelSpec`, `ModelAdapter`, `AgentContract`, `WorkUnit`, and `AgentExecutionRuntime` APIs remain usable during migration.
 
 New runtime contracts should be additive first. Removal/renaming happens only after consumers and tests are migrated.
 
-## Definition of VYRELON readiness
+## Definition of Agent Execution Runtime readiness
 
-VYRELON is ready for downstream integration when a project can:
+Agent Execution Runtime is ready for downstream integration when a project can:
 
 1. discover its technology/project profile;
 2. select an agent and harness;
@@ -276,4 +276,7 @@ VYRELON is ready for downstream integration when a project can:
 11. optionally enable Multi-Agent orchestration;
 12. only then evaluate IDE-specific adapters for Xcode/iOS, VS Code and Android Studio.
 
-At that point downstream projects become consumers of VYRELON rather than defining its architecture.
+At that point downstream projects become consumers of Agent Execution Runtime rather than defining its architecture.
+
+
+> **Compatibility note:** this legacy target-architecture filename is retained. The canonical architectural term is **Agent Execution Runtime**; see [Terminology](../TERMINOLOGY.md).
