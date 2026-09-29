@@ -36,7 +36,7 @@ def default_chat_agents() -> ChatAgentRegistry:
             provider=ChatAgentProvider.CHATGPT,
             name="ChatGPT Agent",
             capabilities=frozenset({"conversation", "planning", "orchestration"}),
-            instruction_profile="vyrelon",
+            instruction_profile="agent_execution_runtime",
             primary=True,
         )
     )
@@ -46,7 +46,7 @@ def default_chat_agents() -> ChatAgentRegistry:
             provider=ChatAgentProvider.GEMINI,
             name="Gemini Agent",
             capabilities=frozenset({"conversation", "planning"}),
-            instruction_profile="vyrelon",
+            instruction_profile="agent_execution_runtime",
         )
     )
     registry.register(
@@ -55,7 +55,7 @@ def default_chat_agents() -> ChatAgentRegistry:
             provider=ChatAgentProvider.CLAUDE,
             name="Claude Agent",
             capabilities=frozenset({"conversation", "planning"}),
-            instruction_profile="vyrelon",
+            instruction_profile="agent_execution_runtime",
         )
     )
     return registry

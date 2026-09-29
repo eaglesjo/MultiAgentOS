@@ -1,4 +1,4 @@
-"""VYRELON orchestration core."""
+"""AGENT_EXECUTION_RUNTIME orchestration core."""
 
 from core.chat_agent_bridge import ChatAgentBridge, ChatAgentExecutionResult, ChatAgentRequest, ChatAgentResponse
 from core.chat_agent_registry import ChatAgentRegistry, default_chat_agents

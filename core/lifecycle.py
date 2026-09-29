@@ -1,4 +1,4 @@
-"""Execution lifecycle coordinator for VYRELON."""
+"""Execution lifecycle coordinator for AGENT_EXECUTION_RUNTIME."""
 
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec

@@ -1,4 +1,4 @@
-"""Minimal executable VYRELON orchestration loop."""
+"""Minimal executable AGENT_EXECUTION_RUNTIME orchestration loop."""
 
 from dataclasses import dataclass
 from collections.abc import Callable
@@ -20,7 +20,7 @@ class OrchestrationResult:
 
 
 class Orchestrator:
-    """Coordinate single-agent and multi-agent execution under VYRELON authority."""
+    """Coordinate single-agent and multi-agent execution under AGENT_EXECUTION_RUNTIME authority."""
 
     def __init__(self, lifecycle: LifecycleCoordinator | None = None) -> None:
         self.lifecycle = lifecycle or LifecycleCoordinator()

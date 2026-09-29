@@ -1,4 +1,4 @@
-"""Persistent conversational session state for VYRELON Chat Agents."""
+"""Persistent conversational session state for AGENT_EXECUTION_RUNTIME Chat Agents."""
 
 from __future__ import annotations
 

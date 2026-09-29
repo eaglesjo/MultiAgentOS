@@ -105,7 +105,7 @@ class AgentExecutionRuntime:
         port: int = 8787,
         allow_remote: bool = False,
     ) -> IDEBridgeServer:
-        """Start the local IDE bridge against this VYRELON runtime."""
+        """Start the local IDE bridge against this AGENT_EXECUTION_RUNTIME runtime."""
         if self.ide_bridge_server is not None:
             return self.ide_bridge_server
         bridge = IDEBridge(
@@ -118,7 +118,7 @@ class AgentExecutionRuntime:
         return self.ide_bridge_server
 
     def stop_ide_bridge(self) -> None:
-        """Stop the VYRELON IDE bridge when it is running."""
+        """Stop the AGENT_EXECUTION_RUNTIME IDE bridge when it is running."""
         if self.ide_bridge_server is not None:
             self.ide_bridge_server.stop()
             self.ide_bridge_server = None
@@ -276,7 +276,7 @@ class AgentExecutionRuntime:
         return self.repository.evidence(project_root, repository=repository, ref=ref, validation=validation)
 
     def validate(self, project_root: Path, steps: list[ValidationStep], *, persist_evidence: bool = True) -> ValidationReport:
-        """Run project validation through the VYRELON local execution boundary."""
+        """Run project validation through the AGENT_EXECUTION_RUNTIME local execution boundary."""
         return self.validation.run(project_root, steps, persist_evidence=persist_evidence)
 
     def inspect(self, project_root: Path):
@@ -698,7 +698,7 @@ class AgentExecutionRuntime:
         reviewer: ResultReviewer | None = None,
         routing_strategy="pool",
     ) -> OrchestrationResult:
-        """Execute using provider/model and adapter configuration registered in VYRELON."""
+        """Execute using provider/model and adapter configuration registered in AGENT_EXECUTION_RUNTIME."""
         from runtime.agent.model import ModelAgentExecutor
 
         models = self.configured_models()
@@ -829,7 +829,7 @@ class AgentExecutionRuntime:
         preferred_model_ids: list[str] | None = None,
         routing_strategy="pool",
     ) -> OrchestrationResult:
-        """Run through the VYRELON lifecycle while persisting every terminal state."""
+        """Run through the AGENT_EXECUTION_RUNTIME lifecycle while persisting every terminal state."""
         work_unit.metadata["cwd"] = str(project_root)
         store = self.state_store(project_root)
         if work_unit.status == WorkStatus.FAILED:
@@ -1019,7 +1019,7 @@ class AgentExecutionRuntime:
         adapter,
         agent_id: str | None = None,
     ) -> tuple[object, object, ChatAgentResponse]:
-        """Translate a Chat Agent turn into a VYRELON WorkUnit and Plan."""
+        """Translate a Chat Agent turn into a AGENT_EXECUTION_RUNTIME WorkUnit and Plan."""
         return self.chat_agent_bridge().request(request, adapter, agent_id=agent_id)
 
     def execute_chat_request(
@@ -1038,7 +1038,7 @@ class AgentExecutionRuntime:
         session: ChatSession | None = None,
         project_root: Path | None = None,
     ) -> ChatAgentExecutionResult:
-        """Execute a Chat Agent turn through the VYRELON lifecycle."""
+        """Execute a Chat Agent turn through the AGENT_EXECUTION_RUNTIME lifecycle."""
         root = project_root or Path.cwd()
         return self.chat_agent_bridge().execute(
             request=request,
@@ -1096,7 +1096,7 @@ class AgentExecutionRuntime:
         routing_strategy="pool",
         project_root: Path | None = None,
     ) -> OrchestrationResult:
-        """Reload a durable checkpoint and resume a generic VYRELON workflow."""
+        """Reload a durable checkpoint and resume a generic AGENT_EXECUTION_RUNTIME workflow."""
         root = project_root or Path.cwd()
         store = self.state_store(root)
         checkpoint = store.load_checkpoint(work_unit_id)
@@ -1127,7 +1127,7 @@ class AgentExecutionRuntime:
         )
 
     def multi_agent_workflow(self) -> MultiAgentWorkflow:
-        """Return the VYRELON-controlled multi-agent handoff workflow."""
+        """Return the AGENT_EXECUTION_RUNTIME-controlled multi-agent handoff workflow."""
         return MultiAgentWorkflow()
 
     def run_multi_agent_workflow(
@@ -1288,7 +1288,7 @@ class AgentExecutionRuntime:
         resume_action: str | None = None,
         resume_output: object = None,
     ) -> MultiAgentWorkflowResult:
-        """Run bounded Review -> Rework -> Review under VYRELON authority."""
+        """Run bounded Review -> Rework -> Review under AGENT_EXECUTION_RUNTIME authority."""
         root = project_root or Path.cwd()
         result = self.multi_agent_workflow().run_with_review_rework(
             work_unit=work_unit,
@@ -1552,11 +1552,11 @@ class AgentExecutionRuntime:
         return MCPToolProxy(self.mcp_clients, self.mcp_authorizer(project_root)).list_tools(agent, profile_id)
 
     def call_mcp_tool(self, project_root: Path, request, agent: AgentContract | None = None, profile_id: str | None = None):
-        """Invoke an MCP tool after applying the VYRELON agent/profile policy."""
+        """Invoke an MCP tool after applying the AGENT_EXECUTION_RUNTIME agent/profile policy."""
         from runtime.mcp.proxy import MCPToolProxy
         return MCPToolProxy(self.mcp_clients, self.mcp_authorizer(project_root)).call(request, agent, profile_id)
 
 
-VYRELONRuntime = AgentExecutionRuntime
+AgentExecutionRuntime = AgentExecutionRuntime
 
-__all__ = ["AgentExecutionRuntime", "VYRELONRuntime"]
+__all__ = ["AgentExecutionRuntime", "AgentExecutionRuntime"]
