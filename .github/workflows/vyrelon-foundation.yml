@@ -38,3 +38,5 @@ jobs:
           tmpdir="$(mktemp -d)"
           multiagentos init "$tmpdir" --component all
           test -f "$tmpdir/.multiagentos/profile.json"
+      - name: Verify COSTFREE-001 acceptance path
+        run: python tests/costfree_acceptance.py
