@@ -2,6 +2,28 @@
 
 All notable changes to MultiAgentOS are documented here.
 
+## [0.4.0] - 2026-09-29
+
+### Cost-free development baseline
+
+- Enforced the COSTFREE-001 acceptance path in GitHub Actions.
+- Verified clean-install bootstrap without a provider API key.
+- Verified VYRELON MCP initialization and tool discovery.
+- Verified filesystem READ/WRITE through the MCP runtime.
+- Verified unified patch application and readback.
+- Verified shell/process execution through the VYRELON MCP surface.
+- Kept provider SDKs optional; the core package has no provider runtime dependency.
+- Documented Secure MCP Tunnel integration and the current ChatGPT Web plan boundary.
+
+### CI
+
+- Added a dependency-free end-to-end acceptance harness.
+- GitHub Actions now blocks the baseline when install, bootstrap, MCP, filesystem, patch, or process validation fails.
+
+### Release scope
+
+This release establishes the first explicit cost-free-by-default development baseline for MultiAgentOS. Paid AI providers, ChatGPT integrations, and other model clients remain optional integration layers.
+
 ## [0.3.0] - 2026-09-28
 
 ### Added
