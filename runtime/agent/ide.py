@@ -52,7 +52,7 @@ class IDECodingExecutor:
 
 @dataclass
 class IDEValidationVerifier:
-    """Validate an IDE-originated code change using VYRELON's local validation boundary."""
+    """Validate an IDE-originated code change using AGENT_EXECUTION_RUNTIME's local validation boundary."""
 
     project_root: Path
     commands: tuple[str, ...]

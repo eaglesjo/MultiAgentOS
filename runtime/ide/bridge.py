@@ -26,7 +26,7 @@ class IDEBridgePolicy:
 
     def authorize(self, supplied: str | None) -> None:
         if not self.token or not supplied or not hmac.compare_digest(self.token, supplied):
-            raise IDEBridgeAuthorizationError("invalid VYRELON IDE bridge token")
+            raise IDEBridgeAuthorizationError("invalid AGENT_EXECUTION_RUNTIME IDE bridge token")
 
 
 class IDEBridge:

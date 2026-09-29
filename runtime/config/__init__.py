@@ -1,1 +1,1 @@
-"""VYRELON runtime configuration."""
+"""AGENT_EXECUTION_RUNTIME runtime configuration."""
