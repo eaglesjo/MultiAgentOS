@@ -852,7 +852,7 @@ class AgentExecutionRuntime:
         fallback_model_ids: tuple[str, ...] = (),
         adapter_overrides: dict[str, object] | None = None,
     ) -> OrchestrationResult:
-        """Resume a persisted failed WorkUnit through the same configured runtime."""
+        """Resume a persisted WorkUnit only when its durable recovery plan permits replay."""
         project_root = Path(project_root).resolve()
         store = self.state_store(project_root)
         if not store.exists(work_unit_id):
