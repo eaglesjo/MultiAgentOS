@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelRequest
-from core.contracts.vyrelon_runtime import ToolSpec
+from core.contracts.agent_execution_runtime_runtime import ToolSpec
 from runtime.model.native import (
     AnthropicMessagesToolAdapter,
     GeminiGenerateContentToolAdapter,

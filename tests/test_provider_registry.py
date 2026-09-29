@@ -3,7 +3,7 @@ from core.contracts.agent import AgentContract
 from core.contracts.model_runtime import ModelRequest, ModelResponse
 from core.contracts.work_unit import WorkUnit
 from runtime.model.providers import AIProviderRegistry
-from runtime.vyrelon import VYRELONRuntime
+from runtime.agent_execution_runtime import AgentExecutionRuntime
 
 
 class FakeAdapter:
@@ -49,7 +49,7 @@ def test_provider_registry_rejects_model_owned_by_another_provider():
         raise AssertionError("expected provider ownership validation")
 
 
-def test_vyrelon_runs_registered_provider_model_configuration():
+def test_agent_execution_runtime_runs_registered_provider_model_configuration():
     model = ModelSpec(
         id="registered-model",
         provider_id="provider-a",
@@ -61,7 +61,7 @@ def test_vyrelon_runs_registered_provider_model_configuration():
         kind="http",
         models=(model,),
     )
-    runtime = VYRELONRuntime()
+    runtime = AgentExecutionRuntime()
     runtime.register_provider(provider)
     runtime.register_model_adapter("fake", FakeAdapter())
 
@@ -84,8 +84,8 @@ def test_vyrelon_runs_registered_provider_model_configuration():
     assert work.metadata["model_id"] == "registered-model"
 
 
-def test_vyrelon_rejects_unknown_registered_model():
-    runtime = VYRELONRuntime()
+def test_agent_execution_runtime_rejects_unknown_registered_model():
+    runtime = AgentExecutionRuntime()
     work = WorkUnit("wu-missing", "Run missing model")
     agent = AgentContract(id="executor", role="executor")
 

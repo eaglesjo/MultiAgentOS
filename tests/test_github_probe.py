@@ -5,7 +5,7 @@ from runtime.github_probe import probe
 
 
 class GitHubProbeTests(unittest.TestCase):
-    def test_probe_uses_vyrelon_gateway(self):
+    def test_probe_uses_agent_execution_runtime_gateway(self):
         fake_repo = type("Repo", (), {
             "full_name": "owner/repo",
             "private": False,

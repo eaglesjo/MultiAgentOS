@@ -3,7 +3,7 @@
 This test intentionally uses only the Python standard library plus the
 installed MultiAgentOS CLI. It validates the cost-free local path:
 
-install -> init -> VYRELON MCP -> READ -> WRITE -> PATCH -> TEST/process.
+install -> init -> AGENT_EXECUTION_RUNTIME MCP -> READ -> WRITE -> PATCH -> TEST/process.
 
 No provider API key, MCP SDK, or external AI service is required.
 """
@@ -34,7 +34,7 @@ def _send(proc: subprocess.Popen[str], message: dict[str, object]) -> dict[str, 
     proc.stdin.flush()
     line = proc.stdout.readline()
     if not line:
-        raise RuntimeError("VYRELON MCP server closed stdout unexpectedly")
+        raise RuntimeError("AGENT_EXECUTION_RUNTIME MCP server closed stdout unexpectedly")
     response = json.loads(line)
     if not isinstance(response, dict):
         raise RuntimeError("MCP response is not a JSON object")
@@ -136,7 +136,7 @@ def run_acceptance() -> None:
                     },
                 },
             )
-            if initialized["result"]["serverInfo"]["name"] != "VYRELON":
+            if initialized["result"]["serverInfo"]["name"] != "AGENT_EXECUTION_RUNTIME":
                 raise RuntimeError("unexpected MCP server identity")
 
             assert proc.stdin is not None

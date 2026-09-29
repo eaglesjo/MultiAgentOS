@@ -27,13 +27,13 @@ class TestOpenAIChatAgentAdapter(unittest.TestCase):
         adapter = OpenAIChatAgentAdapter(client=client, model="test-model")
         result = adapter.respond(
             agent=default_chat_agents().get("chatgpt"),
-            instructions="VYRELON rules",
+            instructions="AGENT_EXECUTION_RUNTIME rules",
             request=ChatAgentRequest(objective="Inspect the repository"),
         )
         self.assertEqual(result.summary, "inspect first")
         self.assertEqual(result.steps[0].id, "inspect")
         self.assertEqual(client.responses.kwargs["model"], "test-model")
-        self.assertIn("VYRELON rules", client.responses.kwargs["instructions"])
+        self.assertIn("AGENT_EXECUTION_RUNTIME rules", client.responses.kwargs["instructions"])
 
     def test_invalid_json_falls_back_to_non_execution_step(self):
         adapter = OpenAIChatAgentAdapter(
@@ -42,7 +42,7 @@ class TestOpenAIChatAgentAdapter(unittest.TestCase):
         )
         result = adapter.respond(
             agent=default_chat_agents().get("chatgpt"),
-            instructions="VYRELON rules",
+            instructions="AGENT_EXECUTION_RUNTIME rules",
             request=ChatAgentRequest(objective="Inspect"),
         )
         self.assertEqual(result.steps[0].objective, "Inspect")
