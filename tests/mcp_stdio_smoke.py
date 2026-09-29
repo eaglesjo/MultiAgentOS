@@ -1,4 +1,4 @@
-"""End-to-end stdio smoke client for the VYRELON MCP server.
+"""End-to-end stdio smoke client for the AGENT_EXECUTION_RUNTIME MCP server.
 
 This intentionally uses only Python's standard library so the validation path
 does not depend on an OpenAI account, ChatGPT subscription, or an MCP SDK.
@@ -20,7 +20,7 @@ def _send(proc: subprocess.Popen[str], message: dict[str, object]) -> dict[str, 
     proc.stdin.flush()
     line = proc.stdout.readline()
     if not line:
-        raise RuntimeError("VYRELON MCP server closed stdout unexpectedly")
+        raise RuntimeError("AGENT_EXECUTION_RUNTIME MCP server closed stdout unexpectedly")
     response = json.loads(line)
     if not isinstance(response, dict):
         raise RuntimeError("MCP response is not a JSON object")
@@ -36,7 +36,7 @@ def _notify(proc: subprocess.Popen[str], message: dict[str, object]) -> None:
 def run_smoke() -> None:
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp)
-        (root / "mcp-smoke.txt").write_text("VYRELON MCP OK", encoding="utf-8")
+        (root / "mcp-smoke.txt").write_text("AGENT_EXECUTION_RUNTIME MCP OK", encoding="utf-8")
 
         proc = subprocess.Popen(
             [
@@ -63,11 +63,11 @@ def run_smoke() -> None:
                     "params": {
                         "protocolVersion": "2025-03-26",
                         "capabilities": {},
-                        "clientInfo": {"name": "vyrelon-mcp-smoke", "version": "1.0"},
+                        "clientInfo": {"name": "agent_execution_runtime-mcp-smoke", "version": "1.0"},
                     },
                 },
             )
-            assert initialized["result"]["serverInfo"]["name"] == "VYRELON"
+            assert initialized["result"]["serverInfo"]["name"] == "AGENT_EXECUTION_RUNTIME"
 
             _notify(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
 
@@ -94,7 +94,7 @@ def run_smoke() -> None:
                 },
             )
             assert read["result"]["isError"] is False
-            assert read["result"]["content"][0]["text"] == "VYRELON MCP OK"
+            assert read["result"]["content"][0]["text"] == "AGENT_EXECUTION_RUNTIME MCP OK"
         finally:
             proc.terminate()
             proc.wait(timeout=5)
@@ -102,4 +102,4 @@ def run_smoke() -> None:
 
 if __name__ == "__main__":
     run_smoke()
-    print("VYRELON MCP stdio smoke: PASS")
+    print("AGENT_EXECUTION_RUNTIME MCP stdio smoke: PASS")

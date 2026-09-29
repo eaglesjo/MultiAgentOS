@@ -8,10 +8,10 @@ All notable changes to MultiAgentOS are documented here.
 
 - Enforced the COSTFREE-001 acceptance path in GitHub Actions.
 - Verified clean-install bootstrap without a provider API key.
-- Verified VYRELON MCP initialization and tool discovery.
+- Verified Agent Execution Runtime MCP initialization and tool discovery.
 - Verified filesystem READ/WRITE through the MCP runtime.
 - Verified unified patch application and readback.
-- Verified shell/process execution through the VYRELON MCP surface.
+- Verified shell/process execution through the Agent Execution Runtime MCP surface.
 - Kept provider SDKs optional; the core package has no provider runtime dependency.
 - Documented Secure MCP Tunnel integration and the current ChatGPT Web plan boundary.
 
@@ -35,7 +35,7 @@ This release establishes the first explicit cost-free-by-default development bas
 - Quota-aware and health-aware model routing with cooldown recovery.
 - Runtime observation of model usage and capabilities.
 - Provider-neutral routing explainability through AIRouter.explain().
-- VYRELON routing explanation API and multiagentos models explain CLI.
+- Agent Execution Runtime routing explanation API and multiagentos models explain CLI.
 - Model discovery and intelligence CLI commands.
 
 ### Compatibility
