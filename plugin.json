@@ -1,0 +1,10 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "multiagentos",
+  "description": "MultiAgentOS Agent Execution Runtime skills and MCP integration for AI development tools.",
+  "version": "0.4.0",
+  "author": {"name": "eaglesjo"},
+  "repository": "https://github.com/eaglesjo/MultiAgentOS",
+  "license": "MIT",
+  "keywords": ["multi-agent", "agent-execution-runtime", "mcp", "developer-tools"]
+}
