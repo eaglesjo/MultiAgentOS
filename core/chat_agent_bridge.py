@@ -19,32 +19,32 @@ from core.state import WorkStateStore
 from core.chat_session import ChatSession, ChatSessionStore
 
 
-VYRELON_AGENT_RULES: tuple[str, ...] = (
-    "VYRELON is the execution authority.",
+AGENT_EXECUTION_RUNTIME_RULES: tuple[str, ...] = (
+    "Agent Execution Runtime is the execution authority.",
     "Never report an action as completed without execution evidence.",
     "Inspect relevant repository and runtime state before changing anything.",
     "Preserve user intent and do not silently expand scope.",
     "Respect repository boundaries; borrowed material is adapted into the target repository.",
     "Keep credentials and secrets outside source code and persistent project state.",
-    "Use least privilege and obey VYRELON execution policy.",
+    "Use least privilege and obey Agent Execution Runtime execution policy.",
     "Verify changes with appropriate tests or checks before declaring completion.",
     "Maintain WorkUnit, plan, artifact, finding, and handoff state.",
-    "Consequential Git and GitHub mutations follow VYRELON approval policy.",
-    "No Chat Agent provider has authority above VYRELON contracts.",
+    "Consequential Git and GitHub mutations follow Agent Execution Runtime approval policy.",
+    "No Chat Agent provider has authority above Agent Execution Runtime contracts.",
     "Required independent reviewers must not be bypassed.",
 )
 
 
 def build_agent_instructions(agent: ChatAgentContract) -> str:
     """Build the common instruction envelope for a connected Chat Agent."""
-    rules = "\n".join(f"{index}. {rule}" for index, rule in enumerate(VYRELON_AGENT_RULES, 1))
+    rules = "\n".join(f"{index}. {rule}" for index, rule in enumerate(AGENT_EXECUTION_RUNTIME_RULES, 1))
     return (
-        f"You are {agent.name}, a VYRELON Chat Agent.\n"
+        f"You are {agent.name}, a Agent Execution Runtime Chat Agent.\n"
         f"Provider: {agent.provider.value}.\n"
         f"Instruction profile: {agent.instruction_profile}.\n\n"
-        "Follow these mandatory VYRELON Agent Rules:\n"
+        "Follow these mandatory Agent Execution Runtime Rules:\n"
         f"{rules}\n\n"
-        "VYRELON is the execution authority. Use the capabilities exposed by VYRELON "
+        "Agent Execution Runtime is the execution authority. Use the capabilities exposed by the Agent Execution Runtime "
         "rather than inventing tool execution or bypassing runtime policy."
     )
 
@@ -71,7 +71,7 @@ class ChatAgentResponse:
 
 @dataclass(frozen=True)
 class ChatAgentExecutionResult:
-    """The complete result of turning a Chat Agent turn into VYRELON execution."""
+    """The complete result of turning a Chat Agent turn into Agent Execution Runtime execution."""
 
     work_unit: WorkUnit
     plan: WorkPlan
@@ -154,7 +154,7 @@ class ChatAgentBridge:
         session_store: ChatSessionStore | None = None,
         session: ChatSession | None = None,
     ) -> ChatAgentExecutionResult:
-        """Run a Chat Agent request through the VYRELON execution lifecycle.
+        """Run a Chat Agent request through the Agent Execution Runtime execution lifecycle.
 
         The Chat Agent supplies intent and planning. The supplied AgentContract,
         model pool, executor, verifier, and reviewer determine actual execution.
@@ -162,7 +162,7 @@ class ChatAgentBridge:
         work_unit, plan, response = self.request(
             request, adapter, agent_id=chat_agent_id
         )
-        work_unit.metadata["execution_authority"] = "vyrelon"
+        work_unit.metadata["execution_authority"] = "agent_execution_runtime"
         work_unit.metadata["execution_agent_id"] = agent.id
         if session is not None:
             session.work_unit_id = work_unit.id
@@ -208,13 +208,13 @@ class ChatAgentBridge:
             checkpoint=checkpoint,
         )
         work_unit.metadata["execution_evidence"] = [
-            f"VYRELON execution completed with agent {agent.id}",
+            f"Agent Execution Runtime execution completed with agent {agent.id}",
             f"assigned model: {orchestration.delegation.assignment.model_id}",
         ]
         if verifier is not None:
-            work_unit.metadata["verification_evidence"] = ["VYRELON verifier accepted output"]
+            work_unit.metadata["verification_evidence"] = ["Agent Execution Runtime verifier accepted output"]
         if reviewer is not None:
-            work_unit.metadata["review_evidence"] = ["VYRELON reviewer approved output"]
+            work_unit.metadata["review_evidence"] = ["Agent Execution Runtime reviewer approved output"]
         return ChatAgentExecutionResult(
             work_unit=work_unit,
             plan=plan,
@@ -247,7 +247,7 @@ class ChatAgentBridge:
         work_unit, plan, response = self.request(request, adapter, agent_id=chat_agent_id)
         if not stages:
             raise ValueError("chat multi-agent execution requires at least one stage")
-        work_unit.metadata["execution_authority"] = "vyrelon"
+        work_unit.metadata["execution_authority"] = "agent_execution_runtime"
         work_unit.metadata["execution_agent_ids"] = [stage.id for stage in stages]
         if session is not None:
             session.work_unit_id = work_unit.id
@@ -285,12 +285,12 @@ class ChatAgentBridge:
             checkpoint=persist_checkpoint,
         )
         work_unit.metadata["execution_evidence"] = [
-            "VYRELON multi-agent workflow completed",
-            "execution authority: vyrelon",
+            "Agent Execution Runtime multi-agent workflow completed",
+            "execution authority: agent_execution_runtime",
             f"agents: {', '.join(stage.id for stage in stages)}",
         ]
         if verifier is not None:
-            work_unit.metadata["verification_evidence"] = ["VYRELON verifier accepted output"]
+            work_unit.metadata["verification_evidence"] = ["Agent Execution Runtime verifier accepted output"]
         return ChatAgentExecutionResult(
             work_unit=work_unit,
             plan=plan,
