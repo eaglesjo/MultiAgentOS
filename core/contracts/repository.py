@@ -1,4 +1,4 @@
-"""Repository-level contracts for VYRELON."""
+"""Repository-level contracts for AGENT_EXECUTION_RUNTIME."""
 
 from __future__ import annotations
 

@@ -16,7 +16,7 @@ class HandoffArtifact:
 
 @dataclass(frozen=True)
 class ReviewContext:
-    """Structured input presented to a reviewer by VYRELON."""
+    """Structured input presented to a reviewer by AGENT_EXECUTION_RUNTIME."""
 
     work_unit_id: str
     artifact_ids: tuple[str, ...] = ()
@@ -35,7 +35,7 @@ class ReviewResult:
 
 @dataclass(frozen=True)
 class ArtifactContract:
-    """Durable artifact passed between VYRELON workflow stages."""
+    """Durable artifact passed between AGENT_EXECUTION_RUNTIME workflow stages."""
 
     id: str
     kind: str

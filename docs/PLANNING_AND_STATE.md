@@ -1,6 +1,6 @@
-# VYRELON Planning and State
+# Agent Execution Runtime Planning and State
 
-VYRELON has explicit planning contracts and persistent WorkUnit state.
+Agent Execution Runtime has explicit planning contracts and persistent WorkUnit state.
 
 Planning:
 - BasicPlanner moves a WorkUnit from PENDING to PLANNING.

@@ -1,4 +1,4 @@
-"""Persistent model health and cooldown registry for VYRELON."""
+"""Persistent model health and cooldown registry for AGENT_EXECUTION_RUNTIME."""
 from __future__ import annotations
 
 import json

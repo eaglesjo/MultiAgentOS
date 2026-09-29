@@ -1,4 +1,4 @@
-"""Provider-neutral quota and rate-limit contracts for VYRELON."""
+"""Provider-neutral quota and rate-limit contracts for AGENT_EXECUTION_RUNTIME."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field

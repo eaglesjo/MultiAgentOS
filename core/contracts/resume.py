@@ -1,4 +1,4 @@
-"""Durable context required to resume a VYRELON workflow."""
+"""Durable context required to resume a AGENT_EXECUTION_RUNTIME workflow."""
 
 from dataclasses import dataclass
 

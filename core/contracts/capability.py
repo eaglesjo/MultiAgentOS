@@ -1,4 +1,4 @@
-"""Model capability contracts for VYRELON routing."""
+"""Model capability contracts for AGENT_EXECUTION_RUNTIME routing."""
 
 from dataclasses import dataclass, field
 from enum import Enum
