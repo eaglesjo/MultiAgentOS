@@ -2,7 +2,7 @@
 # This keeps the local VYRELON MCP server as a project-scoped tool provider.
 # Codex must trust this project before loading .codex/config.toml.
 
-[mcp_servers.vyrelon]
+[mcp_servers.agent_execution_runtime]
 command = "/Volumes/DevFiles/GitHubProject/MultiAgentOS/.venv/bin/multiagentos"
 args = [
   "mcp",
