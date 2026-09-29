@@ -1,6 +1,6 @@
 import type { IDECommand, IDECommandResult, IDEContext, IDEEvent } from "./contracts";
 
-export class VyrelonBridge {
+export class AgentExecutionRuntimeBridge {
   constructor(
     private readonly endpoint: string,
     private readonly token?: string,
@@ -27,7 +27,7 @@ export class VyrelonBridge {
       body: JSON.stringify(event),
     });
     if (!response.ok) {
-      throw new Error(`VYRELON event request failed: ${response.status}`);
+      throw new Error(`Agent Execution Runtime event request failed: ${response.status}`);
     }
     const envelope = (await response.json()) as { result?: { context?: IDEContext } };
     return envelope.result?.context ?? context;
@@ -40,9 +40,9 @@ export class VyrelonBridge {
       body: JSON.stringify(command),
     });
     if (!response.ok) {
-      throw new Error(`VYRELON command failed: ${response.status}`);
+      throw new Error(`Agent Execution Runtime command failed: ${response.status}`);
     }
     const envelope = (await response.json()) as { result?: IDECommandResult };
-    return envelope.result ?? { ok: false, error: "VYRELON returned no command result.", metadata: {} };
+    return envelope.result ?? { ok: false, error: "Agent Execution Runtime returned no command result.", metadata: {} };
   }
 }

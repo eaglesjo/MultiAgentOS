@@ -282,7 +282,7 @@ class ProviderDiscoveryAdapter:
         return payload, response_headers
 
 def _normalize_capabilities(item: dict[str, object]) -> frozenset[str]:
-    """Normalize provider-specific metadata to VYRELON routing vocabulary."""
+    """Normalize provider-specific metadata to AGENT_EXECUTION_RUNTIME routing vocabulary."""
     aliases = {
         "generatecontent": "chat",
         "generate_content": "chat",

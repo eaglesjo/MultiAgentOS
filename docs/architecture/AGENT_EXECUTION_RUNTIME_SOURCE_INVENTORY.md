@@ -1,18 +1,18 @@
-# VYRELON Source Capability Inventory
+# Agent Execution Runtime Source Capability Inventory
 
 ## Purpose
 
-This document records the first implementation-oriented inventory of the three systems that VYRELON is intended to absorb:
+This document records the first implementation-oriented inventory of the three systems that Agent Execution Runtime is intended to absorb:
 
 1. `eaglesjo/free-claude-code` — AI/provider/harness runtime
 2. `eaglesjo/luna-chat-coder` — repository continuity/recovery workflow
 3. `eaglesjo/chatgpt-local-coder` — local execution/MCP/tool runtime
 
-MultiAgentOS remains the integration base. Multi-Agent orchestration is an extension of VYRELON, not the definition of VYRELON.
+MultiAgentOS remains the integration base. Multi-Agent orchestration is an extension of Agent Execution Runtime, not the definition of Agent Execution Runtime.
 
-## Source-to-VYRELON mapping
+## Source-to-Agent Execution Runtime mapping
 
-| Source | Existing capability | VYRELON destination | Action |
+| Source | Existing capability | Agent Execution Runtime destination | Action |
 |---|---|---|---|
 | free-claude-code | provider catalog and credentials | AI Runtime / Provider | generalize |
 | free-claude-code | model catalog/capabilities | AI Runtime / Model | generalize |
@@ -44,7 +44,7 @@ MultiAgentOS remains the integration base. Multi-Agent orchestration is an exten
 | chatgpt-local-coder | tool profiles/annotations | Tool Runtime | add |
 | chatgpt-local-coder | MCP bridge/session/proxy/OAuth | MCP Runtime | add |
 | chatgpt-local-coder | post-edit hooks | Validation Runtime | add |
-| MultiAgentOS | WorkUnit lifecycle | VYRELON Work Runtime | retain |
+| MultiAgentOS | WorkUnit lifecycle | Agent Execution Runtime Work Runtime | retain |
 | MultiAgentOS | provider/model registries | AI Runtime | refactor |
 | MultiAgentOS | model adapters | AI Runtime | refactor |
 | MultiAgentOS | Project/Agent Profiles | Project Runtime | retain but subordinate |
@@ -54,7 +54,7 @@ MultiAgentOS remains the integration base. Multi-Agent orchestration is an exten
 
 ### 1. Agent is not just Model + Role
 
-The current `AgentContract` is useful but incomplete. A VYRELON agent needs explicit runtime bindings:
+The current `AgentContract` is useful but incomplete. A Agent Execution Runtime agent needs explicit runtime bindings:
 
 ```text
 Agent
@@ -87,15 +87,15 @@ The current CLI adapter invokes a command, but it does not model the richer loca
 - permission checks
 - audit events
 
-These belong under a VYRELON Tool Runtime rather than being embedded in individual model adapters.
+These belong under a Agent Execution Runtime Tool Runtime rather than being embedded in individual model adapters.
 
 ### 4. Repository state and local state must be distinct
 
-GitHub is durable repository truth. The local workspace is an execution surface. VYRELON needs an explicit state boundary so that checkpoints, recovery, and publication can reason about both without treating either as a substitute for the other.
+GitHub is durable repository truth. The local workspace is an execution surface. Agent Execution Runtime needs an explicit state boundary so that checkpoints, recovery, and publication can reason about both without treating either as a substitute for the other.
 
 ### 5. Multi-Agent sits above the runtime
 
-Planner/Coder/Reviewer delegation should consume VYRELON runtime capabilities. It should not own provider, filesystem, MCP, recovery, or GitHub mechanics.
+Planner/Coder/Reviewer delegation should consume Agent Execution Runtime runtime capabilities. It should not own provider, filesystem, MCP, recovery, or GitHub mechanics.
 
 ## Capability gaps in the current repository
 
@@ -125,7 +125,7 @@ The current MultiAgentOS baseline does not yet have first-class abstractions for
 
 Do not copy the source repositories wholesale.
 
-Absorb their stable capabilities into provider-neutral VYRELON contracts and runtimes, then delete source-specific assumptions at the VYRELON boundary.
+Absorb their stable capabilities into provider-neutral Agent Execution Runtime contracts and runtimes, then delete source-specific assumptions at the Agent Execution Runtime boundary.
 
 ## Source-specific licensing/compatibility gate
 

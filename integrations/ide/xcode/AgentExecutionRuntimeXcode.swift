@@ -2,7 +2,7 @@ import Foundation
 import XcodeKit
 
 final class SourceEditorCommand: NSObject, XCSourceEditorCommand {
-    private let bridge = VyrelonBridge()
+    private let bridge = AgentExecutionRuntimeBridge()
 
     func perform(with invocation: XCSourceEditorCommandInvocation,
                  completionHandler: @escaping (Error?) -> Void) {
@@ -35,13 +35,13 @@ struct IDEEvent: Encodable {
     let payload: [String: String]
 }
 
-final class VyrelonBridge {
+final class AgentExecutionRuntimeBridge {
     private let endpoint: URL
     private let token: String?
 
     init(endpoint: String? = nil, token: String? = nil) {
-        let configuredEndpoint = endpoint ?? ProcessInfo.processInfo.environment["VYRELON_IDE_ENDPOINT"] ?? "http://127.0.0.1:8787"
-        let configuredToken = token ?? ProcessInfo.processInfo.environment["VYRELON_IDE_TOKEN"]
+        let configuredEndpoint = endpoint ?? ProcessInfo.processInfo.environment["AGENT_EXECUTION_RUNTIME_IDE_ENDPOINT"] ?? "http://127.0.0.1:8787"
+        let configuredToken = token ?? ProcessInfo.processInfo.environment["AGENT_EXECUTION_RUNTIME_IDE_TOKEN"]
         let base = configuredEndpoint.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         self.endpoint = URL(string: base + "/v1/ide/event")!
         self.token = configuredToken

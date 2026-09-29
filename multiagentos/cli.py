@@ -1,4 +1,4 @@
-"""Command-line entry point for VYRELON project bootstrap and execution."""
+"""Command-line entry point for Agent Execution Runtime project bootstrap and execution."""
 
 from __future__ import annotations
 
@@ -20,8 +20,6 @@ from runtime.process import ProcessRuntime
 from runtime.status import project_status
 from runtime import AgentExecutionRuntime
 
-# Legacy test/plugin compatibility name; canonical implementation is AgentExecutionRuntime.
-VYRELONRuntime = AgentExecutionRuntime
 from runtime.agent.process import ProcessAgentExecutor
 
 
@@ -58,7 +56,7 @@ def _run_chat(
     execute: bool = False,
     exec_command: list[str] | None = None,
 ) -> int:
-    runtime = VYRELONRuntime()
+    runtime = AgentExecutionRuntime()
     configured_agent, configured_model = runtime.project_chat_agent(root)
     agent_id = agent_override or configured_agent.id
     agent = runtime.chat_agent_registry().get(agent_id)
@@ -164,15 +162,15 @@ def _run_chat(
 
 
 def _work_state(root: Path):
-    from runtime.vyrelon import VYRELONRuntime
+    from runtime import AgentExecutionRuntime
 
-    return VYRELONRuntime().state_store(root)
+    return AgentExecutionRuntime().state_store(root)
 
 
 def _provider_runtime(root: Path):
-    from runtime.vyrelon import VYRELONRuntime
+    from runtime import AgentExecutionRuntime
 
-    runtime = VYRELONRuntime()
+    runtime = AgentExecutionRuntime()
     runtime.load_project_provider_config(root)
     return runtime
 
@@ -217,12 +215,12 @@ def build_parser() -> argparse.ArgumentParser:
     detect = subparsers.add_parser("detect", help="detect technology profiles")
     detect.add_argument("path", nargs="?", default=".")
 
-    profile = subparsers.add_parser("profile", help="show resolved VYRELON project/agent profiles")
+    profile = subparsers.add_parser("profile", help="show resolved Agent Execution Runtime project/agent profiles")
     profile.add_argument("path", nargs="?", default=".")
 
-    init = subparsers.add_parser("init", help="initialize VYRELON in a project")
+    init = subparsers.add_parser("init", help="initialize Agent Execution Runtime in a project")
     init.add_argument("path", nargs="?", default=".")
-    init.add_argument("--component", choices=("vyrelon", "multi-agent", "all"), default="all")
+    init.add_argument("--component", choices=("agent-execution-runtime", "multi-agent", "all"), default="all")
 
     providers = subparsers.add_parser(
         "providers", help="inspect configured AI providers and models"
@@ -255,7 +253,7 @@ def build_parser() -> argparse.ArgumentParser:
     models_explain.add_argument("--model", action="append", dest="preferred_models", default=None)
     models_explain.add_argument("--strategy", choices=("explicit", "pool", "auto"), default="pool")
 
-    models_run = model_sub.add_parser("run", help="run a configured model through VYRELON")
+    models_run = model_sub.add_parser("run", help="run a configured model through Agent Execution Runtime")
     models_run.add_argument("path", nargs="?", default=".")
     models_run.add_argument("--model", required=True)
     models_run.add_argument("--objective", required=True)
@@ -293,17 +291,17 @@ def build_parser() -> argparse.ArgumentParser:
     chat.add_argument("--agent", help="override the configured Chat Agent id")
     chat.add_argument("--model", help="override the configured Chat Agent model")
     chat.add_argument("--session", help="persist conversation turns in this session id")
-    chat.add_argument("--execute", action="store_true", help="execute the explicit command after -- through VYRELON")
+    chat.add_argument("--execute", action="store_true", help="execute the explicit command after -- through Agent Execution Runtime")
     chat.add_argument("exec_command", nargs=argparse.REMAINDER, help="explicit command after -- when using --execute")
 
-    mcp = subparsers.add_parser("mcp", help="serve or inspect VYRELON MCP")
+    mcp = subparsers.add_parser("mcp", help="serve or inspect Agent Execution Runtime MCP")
     mcp_sub = mcp.add_subparsers(dest="mcp_command", required=True)
-    mcp_serve = mcp_sub.add_parser("serve", help="run VYRELON as a stdio MCP server")
+    mcp_serve = mcp_sub.add_parser("serve", help="run Agent Execution Runtime as a stdio MCP server")
     mcp_serve.add_argument("--path", default=".")
     mcp_serve.add_argument("--allow-write", action="store_true", help="expose filesystem write and patch tools")
     mcp_serve.add_argument("--allow-process", action="store_true", help="expose shell execution")
 
-    github = subparsers.add_parser("github", help="use VYRELON GitHub runtime")
+    github = subparsers.add_parser("github", help="use Agent Execution Runtime GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
     probe_parser = github_sub.add_parser(
         "probe", help="verify GitHub access for a repository"
@@ -464,7 +462,7 @@ def _model_explain(root: Path, agent_id: str, preferred_models=None, strategy: s
 
 
 def _model_run(root: Path, model_id: str, objective: str, agent_id: str, *, apply_changes: bool = False, validation_commands: list[str] | None = None, mcp_server_ids: list[str] | None = None) -> int:
-    from runtime.vyrelon import VYRELONRuntime
+    from runtime import AgentExecutionRuntime
 
     runtime = _provider_runtime(root)
     if not runtime.providers.list_model_ids():
@@ -528,9 +526,9 @@ def main(argv: list[str] | None = None) -> int:
         return _run_chat(root, args.objective, args.agent, args.model, args.session, args.execute, args.exec_command)
 
     if args.command == "mcp" and args.mcp_command == "serve":
-        from runtime.mcp.server import VYRELONMCPServer
+        from runtime.mcp.server import AgentExecutionRuntimeMCPServer
         root = Path(args.path).expanduser().resolve()
-        VYRELONMCPServer(
+        AgentExecutionRuntimeMCPServer(
             root,
             allow_write=args.allow_write,
             allow_process=args.allow_process,
@@ -543,8 +541,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "profile":
         root = Path(args.path).expanduser().resolve()
-        from runtime.vyrelon import VYRELONRuntime
-        project, agents = VYRELONRuntime().profiles(root)
+        from runtime import AgentExecutionRuntime
+        project, agents = AgentExecutionRuntime().profiles(root)
         print(
             json.dumps(
                 {
@@ -621,8 +619,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(f"WorkUnit: {work.id}")
         try:
-            from runtime.vyrelon import VYRELONRuntime
-            runtime = VYRELONRuntime()
+            from runtime import AgentExecutionRuntime
+            runtime = AgentExecutionRuntime()
             if not args.process_command:
                 work.metadata["runtime"] = "configured-model"
                 work.metadata["agent_id"] = args.agent
@@ -643,7 +641,7 @@ def main(argv: list[str] | None = None) -> int:
 
             model = ModelSpec(
                 id=args.model or "local-process",
-                provider_id="vyrelon-local",
+                provider_id="agent-execution-runtime-local",
                 capabilities=frozenset({"execution"}),
             )
             work.metadata["command"] = args.process_command
@@ -675,8 +673,8 @@ def main(argv: list[str] | None = None) -> int:
                 f"WorkUnit {work.id} is not resumable from status {work.status.value}"
             )
         agent_id = str(work.metadata.get("agent_id", work.assigned_agents[-1] if work.assigned_agents else "executor"))
-        from runtime.vyrelon import VYRELONRuntime
-        runtime = VYRELONRuntime()
+        from runtime import AgentExecutionRuntime
+        runtime = AgentExecutionRuntime()
         if work.metadata.get("runtime") == "configured-model":
             model_id = str(work.metadata.get("model_id", ""))
             if not model_id:
@@ -706,7 +704,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         model = ModelSpec(
             id="local-process",
-            provider_id="vyrelon-local",
+            provider_id="agent-execution-runtime-local",
             capabilities=frozenset({"execution"}),
         )
         result = runtime.run_persistent(
@@ -754,7 +752,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     config = ProjectInitializer().apply(root, detections, component=args.component)
-    print(f"Initialized VYRELON: {config}")
+    print(f"Initialized Agent Execution Runtime: {config}")
     return 0
 
 

@@ -133,7 +133,7 @@ Agent Execution Runtime은 **하나의 MCP Server**만 사용합니다. Secure M
 
 ## 용어 체계
 
-**Agent Execution Runtime**을 로컬 실행·권한 경계의 공식 설명 명칭으로 사용합니다. 기존 패키지, 통합, 프로토콜 이름에서 필요한 경우에만 `VYRELON`을 호환/구현 식별자로 유지합니다.
+**Agent Execution Runtime**을 로컬 실행·권한 경계의 공식 설명 명칭으로 사용합니다.
 
 ## Cost-Free 기본 경로
 
@@ -230,9 +230,9 @@ GitHub Actions에서도 저장소 CI를 검증합니다.
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [Agent Execution Runtime Connection Guide](docs/VYRELON_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](docs/AGENT_EXECUTION_RUNTIME_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
-- [Agent Execution Runtime GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
 - [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
 영문 README를 canonical technical document로 유지하며, 각 locale README도 동일한 아키텍처, 용어, Cost-Free 기본 경로를 유지합니다.

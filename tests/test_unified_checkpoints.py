@@ -8,7 +8,7 @@ from core.contracts.checkpoint import WorkflowCheckpoint
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.lifecycle import ExecutionInterrupted
 from core.state import WorkStateStore
-from runtime.vyrelon import VYRELONRuntime
+from runtime.agent_execution_runtime import AgentExecutionRuntime
 
 
 class InterruptingExecutor:
@@ -44,7 +44,7 @@ class UnifiedCheckpointTests(unittest.TestCase):
             self.assertTrue(loaded.resumable)
 
     def test_lifecycle_interruption_persists_a_resumable_checkpoint(self):
-        runtime = VYRELONRuntime()
+        runtime = AgentExecutionRuntime()
         agent = AgentContract(id="developer", role="developer")
         models = [ModelSpec("local", "local", frozenset())]
         work_unit = WorkUnit("wu-interrupted", "persist interrupted execution")
@@ -60,7 +60,7 @@ class UnifiedCheckpointTests(unittest.TestCase):
                     project_root=root,
                 )
 
-            fresh = VYRELONRuntime()
+            fresh = AgentExecutionRuntime()
             persisted = fresh.state_store(root).load(work_unit.id)
             checkpoint = fresh.load_checkpoint(work_unit.id, root)
 
@@ -115,7 +115,7 @@ class UnifiedCheckpointTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             work_unit = WorkUnit("wu-stage-resume", "resume from developer")
             executor = InterruptOnceExecutor()
 

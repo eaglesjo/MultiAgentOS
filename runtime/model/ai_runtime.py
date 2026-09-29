@@ -1,4 +1,4 @@
-"""Provider-neutral AI execution runtime for VYRELON."""
+"""Provider-neutral AI execution runtime for AGENT_EXECUTION_RUNTIME."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
-from core.contracts.vyrelon_runtime import (
+from core.contracts.agent_execution_runtime import (
     FallbackPolicy,
     RuntimeEvent,
     RuntimeEventKind,
@@ -16,7 +16,7 @@ from core.contracts.vyrelon_runtime import (
 
 
 class AIRuntimeError(RuntimeError):
-    """Base error raised by the VYRELON AI runtime."""
+    """Base error raised by the AGENT_EXECUTION_RUNTIME AI runtime."""
 
 
 class AIExecutionError(AIRuntimeError):

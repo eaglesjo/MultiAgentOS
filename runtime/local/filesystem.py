@@ -10,7 +10,7 @@ from runtime.policy import ExecutionPolicy
 
 
 class FilesystemRuntime:
-    """First-class VYRELON filesystem operations."""
+    """First-class AGENT_EXECUTION_RUNTIME filesystem operations."""
 
     def __init__(
         self,

@@ -38,12 +38,12 @@ class CLITests(unittest.TestCase):
             self.assertFalse(status["initialized"])
             self.assertEqual(status["components"], [])
 
-    def test_status_reports_vyrelon_only(self):
+    def test_status_reports_agent_execution_runtime_only(self):
         with tempfile.TemporaryDirectory() as temp:
-            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             status = project_status(Path(temp))
             self.assertTrue(status["initialized"])
-            self.assertEqual(status["components"], ["vyrelon"])
+            self.assertEqual(status["components"], ["agent-execution-runtime"])
             self.assertEqual(status["agents"], [])
             self.assertEqual(status["chat"], {"agent_id": "chatgpt", "model": None})
             self.assertEqual(
@@ -63,7 +63,7 @@ class CLITests(unittest.TestCase):
     def test_status_reports_durable_state(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             state = root / ".multiagentos" / "state"
             checkpoints = root / ".multiagentos" / "checkpoints"
             state.mkdir()
@@ -84,7 +84,7 @@ class CLITests(unittest.TestCase):
     def test_run_uses_project_execution_config(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             execution = root / ".multiagentos" / "execution.json"
             execution.write_text(json.dumps({
                 "version": 1,
@@ -105,7 +105,7 @@ class CLITests(unittest.TestCase):
     def test_run_supports_cli_agent_and_model_overrides(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             self.assertEqual(
                 main([
                     "run", "--path", temp, "--agent", "cli-executor",
@@ -122,7 +122,7 @@ class CLITests(unittest.TestCase):
     def test_run_executes_command_and_persists_state(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             self.assertEqual(
                 main(["run", "--path", temp, "--objective", "echo smoke test", "--", "python", "-c", "print('ok')"]),
                 0,
@@ -135,7 +135,7 @@ class CLITests(unittest.TestCase):
     def test_resume_rejects_terminal_work_unit(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             self.assertEqual(
                 main(["run", "--path", temp, "--objective", "terminal", "--", "python", "-c", "print('done')"]),
                 0,
@@ -147,11 +147,11 @@ class CLITests(unittest.TestCase):
     def test_chat_uses_configured_chat_agent_and_persists_session(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
 
             import multiagentos.cli as cli_module
-            original = cli_module.VYRELONRuntime.project_chat_adapter
-            cli_module.VYRELONRuntime.project_chat_adapter = lambda self, project_root: (
+            original = cli_module.AgentExecutionRuntime.project_chat_adapter
+            cli_module.AgentExecutionRuntime.project_chat_adapter = lambda self, project_root: (
                 self, FakeChatAdapter()
             )
             try:
@@ -165,7 +165,7 @@ class CLITests(unittest.TestCase):
                         0,
                     )
             finally:
-                cli_module.VYRELONRuntime.project_chat_adapter = original
+                cli_module.AgentExecutionRuntime.project_chat_adapter = original
 
             payload = json.loads(output.getvalue())
             self.assertEqual(payload["chat_agent_id"], "chatgpt")
@@ -175,10 +175,10 @@ class CLITests(unittest.TestCase):
             session = json.loads(session_path.read_text(encoding="utf-8"))
             self.assertEqual([turn["role"] for turn in session["turns"]], ["user", "assistant"])
 
-    def test_chat_execute_runs_explicit_command_through_vyrelon(self):
+    def test_chat_execute_runs_explicit_command_through_agent_execution_runtime(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "vyrelon"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
 
             import multiagentos.cli as cli_module
             from core.chat_agent_bridge import ChatAgentResponse
@@ -190,8 +190,8 @@ class CLITests(unittest.TestCase):
                         evidence=("fake chat response",),
                     )
 
-            original = cli_module.VYRELONRuntime.project_chat_adapter
-            cli_module.VYRELONRuntime.project_chat_adapter = lambda self, project_root: (self.chat_agent_registry().get("chatgpt"), FakeAdapter())
+            original = cli_module.AgentExecutionRuntime.project_chat_adapter
+            cli_module.AgentExecutionRuntime.project_chat_adapter = lambda self, project_root: (self.chat_agent_registry().get("chatgpt"), FakeAdapter())
             try:
                 output = io.StringIO()
                 with contextlib.redirect_stdout(output):
@@ -205,7 +205,7 @@ class CLITests(unittest.TestCase):
                         0,
                     )
             finally:
-                cli_module.VYRELONRuntime.project_chat_adapter = original
+                cli_module.AgentExecutionRuntime.project_chat_adapter = original
 
             payload = json.loads(output.getvalue())
             self.assertEqual(payload["mode"], "execute")

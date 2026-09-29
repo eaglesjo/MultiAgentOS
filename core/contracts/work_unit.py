@@ -1,4 +1,4 @@
-"""Provider-neutral work unit contract for VYRELON."""
+"""Provider-neutral work unit contract for AGENT_EXECUTION_RUNTIME."""
 
 from dataclasses import dataclass, field
 from enum import Enum

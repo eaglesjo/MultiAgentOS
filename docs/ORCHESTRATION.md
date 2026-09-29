@@ -1,6 +1,6 @@
-# VYRELON Orchestration
+# Agent Execution Runtime Orchestration
 
-VYRELON now models the full executable development loop:
+Agent Execution Runtime now models the full executable development loop:
 
 1. WorkUnit describes the objective.
 2. DelegationEngine resolves a compatible agent/model assignment.
@@ -15,7 +15,7 @@ This preserves the intended flow:
 
 Understand -> Plan -> Delegate -> Orchestrate -> Execute -> Verify -> Review -> Learn/Handoff
 
-The executor, verifier, and reviewer are protocols. VYRELON therefore does not require a specific AI vendor, CLI, IDE, MCP server, or hosted agent platform.
+The executor, verifier, and reviewer are protocols. Agent Execution Runtime therefore does not require a specific AI vendor, CLI, IDE, MCP server, or hosted agent platform.
 
 ## State safety
 

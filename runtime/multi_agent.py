@@ -1,4 +1,4 @@
-"""Multi-agent orchestration runtime built on the existing VYRELON contracts."""
+"""Multi-agent orchestration runtime built on the existing AGENT_EXECUTION_RUNTIME contracts."""
 
 from __future__ import annotations
 

@@ -31,15 +31,15 @@ class Reviewer:
 
 
 class ProjectChatExecutionTests(unittest.TestCase):
-    def test_project_chat_request_uses_vyrelon_lifecycle(self):
+    def test_project_chat_request_uses_agent_execution_runtime_lifecycle(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            ProjectInitializer().apply(root, [], component="vyrelon")
+            ProjectInitializer().apply(root, [], component="agent-execution-runtime")
             # Replace the provider adapter resolution with a deterministic fake
             # while retaining the real project Chat Agent configuration.
             import runtime.chat_execution as module
-            original = module.VYRELONRuntime.project_chat_adapter
-            module.VYRELONRuntime.project_chat_adapter = lambda self, project_root: FakeChatAdapter()
+            original = module.AgentExecutionRuntime.project_chat_adapter
+            module.AgentExecutionRuntime.project_chat_adapter = lambda self, project_root: FakeChatAdapter()
             try:
                 result = execute_project_chat_request(
                     root,
@@ -55,7 +55,7 @@ class ProjectChatExecutionTests(unittest.TestCase):
                     reviewer=Reviewer(),
                 )
             finally:
-                module.VYRELONRuntime.project_chat_adapter = original
+                module.AgentExecutionRuntime.project_chat_adapter = original
 
             self.assertEqual(result.work_unit.status.value, "completed")
             self.assertEqual(result.work_unit.metadata["execution_authority"], "agent_execution_runtime")

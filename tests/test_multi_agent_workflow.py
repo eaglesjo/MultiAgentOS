@@ -10,7 +10,7 @@ from core.contracts.ai import ModelSpec
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.lifecycle import ExecutionInterrupted
 from core.multi_agent_workflow import MultiAgentWorkflow
-from runtime.vyrelon import VYRELONRuntime
+from runtime.agent_execution_runtime import AgentExecutionRuntime
 
 
 class FakeExecutor:
@@ -306,7 +306,7 @@ class MultiAgentWorkflowTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             work_unit = WorkUnit("wu-verify-resume", "resume verification")
             with self.assertRaises(ExecutionInterrupted):
                 runtime.run_multi_agent_workflow(
@@ -358,7 +358,7 @@ class MultiAgentWorkflowTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             work_unit = WorkUnit("wu-review-resume", "resume review")
             with self.assertRaises(ExecutionInterrupted):
                 runtime.run_multi_agent_workflow(
@@ -407,7 +407,7 @@ class MultiAgentWorkflowTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             work_unit = WorkUnit("wu-rework-review-resume", "resume bounded review")
             with self.assertRaises(ExecutionInterrupted):
                 runtime.run_review_rework_workflow(
@@ -469,7 +469,7 @@ class MultiAgentWorkflowTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             work_unit = WorkUnit("wu-rework-cycle-resume", "resume next rework")
             with self.assertRaises(ExecutionInterrupted):
                 runtime.run_review_rework_workflow(

@@ -135,7 +135,7 @@ The local Agent Execution Runtime MCP server can be used independently without O
 
 ## Terminology
 
-**Agent Execution Runtime** is the descriptive architectural name for the local execution and permission boundary formerly referred to as **VYRELON**. `VYRELON` remains only as a compatibility/implementation identifier where existing package, integration, or protocol names still require it.
+**Agent Execution Runtime** is the descriptive architectural name for the local execution and permission boundary
 
 ## Cost-Free baseline
 
@@ -234,9 +234,9 @@ GitHub Actions validates the repository through CI.
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [Agent Execution Runtime Connection Guide](docs/VYRELON_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](docs/AGENT_EXECUTION_RUNTIME_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
-- [Agent Execution Runtime GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
 - [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
 The English README is the canonical technical document. Localized READMEs preserve the same architecture, terminology, and cost-free baseline.

@@ -1,6 +1,6 @@
-# VYRELON MCP Cost Boundary
+# Agent Execution Runtime MCP Cost Boundary
 
-VYRELON treats MCP as a local execution/integration boundary, not a paid MCP service dependency.
+Agent Execution Runtime treats MCP as a local execution/integration boundary, not a paid MCP service dependency.
 
 ## Default
 
@@ -25,6 +25,6 @@ External MCP servers are optional extensions.
 
 ## Design rule
 
-No core VYRELON workflow may require a paid external MCP service to function.
+No core Agent Execution Runtime workflow may require a paid external MCP service to function.
 
 External MCP is an integration option, not a platform dependency.

@@ -48,7 +48,7 @@ class PassingReviewer:
 
 
 class TestChatAgentBridge(unittest.TestCase):
-    def test_primary_chatgpt_receives_vyrelon_rules(self):
+    def test_primary_chatgpt_receives_agent_execution_runtime_rules(self):
         adapter = FakeChatAgent()
         bridge = ChatAgentBridge(default_chat_agents())
 
@@ -80,7 +80,7 @@ class TestChatAgentBridge(unittest.TestCase):
         bridge = ChatAgentBridge(default_chat_agents())
         self.assertIn("ChatGPT Agent", bridge.instructions())
 
-    def test_chat_agent_request_can_enter_full_vyrelon_execution(self):
+    def test_chat_agent_request_can_enter_full_agent_execution_runtime_execution(self):
         adapter = FakeChatAgent()
         executor = RecordingExecutor()
         agent = AgentContract(

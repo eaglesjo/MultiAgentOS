@@ -1,4 +1,4 @@
-"""Project-level VYRELON installation and workflow status."""
+"""Project-level AGENT_EXECUTION_RUNTIME installation and workflow status."""
 
 from __future__ import annotations
 

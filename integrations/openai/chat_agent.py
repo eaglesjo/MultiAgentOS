@@ -1,4 +1,4 @@
-"""OpenAI Chat Agent adapter for VYRELON.
+"""OpenAI Chat Agent adapter for AGENT_EXECUTION_RUNTIME.
 
 This adapter is optional: the core remains provider-neutral and does not require
 an OpenAI SDK or API key at import time.
@@ -23,7 +23,7 @@ class OpenAIChatAgentAdapter:
     """Connect a ChatGPT-class agent to the provider-neutral Chat Agent bridge."""
 
     def __init__(self, client: Any | None = None, model: str | None = None) -> None:
-        self.model = model or os.environ.get("VYRELON_OPENAI_MODEL") or os.environ.get(
+        self.model = model or os.environ.get("AGENT_EXECUTION_RUNTIME_OPENAI_MODEL") or os.environ.get(
             "OPENAI_MODEL"
         )
         self._client = client
@@ -49,7 +49,7 @@ class OpenAIChatAgentAdapter:
     ) -> ChatAgentResponse:
         if not self.model:
             raise ValueError(
-                "Set VYRELON_OPENAI_MODEL or OPENAI_MODEL for the OpenAI Chat Agent adapter"
+                "Set AGENT_EXECUTION_RUNTIME_OPENAI_MODEL or OPENAI_MODEL for the OpenAI Chat Agent adapter"
             )
 
         client = self._client_or_create()
@@ -92,7 +92,7 @@ class OpenAIChatAgentAdapter:
         return (
             "Return ONLY valid JSON matching this schema. Do not claim that any "
             "filesystem, Git, GitHub, or other external action was performed. "
-            "Those actions belong to VYRELON runtime.\n\n"
+            "Those actions belong to AGENT_EXECUTION_RUNTIME runtime.\n\n"
             + json.dumps(payload, ensure_ascii=False)
         )
 

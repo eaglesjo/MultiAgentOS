@@ -6,13 +6,13 @@ import unittest
 from pathlib import Path
 
 from multiagentos.cli import build_parser
-from runtime.mcp.server import AgentExecutionRuntimeMCPServer, VYRELONMCPServer
+from runtime.mcp.server import AgentExecutionRuntimeMCPServer, AgentExecutionRuntimeMCPServer
 
 
-class VYRELONMCPServerTests(unittest.TestCase):
+class AgentExecutionRuntimeMCPServerTests(unittest.TestCase):
     def test_canonical_server_is_concrete_implementation(self):
         self.assertEqual(AgentExecutionRuntimeMCPServer.__name__, "AgentExecutionRuntimeMCPServer")
-        self.assertTrue(issubclass(VYRELONMCPServer, AgentExecutionRuntimeMCPServer))
+        self.assertTrue(issubclass(AgentExecutionRuntimeMCPServer, AgentExecutionRuntimeMCPServer))
 
     def test_cli_exposes_mcp_serve(self):
         args = build_parser().parse_args(["mcp", "serve", "--path", "/tmp/project"])
@@ -25,7 +25,7 @@ class VYRELONMCPServerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "hello.txt").write_text("hello", encoding="utf-8")
-            server = VYRELONMCPServer(root)
+            server = AgentExecutionRuntimeMCPServer(root)
             tools = server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
             names = {item["name"] for item in tools["result"]["tools"]}
             self.assertIn("filesystem.read", names)
@@ -45,7 +45,7 @@ class VYRELONMCPServerTests(unittest.TestCase):
     def test_write_and_process_require_explicit_flags(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            server = VYRELONMCPServer(root, allow_write=True, allow_process=True)
+            server = AgentExecutionRuntimeMCPServer(root, allow_write=True, allow_process=True)
             tools = server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
             names = {item["name"] for item in tools["result"]["tools"]}
             self.assertTrue({"filesystem.write", "patch.apply", "shell.run"} <= names)
@@ -72,7 +72,7 @@ class VYRELONMCPServerTests(unittest.TestCase):
                 check=True,
                 capture_output=True,
             )
-            server = VYRELONMCPServer(root, allow_write=True)
+            server = AgentExecutionRuntimeMCPServer(root, allow_write=True)
 
             patch = """diff --git a/README.md b/README.md
 --- a/README.md
@@ -108,9 +108,9 @@ class VYRELONMCPServerTests(unittest.TestCase):
             ]) + "\n"
             stdin = io.StringIO(payload)
             stdout = io.StringIO()
-            VYRELONMCPServer(root).serve_forever(stdin, stdout)
+            AgentExecutionRuntimeMCPServer(root).serve_forever(stdin, stdout)
             responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
-            self.assertEqual(responses[0]["result"]["serverInfo"]["name"], "VYRELON")
+            self.assertEqual(responses[0]["result"]["serverInfo"]["name"], "Agent Execution Runtime")
             self.assertEqual(
                 responses[0]["result"]["serverInfo"]["version"],
                 "0.0.0-dev",

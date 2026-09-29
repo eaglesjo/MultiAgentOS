@@ -1,4 +1,4 @@
-"""Persistent artifact registry for VYRELON workflows."""
+"""Persistent artifact registry for AGENT_EXECUTION_RUNTIME workflows."""
 
 from __future__ import annotations
 

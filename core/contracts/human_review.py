@@ -1,4 +1,4 @@
-"""Explicit human decisions for escalated VYRELON WorkUnits."""
+"""Explicit human decisions for escalated AGENT_EXECUTION_RUNTIME WorkUnits."""
 
 from enum import Enum
 

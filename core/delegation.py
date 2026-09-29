@@ -1,4 +1,4 @@
-"""Agent delegation engine for VYRELON."""
+"""Agent delegation engine for AGENT_EXECUTION_RUNTIME."""
 
 from dataclasses import dataclass
 

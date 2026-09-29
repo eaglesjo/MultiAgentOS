@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from core.contracts.mcp import MCPTool
-from core.contracts.vyrelon_runtime import ToolRequest, ToolSideEffect
+from core.contracts.agent_execution_runtime import ToolRequest, ToolSideEffect
 from runtime.repository_tools import GitToolBindings, MCPToolBindings
 from runtime.policy import ExecutionPolicy
 from runtime.tool_calling import ToolRuntime

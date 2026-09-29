@@ -1,10 +1,10 @@
-"""Tests for the provider-neutral VYRELON AI runtime."""
+"""Tests for the provider-neutral AGENT_EXECUTION_RUNTIME AI runtime."""
 
 import unittest
 
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelRequest, ModelResponse
-from core.contracts.vyrelon_runtime import (
+from core.contracts.agent_execution_runtime import (
     FallbackPolicy,
     RuntimeEventKind,
     SessionSpec,

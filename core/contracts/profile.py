@@ -1,4 +1,4 @@
-"""Technology, project, and agent profile contracts for VYRELON."""
+"""Technology, project, and agent profile contracts for AGENT_EXECUTION_RUNTIME."""
 
 from dataclasses import dataclass, field
 
@@ -53,7 +53,7 @@ class AgentProfile:
 
 @dataclass(frozen=True)
 class ProjectProfile:
-    """Resolved project identity shared by VYRELON integrations."""
+    """Resolved project identity shared by AGENT_EXECUTION_RUNTIME integrations."""
 
     id: str
     root: str

@@ -1,6 +1,6 @@
 # Agent Execution Runtime Facade
 
-VYRELONRuntime is the project-facing runtime entry point.
+AgentExecutionRuntime is the project-facing runtime entry point.
 
 It unifies:
 - project profile inspection
@@ -14,4 +14,4 @@ It unifies:
 The facade keeps the underlying contracts and adapters modular while giving a project a single Agent Execution Runtime-owned control surface.
 
 
-> **Compatibility note:** the filename and historical VYRELON implementation name are retained for compatibility. The architectural role is **Agent Execution Runtime**.
+> **Compatibility note:** the filename and historical Agent Execution Runtime implementation name are retained for compatibility. The architectural role is **Agent Execution Runtime**.

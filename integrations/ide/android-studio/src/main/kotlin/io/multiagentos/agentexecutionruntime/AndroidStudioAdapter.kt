@@ -1,4 +1,4 @@
-package io.vyrelon.androidstudio
+package io.multiagentos.agentexecutionruntime
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
@@ -13,8 +13,8 @@ data class IdeContext(
 )
 
 class AndroidStudioAdapter(
-    private val endpoint: String = System.getenv("VYRELON_IDE_ENDPOINT") ?: "http://127.0.0.1:8787",
-    private val token: String? = System.getenv("VYRELON_IDE_TOKEN")?.takeIf { it.isNotBlank() },
+    private val endpoint: String = System.getenv("AGENT_EXECUTION_RUNTIME_IDE_ENDPOINT") ?: "http://127.0.0.1:8787",
+    private val token: String? = System.getenv("AGENT_EXECUTION_RUNTIME_IDE_TOKEN")?.takeIf { it.isNotBlank() },
 ) {
     fun context(project: Project, file: VirtualFile? = null): IdeContext =
         IdeContext(

@@ -13,7 +13,7 @@ from runtime.model.invoker import ModelInvoker
 
 
 class ModelBackedAgentExecutor:
-    """Turn an assigned model into an executable VYRELON Agent."""
+    """Turn an assigned model into an executable AGENT_EXECUTION_RUNTIME Agent."""
 
     def __init__(self, ai_registry: AIRegistry, model_invoker: ModelInvoker) -> None:
         self.ai_registry = ai_registry
@@ -38,7 +38,7 @@ class ModelBackedAgentExecutor:
     def _system_prompt(agent: AgentContract) -> str:
         capabilities = ", ".join(sorted(agent.capabilities)) or "general development"
         return (
-            f"You are the VYRELON {agent.role} agent. "
+            f"You are the AGENT_EXECUTION_RUNTIME {agent.role} agent. "
             f"Your capabilities are: {capabilities}. "
             "Work only within the objective and permissions provided by the orchestrator."
         )

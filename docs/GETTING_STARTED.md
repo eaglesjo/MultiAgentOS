@@ -1,10 +1,10 @@
 # Getting Started
 
-This guide takes a developer from a clean machine to a usable VYRELON installation and then through the available GitHub and local-project connection paths.
+This guide takes a developer from a clean machine to a usable Agent Execution Runtime installation and then through the available GitHub and local-project connection paths.
 
 ## 1. What you install
 
-MultiAgentOS installs the local VYRELON runtime and CLI.
+MultiAgentOS installs the local Agent Execution Runtime runtime and CLI.
 
 It is intentionally separate from:
 
@@ -18,13 +18,13 @@ These are complementary integration paths.
 
 ## 2. Cost-free baseline
 
-The core VYRELON runtime is intentionally independent of paid model APIs. A clean installation can use the local MCP server for filesystem READ/WRITE, patch application, and process/test execution without an OpenAI, Anthropic, Gemini, or other paid model API key.
+The core Agent Execution Runtime runtime is intentionally independent of paid model APIs. A clean installation can use the local MCP server for filesystem READ/WRITE, patch application, and process/test execution without an OpenAI, Anthropic, Gemini, or other paid model API key.
 
 The verified acceptance evidence is maintained in [Cost-Free Development Baseline](COSTFREE_DEVELOPMENT.md). This is an **AI API cost** requirement; it does not assert that every optional AI product or account is free.
 
 Current verification:
 
-- VYRELON MCP: PASS
+- Agent Execution Runtime MCP: PASS
 - filesystem WRITE/READ: PASS
 - `patch.apply`: PASS
 - `shell.run`: PASS
@@ -32,7 +32,7 @@ Current verification:
 - Secure MCP Tunnel: READY
 - ChatGPT Web write-capable custom MCP: plan-gated on the current Free account
 
-## 3. Install VYRELON
+## 3. Install Agent Execution Runtime
 
 From a MultiAgentOS checkout:
 
@@ -51,19 +51,19 @@ multiagentos status .
 
 The initializer writes project-local `.multiagentos/` configuration and runtime state. Credentials must remain outside that state.
 
-VYRELON's standalone MCP server does not require OpenAI, ChatGPT, a `tunnel_id`, or `tunnel-client`.
+Agent Execution Runtime's standalone MCP server does not require OpenAI, ChatGPT, a `tunnel_id`, or `tunnel-client`.
 
 ## 4. Choose your connection path
 
-| Goal | Path | VYRELON required |
+| Goal | Path | Agent Execution Runtime required |
 | --- | --- | --- |
 | ChatGPT works on a GitHub repository | ChatGPT -> GitHub app -> authorized repository | No |
-| Local VYRELON works with GitHub | VYRELON -> `gh` -> GitHub | Yes |
-| Any MCP client uses VYRELON locally | MCP Client -> VYRELON MCP Server | Yes |
-| ChatGPT/Codex reaches the local project | ChatGPT/Codex -> Secure MCP Tunnel -> `tunnel-client` -> VYRELON MCP Server | Yes |
+| Local Agent Execution Runtime works with GitHub | Agent Execution Runtime -> `gh` -> GitHub | Yes |
+| Any MCP client uses Agent Execution Runtime locally | MCP Client -> Agent Execution Runtime MCP Server | Yes |
+| ChatGPT/Codex reaches the local project | ChatGPT/Codex -> Secure MCP Tunnel -> `tunnel-client` -> Agent Execution Runtime MCP Server | Yes |
 | Codex manages tunnel runtime | Codex -> tunnel-mcp -> `tunnel-client` | When using the tunnel path |
 
-The architecture has one actual VYRELON MCP server. Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure.
+The architecture has one actual Agent Execution Runtime MCP server. Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure.
 
 ## 5. ChatGPT + GitHub
 
@@ -79,7 +79,7 @@ This connection gives ChatGPT access to the selected GitHub repository. It does 
 
 A repository can also carry its own `AGENTS.md` / Agent Skills instructions. Those project instructions remain authoritative.
 
-## 6. Local VYRELON + GitHub
+## 6. Local Agent Execution Runtime + GitHub
 
 Install GitHub CLI and authenticate it:
 
@@ -88,7 +88,7 @@ gh auth login
 gh auth status
 ```
 
-Then verify VYRELON can reach a repository:
+Then verify Agent Execution Runtime can reach a repository:
 
 ```bash
 multiagentos github probe OWNER/REPOSITORY
@@ -103,15 +103,15 @@ multiagentos github probe eaglesjo/MultiAgentOS
 This is a separate path from the ChatGPT GitHub connection:
 
 ```text
-Local VYRELON -> gh -> GitHub
+Local Agent Execution Runtime -> gh -> GitHub
 ChatGPT       -> GitHub app -> authorized repositories
 ```
 
 Do not put GitHub tokens in the repository.
 
-## 7. Standalone VYRELON MCP
+## 7. Standalone Agent Execution Runtime MCP
 
-From the project you want VYRELON to expose:
+From the project you want Agent Execution Runtime to expose:
 
 ```bash
 multiagentos mcp serve --path /absolute/path/to/project
@@ -134,7 +134,7 @@ multiagentos mcp serve \
 
 This path is free/local and can be used by an MCP client without OpenAI.
 
-## 8. ChatGPT/Codex + local VYRELON
+## 8. ChatGPT/Codex + local Agent Execution Runtime
 
 Use OpenAI Secure MCP Tunnel when the MCP server must remain on the developer's private/local machine.
 
@@ -152,7 +152,7 @@ tunnel-client
       |
       | stdio
       v
-VYRELON MCP Server
+Agent Execution Runtime MCP Server
       |
       v
 Local Project
@@ -162,7 +162,7 @@ The managed runtime setup is:
 
 ```bash
 tunnel-client runtimes connect \
-  --alias vyrelon-local \
+  --alias agent-execution-runtime-local \
   --tunnel-id tunnel_... \
   --runtime-api-key env:CONTROL_PLANE_API_KEY \
   --mcp-command "multiagentos mcp serve --path /absolute/path/to/project"
@@ -171,7 +171,7 @@ tunnel-client runtimes connect \
 Verify the runtime before using the ChatGPT connector:
 
 ```bash
-tunnel-client runtimes status vyrelon-local --json
+tunnel-client runtimes status agent-execution-runtime-local --json
 ```
 
 Then in ChatGPT:
@@ -180,7 +180,7 @@ Then in ChatGPT:
 2. Choose **Connection: Tunnel**.
 3. Select or enter the corresponding tunnel.
 4. Confirm the runtime is healthy.
-5. Start with a read-only VYRELON MCP operation.
+5. Start with a read-only Agent Execution Runtime MCP operation.
 
 Do not paste a local MCP URL into ChatGPT.
 
@@ -198,7 +198,7 @@ tunnel-client codex diagnose --json
 
 For a persistent runtime, use the native `tunnel-client runtimes ...` commands.
 
-The Codex plugin does not replace VYRELON's MCP server.
+The Codex plugin does not replace Agent Execution Runtime's MCP server.
 
 ## 10. Validate the local installation
 
@@ -221,7 +221,7 @@ multiagentos github probe OWNER/REPOSITORY
 For the tunnel path, also verify:
 
 ```bash
-tunnel-client runtimes status vyrelon-local --json
+tunnel-client runtimes status agent-execution-runtime-local --json
 ```
 
 A successful local MCP smoke test does not by itself prove that the external ChatGPT/Codex tunnel is working. End-to-end tunnel validation requires a real OpenAI workspace, tunnel, runtime API key, and running `tunnel-client`.
@@ -248,7 +248,7 @@ Do not use an admin key as a long-lived runtime credential.
 
 ## 12. Next documents
 
-- [VYRELON Connection Guide](VYRELON_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](Agent Execution Runtime_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](MCP_TUNNEL.md)
-- [VYRELON GitHub Connection](VYRELON_GITHUB_CONNECTION.md)
-- [VYRELON MCP Architecture](ARCHITECTURE_DECISIONS.md)
+- [Agent Execution Runtime GitHub Connection](Agent Execution Runtime_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime MCP Architecture](ARCHITECTURE_DECISIONS.md)

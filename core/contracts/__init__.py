@@ -1,4 +1,4 @@
-"""VYRELON core contracts."""
+"""Agent Execution Runtime core contracts."""
 
 from core.contracts.chat_agent import ChatAgentContract, ChatAgentProvider
 from core.contracts.agent import AgentContract

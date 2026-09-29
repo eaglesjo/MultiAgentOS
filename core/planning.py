@@ -1,4 +1,4 @@
-"""Deterministic planning service for VYRELON."""
+"""Deterministic planning service for AGENT_EXECUTION_RUNTIME."""
 
 from core.contracts.planning import PlanStep, WorkPlan
 from core.contracts.work_unit import WorkStatus, WorkUnit

@@ -1,4 +1,4 @@
-"""Resolve technology detections into stable VYRELON project and agent profiles."""
+"""Resolve technology detections into stable AGENT_EXECUTION_RUNTIME project and agent profiles."""
 
 from __future__ import annotations
 

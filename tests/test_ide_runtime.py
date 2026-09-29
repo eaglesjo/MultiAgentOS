@@ -11,7 +11,7 @@ from core.contracts.model_runtime import ModelResponse
 from runtime.agent.model import ModelAgentExecutor
 from runtime.ide.registry import IDEAdapterRegistry
 from runtime.ide.runtime import IDERuntime
-from runtime.vyrelon import VYRELONRuntime
+from runtime.agent_execution_runtime import AgentExecutionRuntime
 
 
 class FakeIDEAdapter:
@@ -51,7 +51,7 @@ class IDERuntimeTests(unittest.TestCase):
         result = runtime.execute(IDEKind.VS_CODE, IDECommand(kind=IDECommandKind.SHOW_MESSAGE))
         self.assertTrue(result.ok)
 
-    def test_ide_event_is_distinct_from_vyrelon_command(self) -> None:
+    def test_ide_event_is_distinct_from_agent_execution_runtime_command(self) -> None:
         runtime = IDERuntime()
         context = IDEContext(kind=IDEKind.VS_CODE, project_root="/workspace", file_path="/workspace/main.py")
         event = IDEEvent(kind=IDEEventKind.SELECTION_CHANGED, context=context, payload={"text": "hello"})
@@ -75,7 +75,7 @@ class FakeAgentExecutor:
 class IDEWorkExecutionTests(unittest.TestCase):
     def test_ide_work_reaches_agent_workunit_and_returns_to_ide(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             adapter = FakeIDEAdapter(IDEKind.VS_CODE)
             adapter.context = lambda: IDEContext(
                 kind=IDEKind.VS_CODE,
@@ -120,7 +120,7 @@ class IDECodeChangeTests(unittest.TestCase):
             root = Path(directory)
             target = root / "hello.py"
             target.write_text("value = 1\n", encoding="utf-8")
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             adapter = FakeIDEAdapter(IDEKind.VS_CODE)
             adapter.context = lambda: IDEContext(
                 kind=IDEKind.VS_CODE,

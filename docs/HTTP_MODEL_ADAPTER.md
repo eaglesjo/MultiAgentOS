@@ -1,4 +1,4 @@
-# VYRELON HTTP Model Adapter
+# Agent Execution Runtime HTTP Model Adapter
 
 HTTPModelAdapter provides a generic JSON-over-HTTP integration point.
 

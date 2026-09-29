@@ -1,4 +1,4 @@
-"""Model-backed AgentExecutor for provider-neutral VYRELON agents."""
+"""Model-backed AgentExecutor for provider-neutral AGENT_EXECUTION_RUNTIME agents."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-# VYRELON Core Runtime
+# Agent Execution Runtime Core Runtime
 
 The core runtime separates these concepts:
 
@@ -11,7 +11,7 @@ The core runtime separates these concepts:
 
 ## Multi-AI assignment
 
-An agent may declare preferred model IDs. VYRELON first tries those models, then searches the registered model pool for a capability-compatible fallback.
+An agent may declare preferred model IDs. Agent Execution Runtime first tries those models, then searches the registered model pool for a capability-compatible fallback.
 
 This keeps agent roles independent from providers such as OpenAI, Anthropic, Google, local models, or future providers.
 

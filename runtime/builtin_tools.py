@@ -1,8 +1,8 @@
-"""Built-in VYRELON tool bindings."""
+"""Built-in AGENT_EXECUTION_RUNTIME tool bindings."""
 from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
-from core.contracts.vyrelon_runtime import ToolRequest, ToolSideEffect, ToolSpec
+from core.contracts.agent_execution_runtime import ToolRequest, ToolSideEffect, ToolSpec
 from runtime.local.filesystem import FilesystemRuntime
 from runtime.local.patch import PatchRuntime
 from runtime.local.shell import PersistentShellRuntime

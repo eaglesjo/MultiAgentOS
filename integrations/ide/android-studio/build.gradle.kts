@@ -2,7 +2,7 @@ plugins {
     kotlin("jvm") version "2.1.20"
     id("org.jetbrains.intellij.platform") version "2.5.0"
 }
-group = "io.vyrelon"
+group = "io.multiagentos.agentexecutionruntime"
 version = "0.1.0"
 repositories {
     mavenCentral()

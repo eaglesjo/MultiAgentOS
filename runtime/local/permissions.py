@@ -9,7 +9,7 @@ from runtime.policy import ExecutionPolicy
 
 @dataclass(frozen=True)
 class LocalPermissionGuard:
-    """Apply VYRELON execution policy to local tool operations."""
+    """Apply AGENT_EXECUTION_RUNTIME execution policy to local tool operations."""
 
     policy: ExecutionPolicy
 

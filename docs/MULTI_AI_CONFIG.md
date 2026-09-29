@@ -1,6 +1,6 @@
-# VYRELON Multi-AI Assignment Configuration
+# Agent Execution Runtime Multi-AI Assignment Configuration
 
-VYRELON separates an Agent from the AI model used to execute that role.
+Agent Execution Runtime separates an Agent from the AI model used to execute that role.
 
 Routing strategies:
 

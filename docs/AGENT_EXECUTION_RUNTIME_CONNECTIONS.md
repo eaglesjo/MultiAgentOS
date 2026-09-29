@@ -29,13 +29,13 @@ The GitHub path and the local Agent Execution Runtime path solve different probl
 | --- | --- | --- |
 | ChatGPT -> GitHub | Repository inspection, issues, PRs and durable GitHub state | No |
 | Local Agent Execution Runtime -> GitHub | Local Agent Execution Runtime GitHub operations through `gh` | Yes |
-| MCP Client -> VYRELON | Free/local MCP access | Yes |
-| ChatGPT/Codex -> Secure MCP Tunnel -> VYRELON | Remote access to the developer's private/local project | Yes |
-| Codex -> tunnel-mcp -> tunnel-client | Tunnel runtime operations | Yes, when targeting VYRELON |
+| MCP Client -> Agent Execution Runtime | Free/local MCP access | Yes |
+| ChatGPT/Codex -> Secure MCP Tunnel -> Agent Execution Runtime | Remote access to the developer's private/local project | Yes |
+| Codex -> tunnel-mcp -> tunnel-client | Tunnel runtime operations | Yes, when targeting Agent Execution Runtime |
 
 Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure. They are not another MCP server.
 
-## 1. Install VYRELON
+## 1. Install Agent Execution Runtime
 
 From the MultiAgentOS checkout:
 
@@ -67,11 +67,11 @@ This is the GitHub-native path used when ChatGPT needs repository access.
 
 This path gives ChatGPT access to the selected remote repository. It does not give ChatGPT access to the developer's local filesystem.
 
-For repositories using repository-level agent guidance, VYRELON can coexist with an `AGENTS.md` / Agent Skills workflow. The repository's own engineering instructions remain authoritative.
+For repositories using repository-level agent guidance, Agent Execution Runtime can coexist with an `AGENTS.md` / Agent Skills workflow. The repository's own engineering instructions remain authoritative.
 
 ### B. Local Agent Execution Runtime GitHub connection
 
-VYRELON can also operate against GitHub from the developer's machine:
+Agent Execution Runtime can also operate against GitHub from the developer's machine:
 
 ```text
 Local Project
@@ -94,9 +94,9 @@ gh auth status
 multiagentos github probe OWNER/REPOSITORY
 ```
 
-GitHub write operations remain subject to VYRELON policy and approval.
+GitHub write operations remain subject to Agent Execution Runtime policy and approval.
 
-## 3. Use VYRELON locally without OpenAI
+## 3. Use Agent Execution Runtime locally without OpenAI
 
 The standalone MCP path is:
 
@@ -156,7 +156,7 @@ The managed runtime form is:
 
 ```bash
 tunnel-client runtimes connect \
-  --alias vyrelon-local \
+  --alias agent_execution_runtime-local \
   --tunnel-id tunnel_... \
   --runtime-api-key env:CONTROL_PLANE_API_KEY \
   --mcp-command "multiagentos mcp serve --path /absolute/path/to/project"
@@ -165,7 +165,7 @@ tunnel-client runtimes connect \
 Then verify:
 
 ```bash
-tunnel-client runtimes status vyrelon-local --json
+tunnel-client runtimes status agent_execution_runtime-local --json
 ```
 
 Only after the runtime is healthy should the ChatGPT connector be configured with **Connection: Tunnel**.
@@ -228,4 +228,4 @@ Keep credentials outside repositories:
 
 - [Agent Execution Runtime MCP Architecture](ARCHITECTURE_DECISIONS.md)
 - [Secure MCP Tunnel Setup](MCP_TUNNEL.md)
-- [Agent Execution Runtime GitHub Connection](VYRELON_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime GitHub Connection](Agent Execution Runtime_GITHUB_CONNECTION.md)

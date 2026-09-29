@@ -21,19 +21,15 @@ This document defines the public architectural names used by MultiAgentOS. Exist
 | **tunnel-client** | Tunnel-side transport/forwarding process; not an MCP server |
 | **MultiAgentRuntime** | Existing application/runtime adapter API; it is not the top-level orchestration boundary |
 | **ChatAgentBridge** | Bridge from a Chat Agent turn into the orchestration/execution lifecycle |
-| **VYRELON** | Legacy/compatibility implementation identifier retained where existing package, integration, protocol, or historical names require it |
 
 ## Naming rule
 
-New architecture documentation should use **Agent Execution Runtime** instead of **VYRELON** when describing the role.
 
-Use **VYRELON** only when referring to an existing implementation identifier, compatibility surface, protocol/namespace, historical document, or migration target.
 
 Examples:
 
 - Prefer: **Agent Execution Runtime MCP Server**
 - Prefer: **Agent Execution Runtime execution boundary**
-- Avoid introducing: **VYRELON as the MultiAgentOS product name**
 - Avoid describing: Secure MCP Tunnel as a second MCP server
 
 ## Responsibility boundary
@@ -72,6 +68,4 @@ The Agent Execution Runtime owns the execution authority. Agents and orchestrati
 
 This terminology change is intentionally descriptive-first.
 
-Existing Python modules, package metadata, IDE namespaces, MCP configuration keys, and document filenames containing `vyrelon` are not renamed in this pass. They can be migrated separately after consumers and tests are identified.
 
-The public architecture should therefore be understandable without knowing the historical VYRELON name.

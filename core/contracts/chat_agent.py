@@ -1,4 +1,4 @@
-"""Contracts for chat-facing AI agents used with VYRELON."""
+"""Contracts for chat-facing AI agents used with AGENT_EXECUTION_RUNTIME."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ class ChatAgentProvider(str, Enum):
 
 @dataclass(frozen=True)
 class ChatAgentContract:
-    """A conversational agent that can drive or collaborate with VYRELON."""
+    """A conversational agent that can drive or collaborate with AGENT_EXECUTION_RUNTIME."""
 
     id: str
     provider: ChatAgentProvider

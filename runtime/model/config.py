@@ -14,7 +14,7 @@ DEFAULT_CONFIG_PATH = ".multiagentos/providers.json"
 
 
 class ProviderConfigLoader:
-    """Parse a declarative provider configuration into the VYRELON registry."""
+    """Parse a declarative provider configuration into the AGENT_EXECUTION_RUNTIME registry."""
 
     def load(
         self,

@@ -1,4 +1,4 @@
-# VYRELON Repository Runtime
+# Agent Execution Runtime Repository Runtime
 
 Repository Runtime is the durable repository boundary between local execution, GitHub, validation, and WorkUnit continuity.
 
@@ -13,9 +13,9 @@ Repository Runtime is the durable repository boundary between local execution, G
 
 ## Checkpoint model
 
-A checkpoint records a durable VYRELON checkpoint identifier and captures the working tree through Git stash when local changes exist. Clean repositories are also checkpointable; those checkpoints are marked as requiring no stash recovery.
+A checkpoint records a durable Agent Execution Runtime checkpoint identifier and captures the working tree through Git stash when local changes exist. Clean repositories are also checkpointable; those checkpoints are marked as requiring no stash recovery.
 
-Recovery never performs an implicit `git reset --hard`. It restores only a VYRELON-created checkpoint stash, and Git write policy remains enforced.
+Recovery never performs an implicit `git reset --hard`. It restores only a Agent Execution Runtime-created checkpoint stash, and Git write policy remains enforced.
 
 ## Evidence model
 

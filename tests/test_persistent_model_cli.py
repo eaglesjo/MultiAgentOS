@@ -3,7 +3,7 @@ import sys
 
 from core.contracts.work_unit import WorkStatus
 from multiagentos.cli import main
-from runtime.vyrelon import VYRELONRuntime
+from runtime.agent_execution_runtime import AgentExecutionRuntime
 
 
 def _write_config(root):
@@ -56,7 +56,7 @@ def test_run_model_persists_work_unit(tmp_path, capsys):
         == 0
     )
 
-    work = VYRELONRuntime().state_store(tmp_path).load("persistent-model")
+    work = AgentExecutionRuntime().state_store(tmp_path).load("persistent-model")
     assert work.status == WorkStatus.COMPLETED
     assert work.metadata["runtime"] == "configured-model"
     assert work.metadata["model_id"] == "echo-model"
@@ -66,7 +66,7 @@ def test_run_model_persists_work_unit(tmp_path, capsys):
 
 def test_resume_model_reuses_persisted_configuration(tmp_path, capsys):
     _write_config(tmp_path)
-    store = VYRELONRuntime().state_store(tmp_path)
+    store = AgentExecutionRuntime().state_store(tmp_path)
 
     assert (
         main(

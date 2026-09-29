@@ -1,4 +1,4 @@
-"""Unified Model Control Plane for VYRELON.
+"""Unified Model Control Plane for AGENT_EXECUTION_RUNTIME.
 
 Quota answers "how much capacity remains?".
 Health answers "can this model currently be trusted to serve?".

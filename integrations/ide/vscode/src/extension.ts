@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import type { IDECommand, IDEContext } from "./contracts";
-import { VyrelonBridge } from "./bridge";
+import { AgentExecutionRuntimeBridge } from "./bridge";
 
 function workspaceRoot(): string {
   return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "";
@@ -23,31 +23,31 @@ function activeContext(): IDEContext {
   };
 }
 
-function bridge(): VyrelonBridge {
-  const config = vscode.workspace.getConfiguration("vyrelon");
+function bridge(): AgentExecutionRuntimeBridge {
+  const config = vscode.workspace.getConfiguration("agentExecutionRuntime");
   const endpoint = config.get<string>("endpoint", "http://127.0.0.1:8787").replace(/\/$/, "");
   const token = config.get<string>("token", "");
-  return new VyrelonBridge(endpoint, token);
+  return new AgentExecutionRuntimeBridge(endpoint, token);
 }
 
 export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand("vyrelon.showContext", async () => {
+    vscode.commands.registerCommand("agentExecutionRuntime.showContext", async () => {
       try {
         const current = activeContext();
         const normalized = await bridge().getContext(current);
         const file = normalized.file_path ?? "(no active file)";
         vscode.window.showInformationMessage(
-          `VYRELON: ${file} [${normalized.language_id ?? "unknown"}]`,
+          `Agent Execution Runtime: ${file} [${normalized.language_id ?? "unknown"}]`,
         );
       } catch (error) {
         vscode.window.showErrorMessage(String(error));
       }
     }),
-    vscode.commands.registerCommand("vyrelon.sendSelection", async () => {
+    vscode.commands.registerCommand("agentExecutionRuntime.sendSelection", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor || editor.selection.isEmpty) {
-        vscode.window.showWarningMessage("VYRELON: select text first.");
+        vscode.window.showWarningMessage("Agent Execution Runtime: select text first.");
         return;
       }
 
@@ -64,9 +64,9 @@ export function activate(context: vscode.ExtensionContext): void {
       try {
         const result = await bridge().execute(command);
         if (!result.ok) {
-          throw new Error(result.error ?? "VYRELON rejected the command.");
+          throw new Error(result.error ?? "Agent Execution Runtime rejected the command.");
         }
-        vscode.window.showInformationMessage("VYRELON: selection sent.");
+        vscode.window.showInformationMessage("Agent Execution Runtime: selection sent.");
       } catch (error) {
         vscode.window.showErrorMessage(String(error));
       }

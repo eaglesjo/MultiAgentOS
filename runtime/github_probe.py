@@ -1,4 +1,4 @@
-"""Probe VYRELON's local GitHub access."""
+"""Probe AGENT_EXECUTION_RUNTIME's local GitHub access."""
 
 from integrations.github.gateway import GitHubGatewayClient
 

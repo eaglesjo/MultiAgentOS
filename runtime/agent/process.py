@@ -1,4 +1,4 @@
-"""Process-backed AgentExecutor for the VYRELON lifecycle."""
+"""Process-backed AgentExecutor for the AGENT_EXECUTION_RUNTIME lifecycle."""
 
 from __future__ import annotations
 

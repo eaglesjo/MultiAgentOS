@@ -1,4 +1,4 @@
-"""Persistent quota intelligence for VYRELON model routing."""
+"""Persistent quota intelligence for AGENT_EXECUTION_RUNTIME model routing."""
 from __future__ import annotations
 
 import json

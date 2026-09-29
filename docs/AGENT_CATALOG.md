@@ -1,6 +1,6 @@
-# VYRELON Agent Catalog
+# Agent Execution Runtime Agent Catalog
 
-VYRELON separates common orchestration roles from technology-specific specialists.
+Agent Execution Runtime separates common orchestration roles from technology-specific specialists.
 
 Common roles: planner, researcher, editor, executor, tester, debugger, reviewer.
 

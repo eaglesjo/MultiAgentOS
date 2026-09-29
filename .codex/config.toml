@@ -1,5 +1,5 @@
 # MultiAgentOS project MCP configuration for Codex.
-# This keeps the local VYRELON MCP server as a project-scoped tool provider.
+# This keeps the local AGENT_EXECUTION_RUNTIME MCP server as a project-scoped tool provider.
 # Codex must trust this project before loading .codex/config.toml.
 
 [mcp_servers.agent_execution_runtime]

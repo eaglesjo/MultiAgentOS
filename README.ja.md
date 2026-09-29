@@ -133,7 +133,7 @@ Agent Execution Runtimeには**1つのMCP Server**だけがあります。Secure
 
 ## 用語体系
 
-**Agent Execution Runtime**をローカル実行・権限境界の正式な説明名称として使用します。既存のパッケージ、統合、プロトコル名で必要な場合にのみ `VYRELON` を互換/実装識別子として残します。
+**Agent Execution Runtime**をローカル実行・権限境界の正式な説明名称として使用します。
 
 ## Cost-Free baseline
 
@@ -221,9 +221,9 @@ GitHub ActionsでもリポジトリのCIを検証します。
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [Agent Execution Runtime Connection Guide](docs/VYRELON_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](docs/AGENT_EXECUTION_RUNTIME_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
-- [Agent Execution Runtime GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
 - [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
 英語READMEをcanonical technical documentとして維持し、各locale READMEも同じアーキテクチャ、用語、Cost-Free基本パスを維持します。

@@ -6,7 +6,7 @@ from core.contracts import AgentContract, ModelSpec, WorkUnit, WorkStatus
 from core.contracts.model_runtime import ModelResponse
 from core.contracts.ide import IDEKind
 import json
-from runtime import AgentExecutionRuntime as VYRELONRuntime
+from runtime import AgentExecutionRuntime as AgentExecutionRuntime
 
 
 class FakeExecutor:
@@ -14,7 +14,7 @@ class FakeExecutor:
         return ModelResponse(text="done", model_id=model_id)
 
 
-class VYRELONRuntimeTests(unittest.TestCase):
+class AgentExecutionRuntimeTests(unittest.TestCase):
     def test_inspect_and_agent_catalog(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -22,12 +22,12 @@ class VYRELONRuntimeTests(unittest.TestCase):
                 '{"dependencies":{"react-native":"0.82.0"}}',
                 encoding="utf-8",
             )
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             self.assertTrue(runtime.inspect(root))
             self.assertIn("navigation", [a.id for a in runtime.agents(root).list()])
 
     def test_run_executes_through_orchestrator(self):
-        runtime = VYRELONRuntime()
+        runtime = AgentExecutionRuntime()
         agent = AgentContract(
             id="developer", role="developer",
             capabilities=frozenset({"code"}),
@@ -45,12 +45,12 @@ class VYRELONRuntimeTests(unittest.TestCase):
     def test_run_persistent_saves_lifecycle_state(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             agent = AgentContract(
                 id="executor", role="executor",
                 capabilities=frozenset({"execution"}),
             )
-            models = [ModelSpec("local-process", "vyrelon-local", frozenset({"execution"}))]
+            models = [ModelSpec("local-process", "agent_execution_runtime-local", frozenset({"execution"}))]
             result = runtime.run_persistent(
                 root,
                 WorkUnit("wu-persistent", "run persistent task"),
@@ -65,8 +65,8 @@ class VYRELONRuntimeTests(unittest.TestCase):
             self.assertEqual(persisted.assigned_agents, ["executor"])
             self.assertEqual(persisted.metadata["cwd"], str(root))
 
-    def test_ide_bridge_is_owned_by_vyrelon_runtime(self):
-        runtime = VYRELONRuntime()
+    def test_ide_bridge_is_owned_by_agent_execution_runtime(self):
+        runtime = AgentExecutionRuntime()
         server = runtime.start_ide_bridge(token="secret", port=0)
         try:
             self.assertIs(runtime.ide_bridge_server, server)
@@ -81,7 +81,7 @@ class VYRELONRuntimeTests(unittest.TestCase):
             def generate(self, model, request):
                 return ModelResponse(text='hello', model_id=model.id)
 
-        runtime = VYRELONRuntime()
+        runtime = AgentExecutionRuntime()
         agent = AgentContract(
             id="writer", role="writer",
             capabilities=frozenset({"generation"}),
@@ -123,7 +123,7 @@ class VYRELONRuntimeTests(unittest.TestCase):
                     }],
                 }]
             }), encoding="utf-8")
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             result = runtime.run_configured_work(
                 root,
                 objective="implement configured task",
@@ -167,7 +167,7 @@ class VYRELONRuntimeTests(unittest.TestCase):
                     }],
                 }]
             }), encoding="utf-8")
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             with self.assertRaises(RuntimeError):
                 runtime.run_configured_work(
                     root,
@@ -196,7 +196,7 @@ class VYRELONRuntimeTests(unittest.TestCase):
     def test_session_spans_work_units_and_recovery(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            runtime = VYRELONRuntime()
+            runtime = AgentExecutionRuntime()
             session = runtime.create_session(root, agent_id="developer")
             work = WorkUnit(id="session-work", objective="continue")
             work.transition(WorkStatus.EXECUTING)

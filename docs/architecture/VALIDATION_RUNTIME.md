@@ -1,6 +1,6 @@
-# VYRELON Validation Runtime
+# Agent Execution Runtime Validation Runtime
 
-Validation is a first-class VYRELON runtime boundary.
+Validation is a first-class Agent Execution Runtime runtime boundary.
 
 ## Pipeline
 
@@ -22,4 +22,4 @@ This is deliberately provider-neutral: no CI vendor, IDE, model provider, or ext
 
 ## Cost boundary
 
-Validation runs locally through VYRELON. It does not require a paid external MCP service. Mobile validation can later consume a locally executed MCP provider without changing this contract.
+Validation runs locally through Agent Execution Runtime. It does not require a paid external MCP service. Mobile validation can later consume a locally executed MCP provider without changing this contract.

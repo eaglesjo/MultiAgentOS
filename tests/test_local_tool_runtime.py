@@ -1,4 +1,4 @@
-"""Tests for the VYRELON local tool runtime."""
+"""Tests for the AGENT_EXECUTION_RUNTIME local tool runtime."""
 
 from __future__ import annotations
 
@@ -56,9 +56,9 @@ class LocalToolRuntimeTests(unittest.TestCase):
             child.mkdir()
             shell = PersistentShellRuntime(str(root), paths=PathPolicy((str(root),)))
             shell.cd("child")
-            shell.set_environment("VYRELON_TEST", "ok")
+            shell.set_environment("AGENT_EXECUTION_RUNTIME_TEST", "ok")
             result = shell.run(
-                f"{sys.executable} -c \"import os; print(os.getcwd()); print(os.getenv('VYRELON_TEST'))\""
+                f"{sys.executable} -c \"import os; print(os.getcwd()); print(os.getenv('AGENT_EXECUTION_RUNTIME_TEST'))\""
             )
             self.assertEqual(result.returncode, 0)
             self.assertIn(str(child), result.stdout)

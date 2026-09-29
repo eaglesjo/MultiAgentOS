@@ -146,10 +146,5 @@ class AgentExecutionRuntimeMCPServer:
                 stdout.flush()
 
 
-class VYRELONMCPServer(AgentExecutionRuntimeMCPServer):
-    """Legacy compatibility facade for the canonical MCP server."""
 
-    SERVER_NAME = "VYRELON"
-
-
-__all__ = ["AgentExecutionRuntimeMCPServer", "VYRELONMCPServer"]
+__all__ = ["AgentExecutionRuntimeMCPServer"]

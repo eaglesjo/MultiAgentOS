@@ -1,1 +1,1 @@
-"""Built-in VYRELON agent catalog."""
+"""Built-in AGENT_EXECUTION_RUNTIME agent catalog."""

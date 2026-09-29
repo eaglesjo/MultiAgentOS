@@ -1,4 +1,4 @@
-"""Workspace/path security for VYRELON local tools."""
+"""Workspace/path security for AGENT_EXECUTION_RUNTIME local tools."""
 
 from __future__ import annotations
 

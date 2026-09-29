@@ -3,7 +3,7 @@
 The Agent Execution Runtime owns the **local** GitHub integration path.
 
 ```
-VYRELON
+Agent Execution Runtime
   -> GitHubRuntime (policy)
   -> GitHubGatewayClient
   -> authenticated gh CLI
@@ -45,7 +45,7 @@ There are two different GitHub access paths:
 
 ```
 your machine
-  -> VYRELON
+  -> Agent Execution Runtime
   -> gh auth
   -> GitHub
 ```
@@ -78,6 +78,6 @@ Never commit:
 - tunnel credentials
 - `.multiagentos/` runtime state
 
-This makes VYRELON the project-level orchestration path while keeping credentials outside source control.
+This makes Agent Execution Runtime the project-level orchestration path while keeping credentials outside source control.
 
 For the full user setup, see [Getting Started](GETTING_STARTED.md).

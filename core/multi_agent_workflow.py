@@ -1,4 +1,4 @@
-"""Sequential multi-agent handoff workflow for VYRELON."""
+"""Sequential multi-agent handoff workflow for AGENT_EXECUTION_RUNTIME."""
 
 from __future__ import annotations
 
@@ -45,9 +45,9 @@ class MultiAgentWorkflowResult:
 
 
 class MultiAgentWorkflow:
-    """Run one WorkUnit through cooperating agents under VYRELON authority.
+    """Run one WorkUnit through cooperating agents under AGENT_EXECUTION_RUNTIME authority.
 
-    Agents never transfer execution authority directly to one another. VYRELON
+    Agents never transfer execution authority directly to one another. AGENT_EXECUTION_RUNTIME
     performs each delegation and records the handoff artifact between stages.
     """
 

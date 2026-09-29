@@ -7,7 +7,7 @@ from core.contracts.ai import ModelSpec
 from core.contracts.execution import ReviewDecision
 from core.contracts.human_review import HumanReviewDecision
 from core.contracts.work_unit import WorkStatus, WorkUnit
-from runtime.vyrelon import VYRELONRuntime
+from runtime.agent_execution_runtime import AgentExecutionRuntime
 
 
 class FakeExecutor:
@@ -21,7 +21,7 @@ class FakeExecutor:
 
 class HumanReviewPersistenceTests(unittest.TestCase):
     def setUp(self):
-        self.runtime = VYRELONRuntime()
+        self.runtime = AgentExecutionRuntime()
         self.developer = AgentContract(id="developer", role="developer")
         self.tester = AgentContract(id="tester", role="tester")
         self.reviewer = [(AgentContract(id="reviewer", role="reviewer"), {})]
@@ -48,7 +48,7 @@ class HumanReviewPersistenceTests(unittest.TestCase):
             )
             self.assertEqual(result.work_unit.status, WorkStatus.WAITING_HUMAN_APPROVAL)
 
-            fresh = VYRELONRuntime()
+            fresh = AgentExecutionRuntime()
             loaded = fresh.state_store(root).load("wu-persisted-gate")
             self.assertEqual(loaded.status, WorkStatus.WAITING_HUMAN_APPROVAL)
             self.assertTrue(loaded.metadata["human_review_required"])

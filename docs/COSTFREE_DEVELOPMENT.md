@@ -72,8 +72,8 @@ The AI client created and read back:
 Tools actually invoked:
 
 ```
-mcp__vyrelon__filesystem_write
-mcp__vyrelon__filesystem_read
+mcp__agent-execution-runtime__filesystem_write
+mcp__agent-execution-runtime__filesystem_read
 ```
 
 The returned file content matched the requested COSTFREE-001 test content. The file was not created through shell commands, Python, `cat`, or `echo`.
@@ -85,7 +85,7 @@ The returned file content matched the requested COSTFREE-001 test content. The f
 The AI client discovered:
 
 ```
-mcp__vyrelon__shell_run
+mcp__agent-execution-runtime__shell_run
 ```
 
 and executed `pwd` through that MCP tool.
@@ -106,9 +106,9 @@ The AI client performed a real end-to-end `patch.apply` operation through the Ag
 
 Test sequence:
 
-1. Created `VYRELON_PATCH_TEST.md` with the content `before`.
-2. Applied a unified Git patch through `mcp__vyrelon__patch_apply`.
-3. Read the file back through `mcp__vyrelon__filesystem_read`.
+1. Created `Agent Execution Runtime_PATCH_TEST.md` with the content `before`.
+2. Applied a unified Git patch through `mcp__agent-execution-runtime__patch_apply`.
+3. Read the file back through `mcp__agent-execution-runtime__filesystem_read`.
 
 Observed result:
 
@@ -144,7 +144,7 @@ The current MultiAgentOS local runtime uses:
 
 - the Agent Execution Runtime as the local MCP server
 - `tunnel-client` as the outbound tunnel client
-- the `vyrelon-local` tunnel runtime
+- the `agent-execution-runtime-local` tunnel runtime
 - an absolute MultiAgentOS MCP command under the project's `.venv`
 
 The tunnel/runtime layer is therefore independent of the AI model provider.
@@ -155,9 +155,9 @@ OpenAI's current documentation states that **full MCP support, including modify/
 
 Therefore:
 
-> A healthy `vyrelon-local` tunnel does not by itself prove that the current ChatGPT account can perform local filesystem writes.
+> A healthy `agent-execution-runtime-local` tunnel does not by itself prove that the current ChatGPT account can perform local filesystem writes.
 
-For the current Free account, ChatGPT Web write-capable custom MCP validation is **not an executable acceptance test** under the documented plan boundary. This is a ChatGPT product/plan limitation, not a VYRELON runtime failure. The tunnel and local MCP implementation remain valid integration targets.
+For the current Free account, ChatGPT Web write-capable custom MCP validation is **not an executable acceptance test** under the documented plan boundary. This is a ChatGPT product/plan limitation, not a Agent Execution Runtime runtime failure. The tunnel and local MCP implementation remain valid integration targets.
 
 ### ChatGPT Web verification state
 
@@ -181,7 +181,7 @@ Custom MCP app
 Secure MCP Tunnel
    |
    v
-VYRELON
+Agent Execution Runtime
    |
    +-- filesystem.read
    +-- filesystem.write
@@ -199,9 +199,9 @@ OpenAI's documented setup path is to create a custom app in Developer Mode, conf
 - Local runtime health/readiness.
 - Automatic runtime recovery through launchd.
 - GitHub-connected development path.
-- AI-client VYRELON `filesystem.write` and `filesystem.read`.
-- AI-client VYRELON `shell_run`.
-- AI-client VYRELON `patch.apply` with filesystem readback.
+- AI-client Agent Execution Runtime `filesystem.write` and `filesystem.read`.
+- AI-client Agent Execution Runtime `shell_run`.
+- AI-client Agent Execution Runtime `patch.apply` with filesystem readback.
 - End-to-end COSTFREE-001 filesystem WRITE/READ path.
 - End-to-end COSTFREE-001 PATCH path.
 - Local MCP/runtime tests: 10/10 PASS.
@@ -209,7 +209,7 @@ OpenAI's documented setup path is to create a custom app in Developer Mode, conf
 
 ### Deferred / plan-gated
 
-- ChatGPT Web custom MCP discovery against `vyrelon-local`.
+- ChatGPT Web custom MCP discovery against `agent-execution-runtime-local`.
 - ChatGPT Web local filesystem WRITE through the Agent Execution Runtime.
 
 ## Design rule
@@ -226,14 +226,14 @@ The system may support:
 - other MCP-capable clients
 - paid API providers
 
-as interchangeable AI-side choices while keeping the project workspace and VYRELON runtime stable.
+as interchangeable AI-side choices while keeping the project workspace and Agent Execution Runtime runtime stable.
 
 ## Verification record
 
 - Patch-runtime fix commit: `49711818b5dbb267ee2d5b283c3a0da85ee101c8`
 - Runtime test result: `10/10 PASS`
-- VYRELON `patch.apply`: `returncode 0`, empty stderr
-- VYRELON readback: `after`
+- Agent Execution Runtime `patch.apply`: `returncode 0`, empty stderr
+- Agent Execution Runtime readback: `after`
 - Secure MCP Tunnel: **READY**
 - Paid AI API key required for these verified runtime capabilities: **No**
 - ChatGPT Web full MCP/write verification: **plan-gated; not required for the core COSTFREE-001 runtime acceptance**

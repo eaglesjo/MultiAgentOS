@@ -1,8 +1,8 @@
-"""Tests for provider-neutral VYRELON runtime contracts."""
+"""Tests for provider-neutral Agent Execution Runtime runtime contracts."""
 
 import unittest
 
-from core.contracts.vyrelon_runtime import (
+from core.contracts.agent_execution_runtime import (
     FallbackPolicy,
     RuntimeEvent,
     RuntimeEventKind,
@@ -14,7 +14,7 @@ from core.contracts.vyrelon_runtime import (
 )
 
 
-class VyrelonRuntimeContractsTests(unittest.TestCase):
+class AgentExecutionRuntimeContractsTests(unittest.TestCase):
     def test_session_is_independent_of_model_and_has_no_harness(self):
         session = SessionSpec(
             id="session-1",

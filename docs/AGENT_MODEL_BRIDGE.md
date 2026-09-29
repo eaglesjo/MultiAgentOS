@@ -1,4 +1,4 @@
-# VYRELON Agent-to-Model Bridge
+# Agent Execution Runtime Agent-to-Model Bridge
 
 The ModelBackedAgentExecutor connects the orchestration layer to the model runtime.
 
@@ -6,7 +6,7 @@ Flow:
 
 WorkUnit -> AgentContract -> AIRouter -> ModelSpec -> ModelAdapter -> ModelResponse
 
-This is the point where VYRELON becomes an actual model-driven agent runtime rather than only a planning or assignment framework.
+This is the point where Agent Execution Runtime becomes an actual model-driven agent runtime rather than only a planning or assignment framework.
 
 The bridge is provider-neutral. A model can be backed by a CLI, HTTP API, MCP gateway, local inference server, IDE bridge, or another adapter without changing AgentContract or Orchestrator.
 

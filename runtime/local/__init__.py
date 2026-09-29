@@ -1,4 +1,4 @@
-"""VYRELON local tool runtime."""
+"""AGENT_EXECUTION_RUNTIME local tool runtime."""
 
 from runtime.local.filesystem import FilesystemRuntime
 from runtime.local.path_security import PathPolicy, PathSecurityError

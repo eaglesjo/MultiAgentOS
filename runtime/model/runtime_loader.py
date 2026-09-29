@@ -1,4 +1,4 @@
-"""One-step loader for declarative VYRELON provider runtime configuration."""
+"""One-step loader for declarative AGENT_EXECUTION_RUNTIME provider runtime configuration."""
 
 from __future__ import annotations
 

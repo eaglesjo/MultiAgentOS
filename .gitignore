@@ -4,7 +4,7 @@ __pycache__/
 .venv/
 venv/
 
-# Local VYRELON runtime state
+# Local AGENT_EXECUTION_RUNTIME runtime state
 .multiagentos/
 !.multiagentos/.gitkeep
 
