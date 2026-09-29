@@ -139,10 +139,15 @@ def run_acceptance() -> None:
             if initialized["result"]["serverInfo"]["name"] != "VYRELON":
                 raise RuntimeError("unexpected MCP server identity")
 
-            _send(
-                proc,
-                {"jsonrpc": "2.0", "method": "notifications/initialized"},
+            assert proc.stdin is not None
+            proc.stdin.write(
+                json.dumps(
+                    {"jsonrpc": "2.0", "method": "notifications/initialized"},
+                    ensure_ascii=False,
+                )
+                + "\n"
             )
+            proc.stdin.flush()
 
             listed = _send(
                 proc,
