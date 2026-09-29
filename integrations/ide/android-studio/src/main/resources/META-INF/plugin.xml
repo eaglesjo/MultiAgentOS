@@ -1,10 +1,10 @@
 <idea-plugin>
-    <id>io.vyrelon.androidstudio</id>
-    <name>VYRELON</name>
-    <vendor>VYRELON</vendor>
-    <description>Android Studio adapter for the VYRELON development runtime.</description>
+    <id>io.multiagentos.agentexecutionruntime</id>
+    <name>Agent Execution Runtime</name>
+    <vendor>Agent Execution Runtime</vendor>
+    <description>Android Studio adapter for the Agent Execution Runtime development runtime.</description>
     <depends>com.intellij.modules.platform</depends>
     <extensions defaultExtensionNs="com.intellij">
-        <projectManagerListener implementation="io.vyrelon.androidstudio.VyrelonProjectActivityListener"/>
+        <projectManagerListener implementation="io.multiagentos.agentexecutionruntime.AgentExecutionRuntimeProjectActivityListener"/>
     </extensions>
 </idea-plugin>
