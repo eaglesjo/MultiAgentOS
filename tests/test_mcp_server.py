@@ -52,6 +52,22 @@ class VYRELONMCPServerTests(unittest.TestCase):
             target = root / "README.md"
             target.write_text("before\n", encoding="utf-8")
             subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+            subprocess.run(["git", "add", "README.md"], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                [
+                    "git",
+                    "-c",
+                    "user.email=test@example.com",
+                    "-c",
+                    "user.name=Test",
+                    "commit",
+                    "-m",
+                    "initial",
+                ],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
             server = VYRELONMCPServer(root, allow_write=True)
 
             patch = """diff --git a/README.md b/README.md
