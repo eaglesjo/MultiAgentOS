@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelRequest, ModelResponse
-from core.contracts.agent_execution_runtime_runtime import ToolSpec
+from core.contracts.agent_execution_runtime import ToolSpec
 from runtime.policy import ExecutionPolicy
 
 def _tool_name(name: str) -> str:
