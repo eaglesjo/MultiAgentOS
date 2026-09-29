@@ -9,4 +9,4 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories { google(); mavenCentral() }
 }
-rootProject.name = "vyrelon-android-studio"
+rootProject.name = "agent-execution-runtime-android-studio"
