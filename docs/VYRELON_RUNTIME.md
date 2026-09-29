@@ -1,4 +1,4 @@
-# VYRELON Runtime Facade
+# Agent Execution Runtime Facade
 
 VYRELONRuntime is the project-facing runtime entry point.
 
@@ -11,4 +11,7 @@ It unifies:
 - GitHub connectivity probing
 - multi-review panels
 
-The facade keeps the underlying contracts and adapters modular while giving a project a single VYRELON-owned control surface.
+The facade keeps the underlying contracts and adapters modular while giving a project a single Agent Execution Runtime-owned control surface.
+
+
+> **Compatibility note:** the filename and historical VYRELON implementation name are retained for compatibility. The architectural role is **Agent Execution Runtime**.

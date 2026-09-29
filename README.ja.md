@@ -2,9 +2,9 @@
 
 > **Cost-Free Multi-Agent Development Orchestration**
 
-MultiAgentOSは **VYRELON** を中心とするローカルファーストのAI開発オーケストレーション基盤です。
+MultiAgentOSは **Agent Execution Runtime** を中心とするローカルファーストのAI開発オーケストレーション基盤です。
 
-Cost-Freeの基本パスでは、**別途の有料AI API Keyを必要としません。** MultiAgentOSは利用可能なAIクライアント、GitHub、ローカルプロジェクトを連携し、実行権限をVYRELONに保持します。
+Cost-Freeの基本パスでは、**別途の有料AI API Keyを必要としません。** MultiAgentOSは利用可能なAIクライアント、GitHub、ローカルプロジェクトを連携し、実行権限をAgent Execution Runtimeに保持します。
 
 ## MultiAgentOSの役割
 
@@ -12,10 +12,10 @@ MultiAgentOSは**AI協調**と**実行権限**を分離します。
 
 - **ChatGPT Web** — 唯一のユーザーエントリーポイント
 - **ChatGPT Codex Connector** — リモートGitHub Repositoryへのアクセス
-- **VYRELON MCP / Secure Tunnel** — ローカルプロジェクトへの接続
+- **Agent Execution Runtime MCP / Secure Tunnel** — ローカルプロジェクトへの接続
 - **Orchestrator** — マルチエージェント協調の全体調整
 - **MultiAgentWorkflow** — Developer → Tester → Reviewer
-- **VYRELON** — 権限と実行の最終境界
+- **Agent Execution Runtime** — 権限と実行の最終境界
 
 Agentは意図・計画・結果を提供しますが、filesystem、process、patch、Gitの実行権限を直接所有しません。
 
@@ -30,7 +30,7 @@ Agentは意図・計画・結果を提供しますが、filesystem、process、p
                     +---------+---------+
                     |                   |
                     v                   v
-       ChatGPT Codex Connector       VYRELON
+       ChatGPT Codex Connector       Agent Execution Runtime
                     |                MCP / Secure Tunnel
                     v                   |
             GitHub Repository            v
@@ -53,7 +53,7 @@ Agentは意図・計画・結果を提供しますが、filesystem、process、p
                          Verification
                               |
                               v
-                           VYRELON
+                           Agent Execution Runtime
 ```
 
 ### 責任境界
@@ -62,11 +62,11 @@ Agentは意図・計画・結果を提供しますが、filesystem、process、p
 | --- | --- |
 | **ChatGPT Web** | ユーザーエントリーポイント |
 | **ChatGPT Codex Connector** | リモートGitHub Repositoryアクセス |
-| **VYRELON MCP / Secure Tunnel** | ローカルプロジェクト接続 |
+| **Agent Execution Runtime MCP / Secure Tunnel** | ローカルプロジェクト接続 |
 | **MultiAgentOS** | Agent契約、ルーティング、状態、オーケストレーション |
 | **Orchestrator** | 全体の協調調整 |
 | **MultiAgentWorkflow** | stage、handoff、review、reworkの意味論 |
-| **VYRELON** | 権限と実行の制御 |
+| **Agent Execution Runtime** | 権限と実行の制御 |
 
 ## マルチエージェントワークフロー
 
@@ -96,7 +96,7 @@ Completed / Failed
 
 `Orchestrator.run_workflow()` が安定した上位オーケストレーション入口です。`MultiAgentWorkflow` が具体的なstage、handoff、review、reworkの意味論を管理し、`MultiAgentRuntime` はアプリケーション/runtime adapterとしてこの境界を利用します。
 
-VYRELONはpermission、filesystem、patch、process、Git、verificationを担当する実行境界です。
+Agent Execution Runtimeはpermission、filesystem、patch、process、Git、verificationを担当する実行境界です。
 
 ## 接続モデル
 
@@ -118,18 +118,22 @@ GitHub Repository
 ChatGPT Web
     |
     v
-VYRELON MCP / Secure Tunnel
+Agent Execution Runtime MCP / Secure Tunnel
     |
     v
-VYRELON
+Agent Execution Runtime
     |
     v
 Local Project
 ```
 
-VYRELONには**1つのMCP Server**だけがあります。Secure MCP Tunnelと`tunnel-client`はtransport/connection infrastructureであり、別のMCP Serverではありません。
+Agent Execution Runtimeには**1つのMCP Server**だけがあります。Secure MCP Tunnelと`tunnel-client`はtransport/connection infrastructureであり、別のMCP Serverではありません。
 
-ローカルVYRELON MCP ServerはOpenAI、ChatGPT、tunnel、または有料AI API Keyなしでも独立して利用できます。
+ローカルAgent Execution Runtime MCP ServerはOpenAI、ChatGPT、tunnel、または有料AI API Keyなしでも独立して利用できます。
+
+## 用語体系
+
+**Agent Execution Runtime**をローカル実行・権限境界の正式な説明名称として使用します。既存のパッケージ、統合、プロトコル名で必要な場合にのみ `VYRELON` を互換/実装識別子として残します。
 
 ## Cost-Free baseline
 
@@ -147,7 +151,7 @@ VYRELONには**1つのMCP Server**だけがあります。Secure MCP Tunnelと`t
 
 ### 検証済みの基本機能
 
-- VYRELON MCP stdio initialize / tool discovery
+- Agent Execution Runtime MCP stdio initialize / tool discovery
 - filesystem READ / WRITE
 - `patch.apply`
 - `shell.run`
@@ -185,7 +189,7 @@ multiagentos run --path . --objective "run tests" -- python -m unittest discover
 multiagentos chat --path . --objective "inspect the current project"
 ```
 
-### VYRELON MCP Server起動
+### Agent Execution Runtime MCP Server起動
 
 ```bash
 multiagentos mcp serve --path .
@@ -217,10 +221,10 @@ GitHub ActionsでもリポジトリのCIを検証します。
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [VYRELON Connection Guide](docs/VYRELON_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](docs/VYRELON_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
-- [VYRELON GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
-- [VYRELON MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
+- [Agent Execution Runtime GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
 英語READMEをcanonical technical documentとして維持し、各locale READMEも同じアーキテクチャ、用語、Cost-Free基本パスを維持します。
 

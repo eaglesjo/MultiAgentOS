@@ -1,4 +1,4 @@
-# VYRELON Agent Runtime
+# Agent Execution Runtime
 
 The runtime layer is deliberately separate from orchestration and model selection.
 
@@ -13,7 +13,7 @@ The first local executor accepts list[str] / tuple[str, ...] commands and invoke
 
 ## Approval boundary
 
-Read/analyze/test operations can be permitted automatically. Git write, GitHub write, PR creation, push, and merge remain explicit policy boundaries. The policy object is an enforcement primitive; higher-level approval workflows will be added by VYRELON's orchestration layer.
+Read/analyze/test operations can be permitted automatically. Git write, GitHub write, PR creation, push, and merge remain explicit policy boundaries. The policy object is an enforcement primitive; higher-level approval workflows will be added by MultiAgentOS orchestration layer.
 
 ## Extension points
 
