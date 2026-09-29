@@ -433,7 +433,6 @@ class AgentExecutionRuntime:
             quota_snapshots=quota_snapshots,
             health_snapshots=health_snapshots,
             capability_registry=capability_registry,
-            event_sink=persist_runtime_event,
         )
 
     def discover_models(self, project_root: Path, *, refresh: bool = True):
@@ -633,6 +632,7 @@ class AgentExecutionRuntime:
             health_registry=health_registry,
             model_control=control_plane,
             capability_registry=capability_registry,
+            event_sink=persist_runtime_event,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,
