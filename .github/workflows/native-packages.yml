@@ -54,7 +54,7 @@ jobs:
         shell: pwsh
         run: |
           choco install nsis -y --no-progress
-          makensis /DAPP_VERSION=${{ steps.version.outputs.version }} packaging/windows/installer.nsi
+          & "C:\\Program Files (x86)\\NSIS\\makensis.exe" /DAPP_VERSION=${{ steps.version.outputs.version }} packaging/windows/installer.nsi
       - name: Build Ubuntu package
         if: matrix.platform == 'ubuntu'
         shell: bash
