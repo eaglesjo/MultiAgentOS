@@ -1,16 +1,16 @@
-# VYRELON MCP Architecture Decision
+# Agent Execution Runtime MCP Architecture Decision
 
 ## Status
 
 **Accepted — architecture is locked unless explicitly changed by a future architecture decision.**
 
-This document records the VYRELON MCP boundary so work can resume consistently after a conversation/session disconnect.
+This document records the Agent Execution Runtime MCP boundary so work can resume consistently after a conversation/session disconnect.
 
 ## Non-negotiable architecture
 
-**VYRELON has one MCP Server.**
+**The Agent Execution Runtime has one MCP Server.**
 
-The OpenAI Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure. They are **not a second VYRELON MCP Server** and must not be modeled as an additional MCP layer.
+The OpenAI Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure. They are **not a second Agent Execution Runtime MCP Server** and must not be modeled as an additional MCP layer.
 
 ### Local/free path
 
@@ -19,13 +19,13 @@ MCP Client
     |
     | MCP / stdio
     v
-VYRELON MCP Server
+Agent Execution Runtime MCP Server
     |
     v
 Local Project
 ```
 
-The VYRELON MCP Server must remain independently usable without OpenAI, ChatGPT, a ChatGPT subscription, a `tunnel_id`, or `tunnel-client`.
+The Agent Execution Runtime MCP Server must remain independently usable without OpenAI, ChatGPT, a ChatGPT subscription, a `tunnel_id`, or `tunnel-client`.
 
 ### OpenAI-connected local path
 
@@ -41,13 +41,13 @@ tunnel-client
     |
     | stdio or HTTP
     v
-VYRELON MCP Server
+Agent Execution Runtime MCP Server
     |
     v
 Local Project
 ```
 
-The same VYRELON MCP Server is used in both paths.
+The same Agent Execution Runtime MCP Server is used in both paths.
 
 ## Responsibilities
 
@@ -57,34 +57,34 @@ The same VYRELON MCP Server is used in both paths.
 | GitHub Connector / GitHub | Remote repository and GitHub resources |
 | Secure MCP Tunnel | Private OpenAI-to-local transport |
 | `tunnel-client` | Tunnel-side request forwarding |
-| **VYRELON MCP Server** | **Actual MCP server and local tool boundary** |
+| **Agent Execution Runtime MCP Server** | **Actual MCP server and local tool boundary** |
 | Local project | Filesystem, Git, process and project resources |
 
 ## Product principle
 
-The VYRELON MCP Server is a **free, standalone MCP capability**.
+The Agent Execution Runtime MCP Server is a **free, standalone MCP capability**.
 
-OpenAI Secure MCP Tunnel is an **optional integration path**, not a prerequisite for VYRELON MCP.
+OpenAI Secure MCP Tunnel is an **optional integration path**, not a prerequisite for Agent Execution Runtime MCP.
 
 Therefore:
 
-- Do not make OpenAI credentials mandatory for local VYRELON MCP.
+- Do not make OpenAI credentials mandatory for local Agent Execution Runtime MCP.
 - Do not duplicate MCP server implementations merely for tunnel usage.
 - Do not describe `tunnel-client` as an MCP server.
-- Do not make the VYRELON MCP core depend on ChatGPT or Codex.
+- Do not make the Agent Execution Runtime MCP core depend on ChatGPT or Codex.
 - Keep the MCP server transport-independent so other MCP clients can use it.
 
 ## Current implementation baseline
 
-The repository already contains the stdio VYRELON MCP server and its CI/install-smoke coverage.
+The repository already contains the stdio Agent Execution Runtime MCP server and its CI/install-smoke coverage.
 
 The next validation work is:
 
-1. Validate a real non-OpenAI MCP client against the free local VYRELON MCP Server.
+1. Validate a real non-OpenAI MCP client against the free local Agent Execution Runtime MCP Server.
 2. Validate `initialize`, `tools/list`, and `filesystem.read`.
 3. Validate write/process policy boundaries.
 4. Separately validate the optional OpenAI Secure MCP Tunnel path.
-5. Validate ChatGPT/Codex access through the tunnel without changing the VYRELON MCP Server itself.
+5. Validate ChatGPT/Codex access through the tunnel without changing the Agent Execution Runtime MCP Server itself.
 
 ## GitHub and local development model
 
@@ -97,7 +97,7 @@ ChatGPT / Codex
     |       |
     |       +--> repository / PR / issue / remote artifacts
     |
-    +--> VYRELON MCP
+    +--> Agent Execution Runtime MCP
             |
             +--> Secure MCP Tunnel (optional)
             |
@@ -114,10 +114,15 @@ GitHub access and local-machine access are therefore complementary, not intercha
 
 This architecture is considered **locked**. Any change to the following requires an explicit architecture decision:
 
-- the number of VYRELON MCP server boundaries;
+- the number of Agent Execution Runtime MCP server boundaries;
 - the role of Secure MCP Tunnel;
 - the role of `tunnel-client`;
-- the requirement that VYRELON MCP remain independently/free locally usable;
+- the requirement that Agent Execution Runtime MCP remain independently/free locally usable;
 - the separation between GitHub access and local-machine access.
 
-OpenAI Secure MCP Tunnel currently forwards MCP JSON-RPC requests from the OpenAI-hosted tunnel endpoint through `tunnel-client` to a private MCP server; the private MCP server remains inside the user's network. This confirms that the tunnel is a transport path rather than a second VYRELON MCP server.
+OpenAI Secure MCP Tunnel currently forwards MCP JSON-RPC requests from the OpenAI-hosted tunnel endpoint through `tunnel-client` to a private MCP server; the private MCP server remains inside the user's network. This confirms that the tunnel is a transport path rather than a second Agent Execution Runtime MCP server.
+
+
+## Terminology migration
+
+The architectural role formerly described as VYRELON is now called **Agent Execution Runtime**. Existing implementation identifiers may retain `VYRELON` for compatibility. See [Terminology](TERMINOLOGY.md).
