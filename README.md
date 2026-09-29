@@ -4,29 +4,24 @@
 
 MultiAgentOS is a local-first development orchestration platform built around **VYRELON**.
 
-The cost-free baseline does **not require a separate paid AI API key**. MultiAgentOS orchestrates an already-available AI client together with GitHub and a local project, while keeping execution authority inside VYRELON.
+The cost-free baseline does **not require a separate paid AI API key**. MultiAgentOS connects an already-available AI client with GitHub and a local project while keeping execution authority inside VYRELON.
 
-## What it provides
+## Why MultiAgentOS
 
-- **ChatGPT Web as the single user entry point**
-- **ChatGPT Codex Connector** for the remote GitHub repository path
-- **VYRELON MCP / Secure Tunnel** for the local project path
-- **Orchestrator** as the top-level multi-agent coordination boundary
-- **MultiAgentWorkflow** for concrete Developer → Tester → Reviewer execution
-- verification, handoff, review and bounded rework
-- policy-controlled filesystem, patch, process and Git capabilities
-- provider-neutral Agent and Model contracts
-- durable WorkUnit state and workflow checkpoints
+MultiAgentOS separates **AI collaboration** from **execution authority**.
 
-> **Cost-Free baseline**
->
-> No separate paid AI API key, separate agent API subscription, or MultiAgentOS SaaS subscription is required for the baseline runtime.
->
-> This describes the MultiAgentOS runtime cost model; AI-client/product plan limits still apply to the AI service you choose to use.
+- **ChatGPT Web** — single user-facing entry point
+- **ChatGPT Codex Connector** — remote GitHub repository access
+- **VYRELON MCP / Secure Tunnel** — local project access
+- **Orchestrator** — top-level multi-agent coordination
+- **MultiAgentWorkflow** — concrete Developer → Tester → Reviewer execution
+- **VYRELON** — permission and execution authority
+
+Agents provide intent, plans, and results. They do not directly own filesystem, process, patch, or Git execution authority.
 
 ## Architecture
 
-`text
+```text
                          Web Browser
                               |
                               v
@@ -51,7 +46,7 @@ The cost-free baseline does **not require a separate paid AI API key**. MultiAge
                               |
                               v
                     MultiAgentWorkflow
-                     /       |       \\
+                     /       |       \
                Developer   Tester   Reviewer
                               |
                               v
@@ -59,25 +54,23 @@ The cost-free baseline does **not require a separate paid AI API key**. MultiAge
                               |
                               v
                            VYRELON
-`
+```
 
-The boundaries are intentional:
+### Responsibility boundaries
 
-| Boundary | Responsibility |
+| Component | Responsibility |
 | --- | --- |
 | **ChatGPT Web** | User-facing entry point |
 | **ChatGPT Codex Connector** | Remote GitHub repository access |
 | **VYRELON MCP / Secure Tunnel** | Local project connection |
-| **MultiAgentOS** | Agent contracts, routing and orchestration |
+| **MultiAgentOS** | Agent contracts, routing, state, and orchestration |
 | **Orchestrator** | Overall collaboration coordination |
-| **MultiAgentWorkflow** | Stage, handoff, review and rework semantics |
+| **MultiAgentWorkflow** | Stage, handoff, review, and rework semantics |
 | **VYRELON** | Permission and execution authority |
-
-Agents provide intent, plans and results. They do not directly own filesystem, process or Git execution authority.
 
 ## Multi-agent workflow
 
-`text
+```text
 Request
   |
   v
@@ -99,19 +92,17 @@ Verification
   |
   v
 Completed / Failed
-`
+```
 
-`Orchestrator.run_workflow()` is the higher-level entry point. `MultiAgentWorkflow` owns the concrete stage and handoff semantics. `MultiAgentRuntime` is an application/runtime adapter and delegates execution to that orchestration boundary.
+`Orchestrator.run_workflow()` is the stable higher-level orchestration entry point. `MultiAgentWorkflow` owns the concrete stage, handoff, review, and rework semantics. `MultiAgentRuntime` remains an application/runtime adapter and delegates execution to the orchestration boundary.
 
-VYRELON remains the execution boundary: permissions, filesystem access, patch application, process execution, Git operations and verification are controlled there.
+VYRELON remains the execution boundary for permissions, filesystem access, patch application, process execution, Git operations, and verification.
 
 ## Connection model
 
-MultiAgentOS uses two complementary resource paths.
-
 ### Remote GitHub path
 
-`text
+```text
 ChatGPT Web
     |
     v
@@ -119,13 +110,13 @@ ChatGPT Codex Connector
     |
     v
 GitHub Repository
-`
+```
 
 This path addresses the remote repository and its durable GitHub state.
 
 ### Local project path
 
-`text
+```text
 ChatGPT Web
     |
     v
@@ -136,99 +127,80 @@ VYRELON
     |
     v
 Local Project
-`
+```
 
 VYRELON has **one MCP Server**. Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure, not another MCP server.
 
-The local VYRELON MCP server is independently usable without OpenAI, ChatGPT, a tunnel ID, or a paid AI API key.
+The local VYRELON MCP server can be used independently without OpenAI, ChatGPT, a tunnel, or a paid AI API key.
 
 ## Cost-Free baseline
 
-The baseline acceptance path is:
+The core positioning is simple:
 
-`text
-Install MultiAgentOS
-        |
-        v
-Initialize project
-        |
-        v
-VYRELON MCP
-        |
-        +--> filesystem READ
-        +--> filesystem WRITE / PATCH
-        +--> process / test execution
-        |
-        v
-AI client
-`
+> **No separate paid AI API key is required for the MultiAgentOS cost-free baseline.**
 
-The verified baseline includes:
+The baseline also does not require:
+
+- a separate agent API subscription
+- a MultiAgentOS SaaS subscription
+- a second MCP server for the tunnel path
+
+AI-client/product plan limits still apply to the AI service you choose to use. “Cost-Free” describes the MultiAgentOS runtime architecture; it does not mean unlimited AI-service usage.
+
+### Verified baseline capabilities
 
 - VYRELON MCP stdio initialization and tool discovery
-- filesystem WRITE/READ
+- filesystem READ / WRITE
 - `patch.apply`
 - `shell.run`
 - local MCP/runtime tests
-- local runtime health/readiness
+- runtime health/readiness
 - Secure MCP Tunnel readiness
 
 See [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md) for the verification record.
 
-## CLI
+## Quick start
 
-Install from PyPI:
+### Install
 
-`bash
+```bash
 python -m pip install multiagentos
-`
+```
 
-Initialize a project:
+### Initialize a project
 
-`bash
+```bash
 cd your-project
 multiagentos init . --component all
 multiagentos status .
-`
+```
 
-Run a local task through the VYRELON lifecycle:
+### Run a local task
 
-`bash
+```bash
 multiagentos run --path . --objective "run tests" -- python -m unittest discover -s tests -v
-`
+```
 
-Use the Chat Agent:
+### Start a Chat Agent session
 
-`bash
+```bash
 multiagentos chat --path . --objective "inspect the current project"
-`
+```
 
-Expose the local VYRELON MCP server:
+### Expose the VYRELON MCP server
 
-`bash
+```bash
 multiagentos mcp serve --path .
-`
+```
 
-For explicit local writes and process execution:
+For explicit filesystem writes and process execution:
 
-`bash
+```bash
 multiagentos mcp serve \
   --path . \
   --allow-write \
   --allow-process
-`
-
-Install the multi-agent component independently when needed:
-
-`bash
-multiagentos init . --component multi-agent
-`
-
-Initialize both VYRELON and multi-agent components:
-
-`bash
-multiagentos init . --component all
-`
+```
 
 ## Configuration
 
@@ -242,15 +214,15 @@ The initializer can install:
 - `agents.json` — multi-agent catalog
 - `state/` and session/checkpoint data as applicable
 
-Credentials and provider API keys are not written to the project configuration.
+Credentials and provider API keys are not written to project configuration.
 
 ## Validation
 
 Run the local test suite:
 
-`bash
+```bash
 python -m unittest discover -s tests -v
-`
+```
 
 GitHub Actions validates the repository through CI.
 
@@ -263,9 +235,7 @@ GitHub Actions validates the repository through CI.
 - [VYRELON GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
 - [VYRELON MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
-## Localization
-
-The English README is the canonical technical document. Localized READMEs preserve the same architecture, terminology and cost-free baseline.
+The English README is the canonical technical document. Localized READMEs preserve the same architecture, terminology, and cost-free baseline.
 
 **[한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)**
 
