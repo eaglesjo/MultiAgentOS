@@ -4,7 +4,7 @@ from core.chat_agent_bridge import (
     ChatAgentBridge,
     ChatAgentRequest,
     ChatAgentResponse,
-    VYRELON_AGENT_RULES,
+    AGENT_EXECUTION_RUNTIME_RULES,
 )
 from core.chat_agent_registry import default_chat_agents
 from core.contracts.agent import AgentContract
@@ -61,7 +61,7 @@ class TestChatAgentBridge(unittest.TestCase):
 
         self.assertEqual(work_unit.metadata["chat_agent_id"], "chatgpt")
         self.assertEqual(plan.steps[0].id, "inspect")
-        for rule in VYRELON_AGENT_RULES:
+        for rule in AGENT_EXECUTION_RUNTIME_RULES:
             self.assertIn(rule, adapter.instructions)
 
     def test_another_chat_agent_can_drive_the_bridge(self):
@@ -110,15 +110,15 @@ class TestChatAgentBridge(unittest.TestCase):
         )
         self.assertEqual(
             result.work_unit.metadata["execution_authority"],
-            "vyrelon",
+            "agent_execution_runtime",
         )
         self.assertEqual(
             result.work_unit.metadata["verification_evidence"],
-            ["VYRELON verifier accepted output"],
+            ["Agent Execution Runtime verifier accepted output"],
         )
         self.assertEqual(
             result.work_unit.metadata["review_evidence"],
-            ["VYRELON reviewer approved output"],
+            ["Agent Execution Runtime reviewer approved output"],
         )
 
     def test_chat_agent_can_enter_multi_agent_workflow(self):
@@ -156,7 +156,7 @@ class TestChatAgentBridge(unittest.TestCase):
         )
         self.assertEqual(
             result.work_unit.metadata["execution_authority"],
-            "vyrelon",
+            "agent_execution_runtime",
         )
 
 

@@ -58,7 +58,7 @@ class ProjectChatExecutionTests(unittest.TestCase):
                 module.VYRELONRuntime.project_chat_adapter = original
 
             self.assertEqual(result.work_unit.status.value, "completed")
-            self.assertEqual(result.work_unit.metadata["execution_authority"], "vyrelon")
+            self.assertEqual(result.work_unit.metadata["execution_authority"], "agent_execution_runtime")
             self.assertEqual(result.orchestration.delegation.assignment.model_id, "cloud-code")
 
 
