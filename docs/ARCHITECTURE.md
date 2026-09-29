@@ -1,8 +1,8 @@
-# VYRELON Architecture
+# MultiAgentOS Architecture
 
-VYRELON is local-first. The local runtime owns filesystem, shell/process and Git execution. GitHub is a first-class remote lifecycle through a provider-neutral gateway.
+The Agent Execution Runtime is local-first. The local runtime owns filesystem, shell/process and Git execution. GitHub is a first-class remote lifecycle through a provider-neutral gateway.
 
-User -> VYRELON -> Work Unit -> Agent Runtime
+User -> Agent Execution Runtime -> Work Unit -> Agent Runtime
                          |-> Local Runtime
                          |-> GitHub Gateway -> GitHub
 
