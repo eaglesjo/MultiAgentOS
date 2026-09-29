@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from core.contracts.agent_execution_runtime_runtime import ToolRequest
+from core.contracts.agent_execution_runtime import ToolRequest
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.policy import ExecutionPolicy
 from runtime.tool_calling import ToolRuntime
