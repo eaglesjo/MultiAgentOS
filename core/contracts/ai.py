@@ -1,4 +1,4 @@
-"""AI provider/model contracts used by VYRELON routing."""
+"""AI provider/model contracts used by AGENT_EXECUTION_RUNTIME routing."""
 
 from dataclasses import dataclass, field
 from typing import Protocol

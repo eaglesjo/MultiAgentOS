@@ -1,4 +1,4 @@
-"""Durable checkpoint state for resumable VYRELON workflows."""
+"""Durable checkpoint state for resumable AGENT_EXECUTION_RUNTIME workflows."""
 
 from dataclasses import dataclass, field
 

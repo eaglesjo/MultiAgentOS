@@ -1,4 +1,4 @@
-"""Provider-neutral IDE integration contracts for VYRELON."""
+"""Provider-neutral IDE integration contracts for AGENT_EXECUTION_RUNTIME."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ class IDEContext:
 
 @dataclass(frozen=True)
 class IDEEvent:
-    """Normalized event sent from an IDE adapter to VYRELON."""
+    """Normalized event sent from an IDE adapter to AGENT_EXECUTION_RUNTIME."""
 
     kind: IDEEventKind
     context: IDEContext
@@ -58,7 +58,7 @@ class IDEEvent:
 
 @dataclass(frozen=True)
 class IDEWorkRequest:
-    """Explicit user/IDE request that asks VYRELON to execute agent work."""
+    """Explicit user/IDE request that asks AGENT_EXECUTION_RUNTIME to execute agent work."""
 
     context: IDEContext
     objective: str
@@ -71,7 +71,7 @@ class IDEWorkRequest:
 
 @dataclass(frozen=True)
 class IDECommand:
-    """Normalized command sent from VYRELON to an IDE adapter."""
+    """Normalized command sent from AGENT_EXECUTION_RUNTIME to an IDE adapter."""
 
     kind: IDECommandKind
     arguments: dict[str, object] = field(default_factory=dict)
@@ -90,7 +90,7 @@ class IDECommandResult:
 
 
 class IDEAdapter(Protocol):
-    """Thin IDE-specific bridge; VYRELON never imports an IDE SDK."""
+    """Thin IDE-specific bridge; AGENT_EXECUTION_RUNTIME never imports an IDE SDK."""
 
     @property
     def kind(self) -> IDEKind:
@@ -107,7 +107,7 @@ class IDEAdapter(Protocol):
 
 
 class IDEEventSink(Protocol):
-    """Consumer for normalized IDE events flowing into VYRELON."""
+    """Consumer for normalized IDE events flowing into AGENT_EXECUTION_RUNTIME."""
 
     def handle(self, event: IDEEvent) -> object:
         ...

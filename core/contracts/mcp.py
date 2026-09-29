@@ -1,4 +1,4 @@
-"""Provider-neutral MCP runtime contracts for VYRELON."""
+"""Provider-neutral MCP runtime contracts for AGENT_EXECUTION_RUNTIME."""
 from __future__ import annotations
 from dataclasses import dataclass, field
 from core.contracts.agent_execution_runtime import ToolSideEffect

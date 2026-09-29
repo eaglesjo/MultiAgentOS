@@ -1,4 +1,4 @@
-"""Provider discovery contracts for VYRELON model intelligence."""
+"""Provider discovery contracts for AGENT_EXECUTION_RUNTIME model intelligence."""
 
 from __future__ import annotations
 
