@@ -111,6 +111,38 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(work.status, WorkStatus.PENDING)
         self.assertEqual(work.assigned_agents, [])
 
+    def test_run_workflow_is_the_multi_agent_orchestration_entry_point(self):
+        work = WorkUnit("wu-workflow", "ship feature")
+        agents = [
+            AgentContract("developer", "developer"),
+            AgentContract("tester", "tester"),
+            AgentContract("reviewer", "reviewer"),
+        ]
+        models = [ModelSpec("local", "local", frozenset())]
+        executor = RecordingExecutor()
+
+        result = Orchestrator().run_workflow(
+            work_unit=work,
+            stages=agents,
+            models=models,
+            executor=executor,
+        )
+
+        self.assertEqual(work.status, WorkStatus.COMPLETED)
+        self.assertEqual(
+            [stage.agent_id for stage in result.stages],
+            ["developer", "tester", "reviewer"],
+        )
+        self.assertEqual(
+            executor.calls,
+            [
+                ("developer", "local", "wu-workflow"),
+                ("tester", "local", "wu-workflow"),
+                ("reviewer", "local", "wu-workflow"),
+            ],
+        )
+        self.assertEqual(work.metadata["multi_agent_stage_count"], 3)
+
 
 if __name__ == "__main__":
     unittest.main()
