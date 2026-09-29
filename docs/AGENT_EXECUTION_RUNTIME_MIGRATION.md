@@ -11,12 +11,8 @@ This phase adds canonical Python import paths without breaking existing consumer
 - `core.contracts.agent_execution_runtime`
 - `runtime.mcp.agent_execution_runtime_server.AgentExecutionRuntimeMCPServer`
 
-The historical VYRELON APIs remain available as compatibility surfaces, backed by the canonical implementation:
+The runtime API migration is complete. The canonical Agent Execution Runtime APIs are now the supported implementation surface:
 
-- `runtime.VYRELONRuntime`
-- `runtime.vyrelon.VYRELONRuntime`
-- `core.contracts.vyrelon_runtime`
-- `runtime.mcp.server.VYRELONMCPServer`
 
 ## Migration rule
 
