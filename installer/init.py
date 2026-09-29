@@ -1,4 +1,4 @@
-"""Apply VYRELON project bootstrap files."""
+"""Apply Agent Execution Runtime project bootstrap files."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from runtime.chat_config import write_default_chat_config
 
 
 class ProjectInitializer:
-    COMPONENTS = frozenset({"vyrelon", "multi-agent", "all"})
+    COMPONENTS = frozenset({"agent-execution-runtime", "multi-agent", "all"})
 
     def apply(
         self,
@@ -42,11 +42,11 @@ class ProjectInitializer:
             encoding="utf-8",
         )
 
-        if component in {"vyrelon", "all"}:
+        if component in {"agent-execution-runtime", "all"}:
             write_default_execution_config(project_root)
             write_default_chat_config(project_root)
 
-        if component == "vyrelon":
+        if component == "agent-execution-runtime":
             return config
 
         agents = build_agent_catalog(tuple(result.profile_id for result in detections))
