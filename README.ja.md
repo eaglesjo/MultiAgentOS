@@ -221,9 +221,9 @@ GitHub ActionsでもリポジトリのCIを検証します。
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [Agent Execution Runtime Connection Guide](docs/Agent Execution Runtime_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](docs/VYRELON_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
-- [Agent Execution Runtime GitHub Connection](docs/Agent Execution Runtime_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
 - [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
 英語READMEをcanonical technical documentとして維持し、各locale READMEも同じアーキテクチャ、用語、Cost-Free基本パスを維持します。
