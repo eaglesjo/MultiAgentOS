@@ -95,13 +95,14 @@ class ToolCallingRuntime:
                 return ToolCallingExecution(response, model_id, round_number, tuple(results))
             round_results = []
             for call in calls:
+                if self.event_sink is not None:
+                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_CALL, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "tool_id": call["tool_id"], "arguments": call["arguments"], "round": round_number}))
                 result = self.tools.execute(
                     ToolRequest(call["tool_id"], call["arguments"], session_id=session.id if session else None, work_unit_id=work_unit_id, metadata={"call_id": call["call_id"]}),
                     granted_permissions=granted_permissions, approved=approved,
                 )
                 results.append(result)
                 if self.event_sink is not None:
-                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_CALL, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "tool_id": result.tool_id, "arguments": call["arguments"], "round": round_number}))
                     self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_RESULT, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error, "round": round_number}))
                 round_results.append({"call_id": call["call_id"], "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error})
             history.append({"tool_calls": calls, "tool_results": tuple(round_results)})

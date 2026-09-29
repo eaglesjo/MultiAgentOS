@@ -19,9 +19,19 @@ class ToolCallingRuntimeTests(unittest.TestCase):
         model = ModelSpec("fake", "fake-provider")
         tools = ToolRuntime()
         tools.register(ToolSpec("echo", "echo"), lambda r: r.arguments["value"])
-        runtime = ToolCallingRuntime(models={"fake":model}, adapters={"fake":adapter}, tools=tools)
+        events = []
+        runtime = ToolCallingRuntime(
+            models={"fake":model},
+            adapters={"fake":adapter},
+            tools=tools,
+            event_sink=events.append,
+        )
         result = runtime.execute(ModelRequest(prompt="hello"), model_id="fake")
         self.assertEqual(result.response.text, "hello")
+        self.assertEqual(
+            [event.kind.value for event in events],
+            ["request", "message", "tool_call", "tool_result", "request", "message", "completed"],
+        )
         self.assertEqual(result.rounds, 2)
         self.assertEqual(len(result.tool_results), 1)
     def test_policy_blocks_process_tool(self):
