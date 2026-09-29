@@ -4,21 +4,24 @@
 
 MultiAgentOS는 **VYRELON**을 중심으로 하는 로컬 우선 AI 개발 오케스트레이션 플랫폼입니다.
 
-Cost-free 기본 경로에서는 **별도의 유료 AI API Key가 필요하지 않습니다.** MultiAgentOS는 이미 사용할 수 있는 AI 클라이언트와 GitHub, 로컬 프로젝트를 연결하고 실행 권한은 VYRELON 안에 유지합니다.
+Cost-Free 기본 경로에서는 **별도의 유료 AI API Key가 필요하지 않습니다.** MultiAgentOS는 이미 사용할 수 있는 AI 클라이언트와 GitHub, 로컬 프로젝트를 연결하고 실행 권한은 VYRELON 안에 유지합니다.
 
-## 핵심 구조
+## MultiAgentOS가 하는 일
+
+MultiAgentOS는 **AI 협업**과 **실행 권한**을 분리합니다.
 
 - **ChatGPT Web** — 유일한 사용자 진입점
 - **ChatGPT Codex Connector** — 원격 GitHub Repository 연결
 - **VYRELON MCP / Secure Tunnel** — 로컬 프로젝트 연결
 - **Orchestrator** — 전체 멀티 에이전트 협업 조정
 - **MultiAgentWorkflow** — Developer → Tester → Reviewer 실행
-- Verification / Handoff / Review / Rework
-- VYRELON 기반 filesystem / patch / process / Git 실행 권한 제어
+- **VYRELON** — 권한 및 실행의 최종 경계
+
+Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, Git 실행 권한을 직접 소유하지 않습니다.
 
 ## 아키텍처
 
-`text
+```text
                          Web Browser
                               |
                               v
@@ -43,7 +46,7 @@ Cost-free 기본 경로에서는 **별도의 유료 AI API Key가 필요하지 �
                               |
                               v
                     MultiAgentWorkflow
-                     /       |       \\
+                     /       |       \
                Developer   Tester   Reviewer
                               |
                               v
@@ -51,13 +54,23 @@ Cost-free 기본 경로에서는 **별도의 유료 AI API Key가 필요하지 �
                               |
                               v
                            VYRELON
-`
+```
 
-Agent는 의도, 계획, 결과를 제공하지만 filesystem/process/Git 실행 권한을 직접 소유하지 않습니다.
+### 책임 경계
+
+| 구성 요소 | 책임 |
+| --- | --- |
+| **ChatGPT Web** | 사용자 진입점 |
+| **ChatGPT Codex Connector** | 원격 GitHub Repository 접근 |
+| **VYRELON MCP / Secure Tunnel** | 로컬 프로젝트 연결 |
+| **MultiAgentOS** | Agent 계약, 라우팅, 상태, 오케스트레이션 |
+| **Orchestrator** | 전체 협업 조정 |
+| **MultiAgentWorkflow** | 단계, handoff, review, rework 의미론 |
+| **VYRELON** | 권한 및 실행 제어 |
 
 ## 멀티 에이전트 워크플로
 
-`text
+```text
 Request
   |
   v
@@ -67,8 +80,11 @@ Orchestrator
 MultiAgentWorkflow
   |
   +--> Developer
+  |
   +--> Tester
+  |
   +--> Reviewer
+  |
   +--> 필요한 경우 Rework
   |
   v
@@ -76,15 +92,17 @@ Verification
   |
   v
 Completed / Failed
-`
+```
 
-`Orchestrator.run_workflow()`가 상위 오케스트레이션 진입점이며, `MultiAgentWorkflow`가 단계와 handoff/review/rework semantics를 담당합니다. `MultiAgentRuntime`은 애플리케이션/runtime adapter입니다.
+`Orchestrator.run_workflow()`가 안정적인 상위 오케스트레이션 진입점입니다. `MultiAgentWorkflow`가 구체적인 stage, handoff, review, rework 의미론을 담당하며, `MultiAgentRuntime`은 애플리케이션/runtime adapter로서 이 오케스트레이션 경계를 사용합니다.
+
+VYRELON은 permission, filesystem, patch, process, Git, verification을 담당하는 실행 경계로 유지됩니다.
 
 ## 연결 모델
 
-### GitHub 경로
+### 원격 GitHub 경로
 
-`text
+```text
 ChatGPT Web
     |
     v
@@ -92,11 +110,11 @@ ChatGPT Codex Connector
     |
     v
 GitHub Repository
-`
+```
 
 ### 로컬 프로젝트 경로
 
-`text
+```text
 ChatGPT Web
     |
     v
@@ -107,49 +125,102 @@ VYRELON
     |
     v
 Local Project
-`
+```
 
 VYRELON은 **하나의 MCP Server**만 사용합니다. Secure MCP Tunnel과 `tunnel-client`는 transport/connection infrastructure이며 별도의 MCP Server가 아닙니다.
 
+로컬 VYRELON MCP Server는 OpenAI, ChatGPT, tunnel 또는 유료 AI API Key 없이도 독립적으로 사용할 수 있습니다.
+
 ## Cost-Free 기본 경로
 
-기본 런타임에는 별도의 유료 AI API Key, 별도의 Agent API 구독, MultiAgentOS SaaS 구독이 필요하지 않습니다.
+핵심은 간단합니다.
 
-단, 실제 AI 서비스의 사용량 및 플랜 제한은 해당 서비스 정책을 따릅니다.
+> **MultiAgentOS Cost-Free 기본 경로에는 별도의 유료 AI API Key가 필요하지 않습니다.**
 
-검증된 기본 기능:
+또한 다음도 기본적으로 필요하지 않습니다.
+
+- 별도의 Agent API 구독
+- MultiAgentOS SaaS 구독
+- Tunnel을 위한 두 번째 MCP Server
+
+단, 실제 사용하는 AI 서비스의 플랜 및 사용량 제한은 그대로 적용됩니다. Cost-Free는 MultiAgentOS의 런타임 비용 구조를 의미하며 AI 서비스의 무제한 사용을 의미하지 않습니다.
+
+### 검증된 기본 기능
 
 - VYRELON MCP stdio 초기화 및 tool discovery
-- filesystem WRITE/READ
+- filesystem READ / WRITE
 - `patch.apply`
 - `shell.run`
 - local MCP/runtime tests
 - runtime health/readiness
 - Secure MCP Tunnel readiness
 
-자세한 내용은 [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)을 참고하세요.
+자세한 검증 기록은 [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)을 참고하세요.
 
-## 설치 및 CLI
+## 빠른 시작
 
-`bash
+### 설치
+
+```bash
 python -m pip install multiagentos
+```
 
+### 프로젝트 초기화
+
+```bash
 cd your-project
 multiagentos init . --component all
 multiagentos status .
+```
+
+### 로컬 작업 실행
+
+```bash
 multiagentos run --path . --objective "run tests" -- python -m unittest discover -s tests -v
+```
+
+### Chat Agent 세션 시작
+
+```bash
 multiagentos chat --path . --objective "inspect the current project"
+```
+
+### VYRELON MCP Server 실행
+
+```bash
 multiagentos mcp serve --path .
-`
+```
 
-쓰기와 process 실행이 필요한 경우:
+filesystem 쓰기와 process 실행이 필요한 경우:
 
-`bash
+```bash
 multiagentos mcp serve \
   --path . \
   --allow-write \
   --allow-process
-`
+```
+
+## 설정
+
+프로젝트 설정은 `.multiagentos/` 아래에 저장됩니다.
+
+초기화 과정에서 다음 파일을 설치할 수 있습니다.
+
+- `components.json` — 선택한 component
+- `execution.json` — execution Agent/Model 선택
+- `chat.json` — Chat Agent 선택
+- `agents.json` — multi-agent catalog
+- `state/` 및 필요한 session/checkpoint 데이터
+
+Credential과 provider API key는 프로젝트 설정에 기록하지 않습니다.
+
+## 검증
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+GitHub Actions에서도 저장소 CI를 검증합니다.
 
 ## 문서
 
@@ -160,6 +231,10 @@ multiagentos mcp serve \
 - [VYRELON GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
 - [VYRELON MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
-영문 README를 canonical technical document로 유지하며, locale README도 동일한 아키텍처와 기술적 의미를 유지합니다.
+영문 README를 canonical technical document로 유지하며, 각 locale README도 동일한 아키텍처, 용어, Cost-Free 기본 경로를 유지합니다.
 
-[English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
+**[English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)**
+
+## License
+
+[LICENSE](LICENSE)를 참고하세요.
