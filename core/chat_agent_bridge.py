@@ -1,4 +1,4 @@
-"""Provider-neutral bridge between a Chat Agent and the VYRELON runtime."""
+"""Provider-neutral bridge between a Chat Agent and the Agent Execution Runtime."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def build_agent_instructions(agent: ChatAgentContract) -> str:
 
 @dataclass(frozen=True)
 class ChatAgentRequest:
-    """A user task entering VYRELON through a Chat Agent."""
+    """A user task entering the Agent Execution Runtime through a Chat Agent."""
 
     objective: str
     inputs: dict[str, object] | None = None
@@ -89,11 +89,11 @@ class ChatAgentAdapter(Protocol):
         instructions: str,
         request: ChatAgentRequest,
     ) -> ChatAgentResponse:
-        """Return a structured response without directly owning VYRELON execution."""
+        """Return a structured response without directly owning Agent Execution Runtime execution."""
 
 
 class ChatAgentBridge:
-    """Translate Chat Agent turns into VYRELON WorkUnits, Plans, and execution."""
+    """Translate Chat Agent turns into Agent Execution Runtime WorkUnits, Plans, and execution."""
 
     def __init__(
         self,
