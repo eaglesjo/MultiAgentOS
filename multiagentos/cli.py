@@ -20,8 +20,6 @@ from runtime.process import ProcessRuntime
 from runtime.status import project_status
 from runtime import AgentExecutionRuntime
 
-# Legacy test/plugin compatibility name; canonical implementation is AgentExecutionRuntime.
-AgentExecutionRuntime = AgentExecutionRuntime
 from runtime.agent.process import ProcessAgentExecutor
 
 
