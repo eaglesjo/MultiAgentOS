@@ -18,7 +18,7 @@ class AgentExecutionRuntimeAPITests(unittest.TestCase):
         self.assertEqual(request.tool_id, "filesystem.read")
 
     def test_canonical_mcp_server_name_is_available(self):
-        self.assertTrue(issubclass(AgentExecutionRuntimeMCPServer, VYRELONMCPServer))
+        self.assertTrue(issubclass(VYRELONMCPServer, AgentExecutionRuntimeMCPServer))
 
     def test_canonical_mcp_server_identifies_itself(self):
         from pathlib import Path
