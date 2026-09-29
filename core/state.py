@@ -7,7 +7,7 @@ from pathlib import Path
 
 from core.contracts.checkpoint import WorkflowCheckpoint
 from core.contracts.work_unit import WorkStatus, WorkUnit
-from core.contracts.agent_execution_runtime_runtime import SessionSpec, SessionState
+from core.contracts.agent_execution_runtime import SessionSpec, SessionState
 
 
 class WorkStateStore:
