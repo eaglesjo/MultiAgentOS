@@ -8,7 +8,7 @@ from core.chat_agent_bridge import ChatAgentExecutionResult, ChatAgentRequest
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
-from runtime.vyrelon import VYRELONRuntime
+from runtime import AgentExecutionRuntime
 
 
 def execute_project_chat_request(
@@ -24,12 +24,12 @@ def execute_project_chat_request(
     preferred_model_ids: list[str] | None = None,
     routing_strategy: str = "pool",
 ) -> ChatAgentExecutionResult:
-    """Resolve the configured Chat Agent and execute through VYRELON.
+    """Resolve the configured Chat Agent and execute through the Agent Execution Runtime.
 
     The configured conversational provider supplies intent/plan; the supplied
-    VYRELON Agent/Model contracts own execution.
+    Agent Execution Runtime Agent/Model contracts own execution.
     """
-    runtime = VYRELONRuntime()
+    runtime = AgentExecutionRuntime()
     configured_agent, configured_model = runtime.project_chat_agent(project_root)
     adapter = runtime.project_chat_adapter(project_root)
 
@@ -67,8 +67,8 @@ def execute_project_multi_agent_chat_request(
     preferred_model_ids: list[str] | None = None,
     routing_strategy: str = "pool",
 ) -> ChatAgentExecutionResult:
-    """Enter the VYRELON multi-agent workflow from a project Chat Agent request."""
-    runtime = VYRELONRuntime()
+    """Enter the Agent Execution Runtime multi-agent workflow from a project Chat Agent request."""
+    runtime = AgentExecutionRuntime()
     configured_agent, configured_model = runtime.project_chat_agent(project_root)
     adapter = runtime.project_chat_adapter(project_root)
     selected_chat_agent_id = chat_agent_id or configured_agent.id
