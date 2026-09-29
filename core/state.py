@@ -7,7 +7,7 @@ from pathlib import Path
 
 from core.contracts.checkpoint import WorkflowCheckpoint
 from core.contracts.work_unit import WorkStatus, WorkUnit
-from core.contracts.agent_execution_runtime import SessionSpec, SessionState
+from core.contracts.agent_execution_runtime import RuntimeEvent, SessionSpec, SessionState
 
 
 class WorkStateStore:
@@ -106,6 +106,45 @@ class WorkStateStore:
         self.save_checkpoint(checkpoint)
         return checkpoint
 
+
+
+class RuntimeEventStore:
+    """Append-only durable journal for Agent Execution Runtime events."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self.root.mkdir(parents=True, exist_ok=True)
+
+    def append(self, event) -> Path:
+        if event.work_unit_id is None:
+            raise ValueError("runtime event requires work_unit_id")
+        path = self.root / f"{event.work_unit_id}.jsonl"
+        sequence = event.sequence if event.sequence is not None else self.next_sequence(event.work_unit_id)
+        payload = {
+            "kind": event.kind.value,
+            "session_id": event.session_id,
+            "work_unit_id": event.work_unit_id,
+            "payload": event.payload,
+            "sequence": sequence,
+            "metadata": event.metadata,
+        }
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
+        return path
+
+    def load(self, work_unit_id: str) -> tuple[dict[str, object], ...]:
+        path = self.root / f"{work_unit_id}.jsonl"
+        if not path.exists():
+            return ()
+        return tuple(
+            json.loads(line)
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        )
+
+    def next_sequence(self, work_unit_id: str) -> int:
+        events = self.load(work_unit_id)
+        return (int(events[-1].get("sequence") or 0) + 1) if events else 1
 
 
 class SessionStateStore:

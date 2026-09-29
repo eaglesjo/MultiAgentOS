@@ -2,7 +2,7 @@
 from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Callable, Protocol
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
 from core.contracts.agent_execution_runtime import RuntimeEvent, RuntimeEventKind, SessionSpec, ToolRequest, ToolResult, ToolSideEffect, ToolSpec
@@ -69,10 +69,10 @@ class ToolCallingExecution:
 
 class ToolCallingRuntime:
     """Execute normalized model tool calls until the model returns a final response."""
-    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8) -> None:
+    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None) -> None:
         if max_rounds < 1:
             raise ValueError("max_rounds must be at least 1")
-        self.models, self.adapters, self.tools, self.max_rounds = models, adapters, tools, max_rounds
+        self.models, self.adapters, self.tools, self.max_rounds, self.event_sink = models, adapters, tools, max_rounds, event_sink
 
     def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False) -> ToolCallingExecution:
         model = self.models[model_id]
@@ -83,9 +83,15 @@ class ToolCallingRuntime:
         current, results = request, []
         history: list[dict[str, object]] = []
         for round_number in range(1, self.max_rounds + 1):
+            if self.event_sink is not None:
+                self.event_sink(RuntimeEvent(kind=RuntimeEventKind.REQUEST, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"model_id": model_id, "round": round_number}))
             response = generate(model, current, self.tools.specs())
             calls = self._normalize_calls(response.metadata.get("tool_calls", ()))
+            if self.event_sink is not None:
+                self.event_sink(RuntimeEvent(kind=RuntimeEventKind.MESSAGE, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"model_id": model_id, "round": round_number, "tool_call_count": len(calls)}))
             if not calls:
+                if self.event_sink is not None:
+                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.COMPLETED, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"model_id": model_id, "rounds": round_number}))
                 return ToolCallingExecution(response, model_id, round_number, tuple(results))
             round_results = []
             for call in calls:
@@ -94,6 +100,9 @@ class ToolCallingRuntime:
                     granted_permissions=granted_permissions, approved=approved,
                 )
                 results.append(result)
+                if self.event_sink is not None:
+                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_CALL, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "tool_id": result.tool_id, "arguments": call["arguments"], "round": round_number}))
+                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_RESULT, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error, "round": round_number}))
                 round_results.append({"call_id": call["call_id"], "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error})
             history.append({"tool_calls": calls, "tool_results": tuple(round_results)})
             metadata = dict(current.metadata)

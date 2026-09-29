@@ -168,6 +168,42 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
             self.assertEqual(result["orchestration"].output.text, "ide-tool-complete")
             self.assertEqual(result["work_unit"].status, WorkStatus.COMPLETED)
             self.assertEqual(result["work_unit"].metadata["tool_rounds"], 2)
+    def test_configured_runtime_persists_execution_events(self):
+        class Adapter:
+            def generate_with_tools(self, model, request, tools):
+                return ModelResponse(text="evented", model_id=model.id)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "package.json").write_text(
+                '{"dependencies":{"react-native":"0.82.0"}}', encoding="utf-8"
+            )
+            config = root / ".multiagentos"
+            config.mkdir()
+            (config / "providers.json").write_text(json.dumps({
+                "providers": [{
+                    "id": "test-provider",
+                    "kind": "openai",
+                    "models": [{
+                        "id": "test-model",
+                        "capabilities": ["code", "react-native"],
+                        "metadata": {"adapter_id": "test-adapter"},
+                    }],
+                }]
+            }), encoding="utf-8")
+            runtime = AgentExecutionRuntime()
+            result = runtime.run_configured_work(
+                root,
+                objective="persist execution evidence",
+                agent_id="developer",
+                preferred_model_ids=["test-model"],
+                adapter_overrides={"test-adapter": Adapter()},
+            )
+            events = runtime.event_store(root).load(result.work_unit.id)
+            self.assertEqual([item["kind"] for item in events], ["request", "message", "completed"])
+            self.assertEqual([item["sequence"] for item in events], [1, 2, 3])
+            self.assertEqual(events[-1]["payload"]["rounds"], 1)
+
     def test_failed_work_can_be_resumed_from_persisted_state(self):
         class FailingAdapter:
             def generate(self, model, request):

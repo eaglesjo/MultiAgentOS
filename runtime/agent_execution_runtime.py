@@ -24,7 +24,7 @@ from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.agent_execution_runtime import SessionSpec, SessionState
 from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
-from core.state import SessionStateStore, WorkStateStore
+from core.state import RuntimeEventStore, SessionStateStore, WorkStateStore
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.routing import AIRouter, RoutingStrategy
 from profiles.detector import ProfileDetector
@@ -344,6 +344,9 @@ class AgentExecutionRuntime:
     def state_store(self, project_root: Path):
         return WorkStateStore(project_root / ".multiagentos" / "state")
 
+    def event_store(self, project_root: Path):
+        return RuntimeEventStore(Path(project_root) / ".multiagentos" / "events")
+
     def quota_store(self, project_root: Path):
         """Return the project-scoped persistent model quota store."""
         return QuotaStore(Path(project_root) / ".multiagentos" / "quota")
@@ -612,6 +615,11 @@ class AgentExecutionRuntime:
         if not apply_changes:
             tool_runtime.unregister("patch.apply")
 
+        event_store = self.event_store(project_root)
+
+        def persist_runtime_event(event):
+            event_store.append(event)
+
         executor = ModelAgentExecutor(
             adapters={
                 adapter_id: self.model_adapters.get(adapter_id)
@@ -624,6 +632,7 @@ class AgentExecutionRuntime:
             health_registry=health_registry,
             model_control=control_plane,
             capability_registry=capability_registry,
+            event_sink=persist_runtime_event,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,
