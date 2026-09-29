@@ -121,6 +121,44 @@ class TestChatAgentBridge(unittest.TestCase):
             ["VYRELON reviewer approved output"],
         )
 
+    def test_chat_agent_can_enter_multi_agent_workflow(self):
+        adapter = FakeChatAgent()
+        executor = RecordingExecutor()
+        stages = [
+            AgentContract("developer", "developer"),
+            AgentContract("tester", "tester"),
+            AgentContract("reviewer", "reviewer"),
+        ]
+        models = [ModelSpec("local", "local", frozenset())]
+        bridge = ChatAgentBridge(default_chat_agents())
+
+        result = bridge.execute_workflow(
+            ChatAgentRequest(objective="Implement and verify the requested change."),
+            adapter,
+            stages,
+            models,
+            executor,
+            verifier=PassingVerifier(),
+        )
+
+        self.assertEqual(result.work_unit.status, WorkStatus.COMPLETED)
+        self.assertEqual(
+            executor.calls,
+            [
+                ("developer", "local", result.work_unit.id),
+                ("tester", "local", result.work_unit.id),
+                ("reviewer", "local", result.work_unit.id),
+            ],
+        )
+        self.assertEqual(
+            result.work_unit.metadata["execution_agent_ids"],
+            ["developer", "tester", "reviewer"],
+        )
+        self.assertEqual(
+            result.work_unit.metadata["execution_authority"],
+            "vyrelon",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

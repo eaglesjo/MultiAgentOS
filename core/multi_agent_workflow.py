@@ -401,6 +401,10 @@ class MultiAgentWorkflow:
         executor: AgentExecutor,
         verifier: ResultVerifier | None = None,
         reviewers: list[tuple[AgentContract, object]] | None = None,
+        executors_by_agent: dict[str, AgentExecutor] | None = None,
+        preferred_model_ids_by_agent: dict[str, list[str]] | None = None,
+        verifiers_by_agent: dict[str, ResultVerifier] | None = None,
+        reviewers_by_agent: dict[str, ResultReviewer] | None = None,
         reviewer_runner=None,
         preferred_model_ids: list[str] | None = None,
         routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
@@ -421,6 +425,9 @@ class MultiAgentWorkflow:
         if resume_action is not None and start_stage_index != len(stages):
             raise ValueError("resume_action requires all execution stages to be complete")
 
+        if work_unit.status is WorkStatus.PENDING:
+            work_unit.transition(WorkStatus.EXECUTING)
+
         results: list[AgentStageResult] = []
         previous_agent: AgentContract | None = stages[start_stage_index - 1] if start_stage_index else None
         previous_output: object = resume_output if resume_action is not None else None
@@ -440,18 +447,46 @@ class MultiAgentWorkflow:
                 "artifacts": tuple(a.id for a in previous_artifacts),
                 "findings": previous_findings,
             }
+            stage_preferred_models = (preferred_model_ids_by_agent or {}).get(
+                agent.id, preferred_model_ids
+            )
             delegation = self.delegation.delegate(
                 work_unit,
                 agent,
                 models,
-                preferred_model_ids,
+                stage_preferred_models,
                 routing_strategy,
             )
-            output = executor.execute(
+            stage_executor = (executors_by_agent or {}).get(agent.id, executor)
+            output = stage_executor.execute(
                 agent=agent,
                 model_id=delegation.assignment.model_id,
                 work_unit=work_unit,
             )
+            stage_verifier = (verifiers_by_agent or {}).get(agent.id)
+            if stage_verifier is not None and not stage_verifier.verify(
+                work_unit=work_unit, output=output
+            ):
+                work_unit.metadata.setdefault("findings", []).append(
+                    f"stage verifier rejected output for agent: {agent.id}"
+                )
+                work_unit.transition(WorkStatus.FAILED)
+                raise RuntimeError(
+                    f"stage verification failed for agent: {agent.id}"
+                )
+            stage_reviewer = (reviewers_by_agent or {}).get(agent.id)
+            if stage_reviewer is not None:
+                decision = stage_reviewer.review(
+                    work_unit=work_unit, output=output
+                )
+                if not decision.approved:
+                    work_unit.metadata.setdefault("findings", []).append(
+                        decision.feedback or f"stage review rejected output for agent: {agent.id}"
+                    )
+                    work_unit.transition(WorkStatus.FAILED)
+                    raise RuntimeError(
+                        f"stage review rejected output for agent: {agent.id}"
+                    )
             work_unit.metadata["checkpoint_output"] = _checkpoint_value(output)
             work_unit.metadata["checkpoint_stage_index"] = stage_index + 1
             work_unit.metadata["checkpoint_next_action"] = (

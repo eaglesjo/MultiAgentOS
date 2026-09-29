@@ -20,7 +20,7 @@ class OrchestrationResult:
 
 
 class Orchestrator:
-    """Coordinate delegation, execution, verification, review, and completion."""
+    """Coordinate single-agent and multi-agent execution under VYRELON authority."""
 
     def __init__(self, lifecycle: LifecycleCoordinator | None = None) -> None:
         self.lifecycle = lifecycle or LifecycleCoordinator()
@@ -37,6 +37,7 @@ class Orchestrator:
         routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
         checkpoint: Callable[[WorkUnit], None] | None = None,
     ) -> OrchestrationResult:
+        """Run one WorkUnit through the standard single-agent lifecycle."""
         delegation, output = self.lifecycle.run(
             work_unit,
             agent,
@@ -49,3 +50,127 @@ class Orchestrator:
             checkpoint=checkpoint,
         )
         return OrchestrationResult(work_unit, delegation, output)
+
+    def run_workflow(
+        self,
+        *,
+        work_unit: WorkUnit,
+        stages: list[AgentContract],
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        verifier: ResultVerifier | None = None,
+        reviewers=None,
+        executors_by_agent: dict[str, AgentExecutor] | None = None,
+        preferred_model_ids_by_agent: dict[str, list[str]] | None = None,
+        verifiers_by_agent: dict[str, ResultVerifier] | None = None,
+        reviewers_by_agent: dict[str, ResultReviewer] | None = None,
+        reviewer_runner=None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
+        artifact_store=None,
+        checkpoint=None,
+        start_stage_index: int = 0,
+        resume_action: str | None = None,
+        resume_output: object = None,
+    ):
+        """Run a cooperative multi-agent workflow through the orchestrator.
+
+        MultiAgentWorkflow owns stage/handoff/review semantics; this method is
+        the stable orchestration entry point used by higher-level runtimes.
+        """
+        from core.multi_agent_workflow import MultiAgentWorkflow
+
+        return MultiAgentWorkflow().run(
+            work_unit=work_unit,
+            stages=stages,
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            reviewers=reviewers,
+            executors_by_agent=executors_by_agent,
+            preferred_model_ids_by_agent=preferred_model_ids_by_agent,
+            verifiers_by_agent=verifiers_by_agent,
+            reviewers_by_agent=reviewers_by_agent,
+            reviewer_runner=reviewer_runner,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            artifact_store=artifact_store,
+            checkpoint=checkpoint,
+            start_stage_index=start_stage_index,
+            resume_action=resume_action,
+            resume_output=resume_output,
+        )
+
+    def run_debug_retry_workflow(
+        self,
+        *,
+        work_unit: WorkUnit,
+        developer: AgentContract,
+        tester: AgentContract,
+        debugger: AgentContract,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        verifier: ResultVerifier,
+        max_retries: int = 2,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
+        artifact_store=None,
+    ):
+        """Run the bounded Developer -> Tester -> Debugger workflow."""
+        from core.multi_agent_workflow import MultiAgentWorkflow
+
+        return MultiAgentWorkflow().run_with_debug_retry(
+            work_unit=work_unit,
+            developer=developer,
+            tester=tester,
+            debugger=debugger,
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            max_retries=max_retries,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            artifact_store=artifact_store,
+        )
+
+    def run_review_rework_workflow(
+        self,
+        *,
+        work_unit: WorkUnit,
+        developer: AgentContract,
+        tester: AgentContract,
+        reviewers,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        reviewer_runner,
+        verifier: ResultVerifier | None = None,
+        max_review_cycles: int = 2,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
+        artifact_store=None,
+        checkpoint=None,
+        start_cycle: int = 0,
+        resume_action: str | None = None,
+        resume_output: object = None,
+    ):
+        """Run bounded reviewer feedback and rework through the orchestrator."""
+        from core.multi_agent_workflow import MultiAgentWorkflow
+
+        return MultiAgentWorkflow().run_with_review_rework(
+            work_unit=work_unit,
+            developer=developer,
+            tester=tester,
+            reviewers=reviewers,
+            models=models,
+            executor=executor,
+            reviewer_runner=reviewer_runner,
+            verifier=verifier,
+            max_review_cycles=max_review_cycles,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            artifact_store=artifact_store,
+            checkpoint=checkpoint,
+            start_cycle=start_cycle,
+            resume_action=resume_action,
+            resume_output=resume_output,
+        )

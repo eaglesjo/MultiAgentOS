@@ -1149,7 +1149,7 @@ class VYRELONRuntime:
     ) -> MultiAgentWorkflowResult:
         """Run a WorkUnit through multiple agents without transferring authority."""
         root = project_root or Path.cwd()
-        return self.multi_agent_workflow().run(
+        return self.orchestrator.run_workflow(
             work_unit=work_unit,
             stages=stages,
             models=models,

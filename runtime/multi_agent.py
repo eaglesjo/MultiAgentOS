@@ -58,74 +58,59 @@ class MultiAgentRuntime:
         verifiers: dict[str, ResultVerifier] | None = None,
         reviewers: dict[str, ResultReviewer] | None = None,
     ) -> MultiAgentResult:
+        """Adapt the legacy plan-shaped API onto the Orchestrator workflow boundary.
+
+        Planning and dependency validation stay here as an application adapter.
+        Execution orchestration is owned by Orchestrator -> MultiAgentWorkflow.
+        """
         step_list = list(steps)
         plan = self.planner.plan(work_unit, step_list)
         plan.validate()
         self._validate_agents(plan, agents, executors)
 
-        # The parent WorkUnit remains the durable coordination boundary.
-        work_unit.transition(WorkStatus.EXECUTING)
+        completed: set[str] = set()
+        for step in plan.steps:
+            missing = set(step.depends_on) - completed
+            if missing:
+                raise RuntimeError(
+                    f"Plan dependency not completed for {step.id}: {sorted(missing)}"
+                )
+            completed.add(step.id)
+
         store = WorkStateStore(project_root / ".multiagentos" / "state")
+        work_unit.transition(WorkStatus.EXECUTING)
         store.save(work_unit)
 
-        completed: set[str] = set()
-        results: list[OrchestrationResult] = []
-        handoffs: list[object] = []
+        stages = [agents[step.agent_id or ""] for step in plan.steps]
+        result = self.orchestrator.run_workflow(
+            work_unit=work_unit,
+            stages=stages,
+            models=models,
+            executor=executors[stages[0].id],
+            executors_by_agent=executors,
+            preferred_model_ids_by_agent=preferred_model_ids,
+            verifiers_by_agent=verifiers,
+            reviewers_by_agent=reviewers,
+        )
 
-        try:
-            for step in plan.steps:
-                missing = set(step.depends_on) - completed
-                if missing:
-                    raise RuntimeError(
-                        f"Plan dependency not completed for {step.id}: {sorted(missing)}"
-                    )
-                agent = agents[step.agent_id or ""]
-                child = WorkUnit(
-                    id=f"{work_unit.id}:{step.id}",
-                    objective=step.objective,
-                    inputs={"parent_work_unit_id": work_unit.id},
-                    metadata={"stage": step.id, "parent_work_unit_id": work_unit.id},
+        handoffs = tuple(
+            stage.handoff for stage in result.stages if stage.handoff is not None
+        )
+        store.save(work_unit)
+        return MultiAgentResult(
+            work_unit=work_unit,
+            plan=plan,
+            stages=tuple(
+                OrchestrationResult(
+                    work_unit=work_unit,
+                    delegation=stage.delegation,
+                    output=stage.output,
                 )
-                result = self.orchestrator.run(
-                    child,
-                    agent,
-                    models,
-                    executors[agent.id],
-                    preferred_model_ids=(preferred_model_ids or {}).get(agent.id),
-                    verifier=(verifiers or {}).get(agent.id),
-                    reviewer=(reviewers or {}).get(agent.id),
-                )
-                results.append(result)
-                completed.add(step.id)
-                work_unit.artifacts.append(f"workunit:{child.id}")
-                work_unit.metadata.setdefault("stage_outputs", {})[step.id] = str(result.output)
-                if len(results) > 1:
-                    previous = plan.steps[len(results) - 2]
-                    previous_agent = agents[previous.agent_id or ""]
-                    handoffs.append(
-                        self.handoffs.create(
-                            work_unit.id,
-                            previous_agent,
-                            agent,
-                            summary=f"Stage {previous.id} completed; handoff to {step.id}.",
-                            artifacts=[f"workunit:{child.id}"],
-                        )
-                    )
-                store.save(work_unit)
-
-            work_unit.transition(WorkStatus.VERIFYING)
-            work_unit.transition(WorkStatus.HANDOFF)
-            work_unit.transition(WorkStatus.COMPLETED)
-            store.save(work_unit)
-            return MultiAgentResult(
-                work_unit, plan, tuple(results), tuple(handoffs), True
-            )
-        except Exception as exc:
-            work_unit.metadata["multi_agent_error"] = str(exc)
-            if work_unit.status not in {WorkStatus.FAILED, WorkStatus.COMPLETED}:
-                work_unit.transition(WorkStatus.FAILED)
-            store.save(work_unit)
-            raise
+                for stage in result.stages
+            ),
+            handoffs=handoffs,
+            completed=work_unit.status is WorkStatus.COMPLETED,
+        )
 
     @staticmethod
     def _validate_agents(
