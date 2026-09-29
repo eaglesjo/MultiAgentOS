@@ -400,8 +400,6 @@ class AgentExecutionRuntime:
             return RecoveryPlan(work_unit_id, RecoveryDisposition.COMPLETED, reason="execution already completed")
         if state == "not_started":
             return RecoveryPlan(work_unit_id, RecoveryDisposition.NOT_STARTED, safe_to_resume=True, reason="no durable execution evidence exists")
-        if state == "failed":
-            return RecoveryPlan(work_unit_id, RecoveryDisposition.RESUME, safe_to_resume=True, reason="WorkUnit is failed and has no in-flight tool call")
         if pending:
             return RecoveryPlan(
                 work_unit_id,
@@ -409,7 +407,19 @@ class AgentExecutionRuntime:
                 pending_tool_call_ids=pending,
                 reason="a tool call was recorded without a durable result; replay may duplicate side effects",
             )
-        return RecoveryPlan(work_unit_id, RecoveryDisposition.RESUME, safe_to_resume=True, reason="durable execution ended between tool rounds")
+        if state == "failed":
+            return RecoveryPlan(
+                work_unit_id,
+                RecoveryDisposition.RESUME,
+                safe_to_resume=True,
+                reason="WorkUnit is failed and has no in-flight tool call",
+            )
+        return RecoveryPlan(
+            work_unit_id,
+            RecoveryDisposition.RESUME,
+            safe_to_resume=True,
+            reason="durable execution ended between tool rounds",
+        )
     
     def quota_store(self, project_root: Path):
         """Return the project-scoped persistent model quota store."""
@@ -848,9 +858,18 @@ class AgentExecutionRuntime:
         if not store.exists(work_unit_id):
             raise LookupError(f"Persisted WorkUnit not found: {work_unit_id}")
         work_unit = store.load(work_unit_id)
-        if work_unit.status not in {WorkStatus.FAILED, WorkStatus.PENDING}:
+        plan = self.recovery_plan(project_root, work_unit_id)
+        if plan.disposition == RecoveryDisposition.COMPLETED:
+            raise ValueError(f"WorkUnit {work_unit_id} is already completed")
+        if plan.requires_human_review:
+            pending = ", ".join(plan.pending_tool_call_ids)
+            raise RuntimeError(
+                f"WorkUnit {work_unit_id} requires human review before resume; "
+                f"pending tool calls: {pending}"
+            )
+        if not plan.safe_to_resume:
             raise ValueError(
-                f"WorkUnit {work_unit_id} is not resumable from {work_unit.status.value}"
+                f"WorkUnit {work_unit_id} is not safely resumable: {plan.reason}"
             )
         work_unit.metadata["resume_count"] = int(work_unit.metadata.get("resume_count", 0)) + 1
         work_unit.metadata["resumed"] = True
