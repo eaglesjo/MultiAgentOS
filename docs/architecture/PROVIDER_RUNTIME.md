@@ -1,6 +1,6 @@
 # Declarative Provider Runtime
 
-VYRELON keeps provider configuration separate from provider execution.
+Agent Execution Runtime keeps provider configuration separate from provider execution.
 
 Example:
 
