@@ -68,5 +68,4 @@ The Agent Execution Runtime owns the execution authority. Agents and orchestrati
 
 This terminology change is intentionally descriptive-first.
 
-Existing Python modules, package metadata, IDE namespaces, MCP configuration keys, and document filenames containing `vyrelon` are not renamed in this pass. They can be migrated separately after consumers and tests are identified.
 
