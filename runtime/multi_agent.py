@@ -68,6 +68,19 @@ class MultiAgentRuntime:
         plan.validate()
         self._validate_agents(plan, agents, executors)
 
+        completed: set[str] = set()
+        for step in plan.steps:
+            missing = set(step.depends_on) - completed
+            if missing:
+                raise RuntimeError(
+                    f"Plan dependency not completed for {step.id}: {sorted(missing)}"
+                )
+            completed.add(step.id)
+
+        store = WorkStateStore(project_root / ".multiagentos" / "state")
+        work_unit.transition(WorkStatus.EXECUTING)
+        store.save(work_unit)
+
         stages = [agents[step.agent_id or ""] for step in plan.steps]
         result = self.orchestrator.run_workflow(
             work_unit=work_unit,
@@ -83,6 +96,7 @@ class MultiAgentRuntime:
         handoffs = tuple(
             stage.handoff for stage in result.stages if stage.handoff is not None
         )
+        store.save(work_unit)
         return MultiAgentResult(
             work_unit=work_unit,
             plan=plan,
