@@ -347,6 +347,49 @@ class AgentExecutionRuntime:
     def event_store(self, project_root: Path):
         return RuntimeEventStore(Path(project_root) / ".multiagentos" / "events")
 
+    def load_runtime_events(self, project_root: Path, work_unit_id: str) -> tuple[dict[str, object], ...]:
+        """Load the durable runtime journal for a WorkUnit."""
+        return self.event_store(project_root).load(work_unit_id)
+
+    def inspect_work_unit(self, project_root: Path, work_unit_id: str) -> dict[str, object]:
+        """Return a deterministic execution snapshot derived from WorkUnit state and events."""
+        work_unit = self.state_store(project_root).load(work_unit_id)
+        events = self.event_store(project_root).load(work_unit_id)
+        pending_calls: list[str] = []
+        completed_calls: set[str] = set()
+        last_kind = events[-1]["kind"] if events else None
+        for event in events:
+            payload = event.get("payload")
+            if not isinstance(payload, dict):
+                continue
+            call_id = payload.get("call_id")
+            if not isinstance(call_id, str):
+                continue
+            if event.get("kind") == "tool_call":
+                pending_calls.append(call_id)
+            elif event.get("kind") == "tool_result":
+                completed_calls.add(call_id)
+        pending_calls = [call_id for call_id in pending_calls if call_id not in completed_calls]
+        if last_kind == "completed":
+            execution_state = "completed"
+        elif pending_calls:
+            execution_state = "tool_in_flight"
+        elif work_unit.status.value == "failed":
+            execution_state = "failed"
+        elif events:
+            execution_state = "executing"
+        else:
+            execution_state = "not_started"
+        return {
+            "work_unit_id": work_unit_id,
+            "work_status": work_unit.status.value,
+            "execution_state": execution_state,
+            "event_count": len(events),
+            "last_sequence": events[-1].get("sequence") if events else None,
+            "last_event_kind": last_kind,
+            "pending_tool_call_ids": tuple(pending_calls),
+        }
+
     def quota_store(self, project_root: Path):
         """Return the project-scoped persistent model quota store."""
         return QuotaStore(Path(project_root) / ".multiagentos" / "quota")
