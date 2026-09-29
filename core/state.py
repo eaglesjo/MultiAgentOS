@@ -119,12 +119,13 @@ class RuntimeEventStore:
         if event.work_unit_id is None:
             raise ValueError("runtime event requires work_unit_id")
         path = self.root / f"{event.work_unit_id}.jsonl"
+        sequence = event.sequence if event.sequence is not None else self.next_sequence(event.work_unit_id)
         payload = {
             "kind": event.kind.value,
             "session_id": event.session_id,
             "work_unit_id": event.work_unit_id,
             "payload": event.payload,
-            "sequence": event.sequence,
+            "sequence": sequence,
             "metadata": event.metadata,
         }
         with path.open("a", encoding="utf-8") as handle:
