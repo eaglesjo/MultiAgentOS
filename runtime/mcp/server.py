@@ -144,4 +144,12 @@ class AgentExecutionRuntimeMCPServer:
             if response is not None:
                 stdout.write(json.dumps(response, ensure_ascii=False) + "\n")
                 stdout.flush()
-\n\nclass VYRELONMCPServer(AgentExecutionRuntimeMCPServer):\n    """Legacy compatibility facade for the canonical MCP server."""\n\n    SERVER_NAME = "VYRELON"\n\n\n__all__ = ["AgentExecutionRuntimeMCPServer", "VYRELONMCPServer"]\n
+
+
+class VYRELONMCPServer(AgentExecutionRuntimeMCPServer):
+    """Legacy compatibility facade for the canonical MCP server."""
+
+    SERVER_NAME = "VYRELON"
+
+
+__all__ = ["AgentExecutionRuntimeMCPServer", "VYRELONMCPServer"]
