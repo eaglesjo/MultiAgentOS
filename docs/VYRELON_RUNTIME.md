@@ -1,6 +1,6 @@
 # Agent Execution Runtime Facade
 
-AgentExecutionRuntime is the project-facing runtime entry point.
+VYRELONRuntime is the project-facing runtime entry point.
 
 It unifies:
 - project profile inspection
