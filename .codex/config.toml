@@ -3,13 +3,17 @@
 # Codex must trust this project before loading .codex/config.toml.
 
 [mcp_servers.vyrelon]
-command = "/bin/sh"
+command = "/Volumes/DevFiles/GitHubProject/MultiAgentOS/.venv/bin/multiagentos"
 args = [
-  "-lc",
-  "exec .venv/bin/multiagentos mcp serve --path . --allow-write --allow-process"
+  "mcp",
+  "serve",
+  "--path",
+  "/Volumes/DevFiles/GitHubProject/MultiAgentOS",
+  "--allow-write",
+  "--allow-process",
 ]
-cwd = "."
+cwd = "/Volumes/DevFiles/GitHubProject/MultiAgentOS"
 enabled = true
 default_tools_approval_mode = "prompt"
-startup_timeout_sec = 10
+startup_timeout_sec = 15
 tool_timeout_sec = 120
