@@ -128,6 +128,7 @@ class AgentExecutionRuntime:
         executor: AgentExecutor | None = None,
         verifier: ResultVerifier | None = None,
         reviewer: ResultReviewer | None = None,
+        adapter_overrides: dict[str, object] | None = None,
     ) -> dict[str, object]:
         """Turn an explicit IDE work request into a persistent Agent/WorkUnit execution."""
         project_root = Path(request.context.project_root).resolve()
@@ -186,6 +187,7 @@ class AgentExecutionRuntime:
                 preferred_model_ids=list(request.model_ids) or None,
                 validation_commands=request.validation_commands,
                 apply_changes=request.apply_changes,
+                adapter_overrides=adapter_overrides,
             )
         output = result.output
         text = getattr(output, "text", str(output))
