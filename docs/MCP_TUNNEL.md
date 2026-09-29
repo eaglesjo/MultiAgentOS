@@ -1,6 +1,6 @@
 # Secure MCP Tunnel Setup
 
-This document describes the supported OpenAI Secure MCP Tunnel path and how it connects to the VYRELON stdio MCP server.
+This document describes the supported OpenAI Secure MCP Tunnel path and how it connects to the Agent Execution Runtime stdio MCP server.
 
 ## Architecture
 
@@ -21,7 +21,7 @@ tunnel-client
 multiagentos mcp serve --path /absolute/path/to/project
   |
   v
-VYRELON local tool policy
+Agent Execution Runtime local tool policy
 ```
 
 The tunnel client does not require an inbound port for the tunnel itself. It needs outbound HTTPS access to OpenAI and access to the configured MCP server.
@@ -31,12 +31,12 @@ The tunnel client does not require an inbound port for the tunnel itself. It nee
 - An OpenAI workspace with Secure MCP Tunnel access.
 - A `tunnel_id`.
 - A runtime API key with the permissions required to use the tunnel.
-- `tunnel-client` installed on the machine that can reach the local VYRELON project.
+- `tunnel-client` installed on the machine that can reach the local Agent Execution Runtime project.
 - MultiAgentOS installed so `multiagentos mcp serve` is available on `PATH`.
 
 The current OpenAI tunnel documentation distinguishes runtime credentials from tunnel administration credentials.
 
-## 1. Start VYRELON as an MCP server
+## 1. Start Agent Execution Runtime as an MCP server
 
 From the project you want to expose:
 
@@ -172,7 +172,7 @@ The plugin is an operator surface over native `tunnel-client runtimes ...` comma
 
 MultiAgentOS currently provides:
 
-- VYRELON stdio MCP server via `multiagentos mcp serve`
+- Agent Execution Runtime stdio MCP server via `multiagentos mcp serve`
 - read-only-by-default MCP tool exposure
 - explicit write/process opt-in flags
 - MCP contracts
@@ -191,7 +191,7 @@ MultiAgentOS does **not** provide:
 The supported implementation path is:
 
 ```
-ChatGPT -> Secure MCP Tunnel -> tunnel-client -> VYRELON MCP server
+ChatGPT -> Secure MCP Tunnel -> tunnel-client -> Agent Execution Runtime MCP server
 ```
 
 The final connector/runtime step remains environment-specific and must be validated with the user's actual OpenAI workspace, tunnel ID, permissions, and running `tunnel-client` process.
