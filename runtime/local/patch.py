@@ -1,4 +1,4 @@
-"""Patch application runtime for VYRELON."""
+"""Patch application runtime for AGENT_EXECUTION_RUNTIME."""
 
 from __future__ import annotations
 

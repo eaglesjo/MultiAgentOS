@@ -1,4 +1,4 @@
-"""Native HTTP provider adapters for VYRELON Tool Calling."""
+"""Native HTTP provider adapters for AGENT_EXECUTION_RUNTIME Tool Calling."""
 from __future__ import annotations
 import json
 import os
@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelRequest, ModelResponse
-from core.contracts.vyrelon_runtime import ToolSpec
+from core.contracts.agent_execution_runtime_runtime import ToolSpec
 from runtime.policy import ExecutionPolicy
 
 def _tool_name(name: str) -> str:

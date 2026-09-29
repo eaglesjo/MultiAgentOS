@@ -40,7 +40,7 @@ class MCPClient:
         session=MCPSession(str(uuid.uuid4()),self.server.id)
         self._stdio=_StdioSession(process,session)
         self._request_stdio("initialize",{"protocolVersion":session.protocol_version,"capabilities":{},
-                                         "clientInfo":{"name":"VYRELON","version":"0.1"}})
+                                         "clientInfo":{"name":"AGENT_EXECUTION_RUNTIME","version":"0.1"}})
         self._notify_stdio("notifications/initialized",{})
         return session
 
@@ -89,7 +89,7 @@ class MCPClient:
     def _connect_http(self)->MCPSession:
         if not self.server.endpoint: raise MCPError(f"MCP server has no endpoint: {self.server.id}")
         result,headers=self._http_request("initialize",{"protocolVersion":"2025-03-26","capabilities":{},
-                                                        "clientInfo":{"name":"VYRELON","version":"0.1"}})
+                                                        "clientInfo":{"name":"AGENT_EXECUTION_RUNTIME","version":"0.1"}})
         sid=headers.get("Mcp-Session-Id") or headers.get("mcp-session-id") or str(uuid.uuid4())
         self._http_session=MCPSession(sid,self.server.id,str(result.get("protocolVersion","2025-03-26")))
         self._http_request("notifications/initialized",{},notification=True)

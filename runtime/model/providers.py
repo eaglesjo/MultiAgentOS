@@ -1,4 +1,4 @@
-"""Registry for provider and model configuration used by VYRELON."""
+"""Registry for provider and model configuration used by AGENT_EXECUTION_RUNTIME."""
 
 from core.contracts.ai import AIProvider, ModelSpec
 
