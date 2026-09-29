@@ -289,3 +289,13 @@ Start here:
 The VYRELON MCP server has CI/install-smoke coverage, including a dependency-free stdio client validating initialize, tools/list, and filesystem.read. Real ChatGPT/Codex tunnel verification remains environment-specific because it requires an actual OpenAI workspace, tunnel, runtime API key, and running `tunnel-client`.
 
 Do not expose a local MCP endpoint directly to the public internet or commit GitHub/provider/tunnel credentials.
+
+## Installation
+
+Install the current release from PyPI:
+
+```bash
+python -m pip install multiagentos
+```
+
+Release automation uses PyPI Trusted Publishing from GitHub Actions; no long-lived PyPI API token is required.
