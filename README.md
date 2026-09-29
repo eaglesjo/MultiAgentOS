@@ -219,6 +219,23 @@ The GitHub connection does not expose the developer's local filesystem. The tunn
 
 ### ChatGPT + GitHub
 
+The ChatGPT GitHub connection is a separate user/account integration from the VYRELON MCP server. It must be installed and authorized before a ChatGPT conversation can access the selected repositories. OpenAI currently documents this as the GitHub app/connector; the exact menu label can vary by ChatGPT surface and plan.
+
+**Connect the GitHub app/connector:**
+
+1. Open **ChatGPT -> Settings -> Apps** (some surfaces may still show **Plugins**).
+2. Find **GitHub** and select **Connect/Install**.
+3. Complete the GitHub authorization flow.
+4. In GitHub, install/authorize the ChatGPT GitHub app and select the repositories ChatGPT is allowed to access.
+5. Return to ChatGPT and verify that the GitHub connection is available.
+6. In a conversation, reference the repository by name/URL and ask ChatGPT to inspect files, code, issues, or documentation.
+
+For a newly created or private repository, repository access may need to be explicitly selected in the GitHub app settings. Organization owners may also need to approve the app. OpenAI notes that repository availability can take a few minutes after authorization.
+
+The standard ChatGPT GitHub app is a **repository-reading/search connection**; it does not by itself provide GitHub write/push/PR mutation authority. Code generation and direct GitHub writes are handled by supported Codex workflows. VYRELON's local filesystem/process capabilities are a separate execution boundary.
+
+Reference: [OpenAI — Connecting GitHub to ChatGPT](https://help.openai.com/en/articles/11145903-connecting-github-to-chatgpt).
+
 Connect GitHub in ChatGPT Settings -> Apps, authorize the GitHub application, and grant access to the repositories that should be available.
 
 Then use a normal ChatGPT conversation with the repository URL and development task. Repository-level `AGENTS.md` / Agent Skills guidance can be used alongside VYRELON; the project's own engineering instructions remain authoritative.
