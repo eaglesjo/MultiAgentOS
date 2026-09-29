@@ -179,13 +179,13 @@ class AgentExecutionRuntime:
                 reviewer=reviewer,
             )
         else:
-            result = self.run_persistent_registered_model(
-                project_root=project_root,
-                work_unit=work_unit,
-                agent=agent,
+            result = self.run_configured_work(
+                project_root,
+                objective=request.objective,
+                agent_id=request.agent_id,
                 preferred_model_ids=list(request.model_ids) or None,
-                verifier=effective_verifier,
-                reviewer=reviewer,
+                validation_commands=request.validation_commands,
+                apply_changes=request.apply_changes,
             )
         output = result.output
         text = getattr(output, "text", str(output))
