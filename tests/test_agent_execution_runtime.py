@@ -4,7 +4,7 @@ from pathlib import Path
 
 from core.contracts import AgentContract, ModelSpec, WorkUnit, WorkStatus
 from core.contracts.model_runtime import ModelResponse
-from core.contracts.ide import IDEKind
+from core.contracts.ide import IDEKind, IDEContext, IDEWorkRequest
 import json
 from runtime import AgentExecutionRuntime as AgentExecutionRuntime
 
@@ -136,6 +136,38 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
             self.assertEqual(result.work_unit.metadata["runtime"], "configured-model")
             self.assertEqual(result.work_unit.metadata["agent_id"], "developer")
 
+    def test_ide_work_uses_persistent_tool_calling_runtime(self):
+        class Adapter:
+            def __init__(self):
+                self.calls = 0
+
+            def generate_with_tools(self, model, request, tools):
+                self.calls += 1
+                if self.calls == 1:
+                    if "filesystem.read" not in {tool.id for tool in tools}:
+                        raise AssertionError("filesystem.read tool was not registered")
+                    return ModelResponse(text="", model_id=model.id, metadata={"tool_calls": [{"id": "read-1", "name": "filesystem.read", "arguments": {"path": "README.md"}}]})
+                return ModelResponse(text="ide-tool-complete", model_id=model.id)
+
+        class IDEAdapter:
+            kind = IDEKind.VS_CODE
+            def capabilities(self): return frozenset({"show_message"})
+            def context(self): raise AssertionError("context should not be requested")
+            def execute(self, command): return type("Result", (), {"ok": True, "output": command.arguments})()
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "package.json").write_text('{"dependencies":{"react-native":"0.82.0"}}', encoding="utf-8")
+            (root / "README.md").write_text("runtime integration", encoding="utf-8")
+            config = root / ".multiagentos"
+            config.mkdir()
+            (config / "providers.json").write_text(json.dumps({"providers": [{"id": "test-provider", "kind": "openai", "models": [{"id": "test-model", "capabilities": ["code", "react-native"], "metadata": {"adapter_id": "test-adapter"}}]}]}), encoding="utf-8")
+            runtime = AgentExecutionRuntime()
+            runtime.ide.register(IDEAdapter())
+            result = runtime.submit_ide_work(IDEWorkRequest(context=IDEContext(kind=IDEKind.VS_CODE, project_root=str(root)), objective="inspect the project", agent_id="developer", model_ids=("test-model",)), adapter_overrides={"test-adapter": Adapter()})
+            self.assertEqual(result["orchestration"].output.text, "ide-tool-complete")
+            self.assertEqual(result["work_unit"].status, WorkStatus.COMPLETED)
+            self.assertEqual(result["work_unit"].metadata["tool_rounds"], 2)
     def test_failed_work_can_be_resumed_from_persisted_state(self):
         class FailingAdapter:
             def generate(self, model, request):
