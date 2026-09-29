@@ -138,7 +138,7 @@ OK
 
 ## ChatGPT Web and Secure MCP Tunnel
 
-OpenAI Secure MCP Tunnel can connect a private/local MCP server to supported OpenAI products without exposing the local MCP server to the public Internet.
+OpenAI documents that a private/local MCP server can be connected to supported OpenAI products through Secure MCP Tunnel without exposing the local server directly to the public Internet. citeturn0search10
 
 The current MultiAgentOS local runtime uses:
 
@@ -149,15 +149,47 @@ The current MultiAgentOS local runtime uses:
 
 The tunnel/runtime layer is therefore independent of the AI model provider.
 
-### ChatGPT Web limitation
+### Current ChatGPT Web plan boundary
 
-ChatGPT developer-mode MCP access is controlled separately from Platform tunnel permissions. A tunnel can be healthy and ready while the current ChatGPT account/workspace cannot create or use a write-capable custom MCP app.
+OpenAI's current documentation states that **full MCP support, including modify/write actions, is available for ChatGPT Business and Enterprise/Edu**, while Pro users can connect custom MCPs with read/fetch permissions in developer mode. The documentation also states that ChatGPT connects to remote MCP servers and that a private/developer-machine server can use Secure MCP Tunnel. citeturn0search10
 
 Therefore:
 
-> A healthy `vyrelon-local` runtime does not by itself prove that this ChatGPT session can write to the local filesystem.
+> A healthy `vyrelon-local` tunnel does not by itself prove that the current ChatGPT account can perform local filesystem writes.
 
-The ChatGPT Web path must be treated as an integration target, not as the only implementation of COSTFREE-001.
+For the current Free account, ChatGPT Web write-capable custom MCP validation is **not an executable acceptance test** under the documented plan boundary. This is a ChatGPT product/plan limitation, not a VYRELON runtime failure. The tunnel and local MCP implementation remain valid integration targets.
+
+### ChatGPT Web verification state
+
+| Layer | State |
+|---|---|
+| VYRELON local MCP | **PASS** |
+| Secure MCP Tunnel | **READY** |
+| Remote MCP architecture | **SUPPORTED** |
+| ChatGPT Web full MCP/write on current Free account | **BLOCKED BY PLAN** |
+| ChatGPT Web write verification | **DEFERRED** |
+
+When a workspace with full MCP/developer-mode write access is available, the remaining validation is:
+
+```
+ChatGPT Web
+   |
+   v
+Custom MCP app
+   |
+   v
+Secure MCP Tunnel
+   |
+   v
+VYRELON
+   |
+   +-- filesystem.read
+   +-- filesystem.write
+   +-- patch.apply
+   +-- shell.run
+```
+
+OpenAI's documented setup path is to create a custom app in Developer Mode, configure the MCP endpoint, scan its tools, and test the exposed actions; write/modify actions may require confirmation. citeturn0search10
 
 ## Verification states
 
@@ -173,8 +205,9 @@ The ChatGPT Web path must be treated as an integration target, not as the only i
 - End-to-end COSTFREE-001 filesystem WRITE/READ path.
 - End-to-end COSTFREE-001 PATCH path.
 - Local MCP/runtime tests: 10/10 PASS.
+- Secure MCP Tunnel runtime is ready for remote MCP integration.
 
-### Pending
+### Deferred / plan-gated
 
 - ChatGPT Web custom MCP discovery against `vyrelon-local`.
 - ChatGPT Web local filesystem WRITE through VYRELON.
@@ -201,6 +234,8 @@ as interchangeable AI-side choices while keeping the project workspace and VYREL
 - Runtime test result: `10/10 PASS`
 - VYRELON `patch.apply`: `returncode 0`, empty stderr
 - VYRELON readback: `after`
+- Secure MCP Tunnel: **READY**
 - Paid AI API key required for these verified runtime capabilities: **No**
+- ChatGPT Web full MCP/write verification: **plan-gated; not required for the core COSTFREE-001 runtime acceptance**
 
 Keep AI-client invocations minimal: once a capability is verified, reuse the evidence rather than spending additional client quota on redundant smoke tests.
