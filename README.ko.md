@@ -230,9 +230,9 @@ GitHub Actions에서도 저장소 CI를 검증합니다.
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [Agent Execution Runtime Connection Guide](docs/Agent Execution Runtime_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](docs/VYRELON_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
-- [Agent Execution Runtime GitHub Connection](docs/Agent Execution Runtime_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
 - [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
 영문 README를 canonical technical document로 유지하며, 각 locale README도 동일한 아키텍처, 용어, Cost-Free 기본 경로를 유지합니다.
