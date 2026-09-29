@@ -1,7 +1,6 @@
 import io
 import json
 import subprocess
-from importlib.metadata import version
 import tempfile
 import unittest
 from pathlib import Path
@@ -110,7 +109,7 @@ class VYRELONMCPServerTests(unittest.TestCase):
             self.assertEqual(responses[0]["result"]["serverInfo"]["name"], "VYRELON")
             self.assertEqual(
                 responses[0]["result"]["serverInfo"]["version"],
-                version("multiagentos"),
+                "0.0.0-dev",
             )
             self.assertIn("filesystem.read", {x["name"] for x in responses[1]["result"]["tools"]})
             self.assertEqual(responses[2]["result"]["content"][0]["text"], "hello")
