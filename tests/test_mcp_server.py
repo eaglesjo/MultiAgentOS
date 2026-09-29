@@ -6,10 +6,14 @@ import unittest
 from pathlib import Path
 
 from multiagentos.cli import build_parser
-from runtime.mcp.server import VYRELONMCPServer
+from runtime.mcp.server import AgentExecutionRuntimeMCPServer, VYRELONMCPServer
 
 
 class VYRELONMCPServerTests(unittest.TestCase):
+    def test_canonical_server_is_concrete_implementation(self):
+        self.assertEqual(AgentExecutionRuntimeMCPServer.__name__, "AgentExecutionRuntimeMCPServer")
+        self.assertTrue(issubclass(VYRELONMCPServer, AgentExecutionRuntimeMCPServer))
+
     def test_cli_exposes_mcp_serve(self):
         args = build_parser().parse_args(["mcp", "serve", "--path", "/tmp/project"])
         self.assertEqual(args.command, "mcp")
