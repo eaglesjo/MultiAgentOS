@@ -18,7 +18,7 @@ from profiles.detector import ProfileDetector
 from runtime.github_probe import probe
 from runtime.process import ProcessRuntime
 from runtime.status import project_status
-from runtime.vyrelon import VYRELONRuntime
+from runtime import AgentExecutionRuntime
 from runtime.agent.process import ProcessAgentExecutor
 
 
@@ -34,7 +34,7 @@ def _execution_contracts(root: Path, agent_override: str | None, model_override:
 def _chat_request(root: Path, objective: str, session_id: str | None) -> ChatAgentRequest:
     inputs: dict[str, object] = {}
     if session_id:
-        store = VYRELONRuntime().chat_session_store(root)
+        store = AgentExecutionRuntime().chat_session_store(root)
         try:
             session = store.load(session_id)
         except FileNotFoundError:
