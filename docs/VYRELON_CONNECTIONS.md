@@ -1,10 +1,10 @@
-# VYRELON Connection Guide
+# Agent Execution Runtime Connection Guide
 
-VYRELON is installed locally and keeps the actual MCP capability on the developer's machine. GitHub and local-machine access are complementary connection paths.
+The Agent Execution Runtime is installed locally and keeps the actual MCP capability on the developer's machine. GitHub and local-machine access are complementary connection paths.
 
 ## Connection model
 
-VYRELON exposes one MCP server:
+The Agent Execution Runtime exposes one MCP server:
 
 ```text
                          +--> GitHub Connector / GitHub
@@ -17,18 +17,18 @@ ChatGPT / Codex -------+
                             tunnel-client
                                   |
                                   v
-                         VYRELON MCP Server
+                         Agent Execution Runtime MCP Server
                                   |
                                   v
                              Local Project
 ```
 
-The GitHub path and the local VYRELON path solve different problems:
+The GitHub path and the local Agent Execution Runtime path solve different problems:
 
-| Path | Purpose | Requires local VYRELON |
+| Path | Purpose | Requires local Agent Execution Runtime |
 | --- | --- | --- |
 | ChatGPT -> GitHub | Repository inspection, issues, PRs and durable GitHub state | No |
-| Local VYRELON -> GitHub | Local VYRELON GitHub operations through `gh` | Yes |
+| Local Agent Execution Runtime -> GitHub | Local Agent Execution Runtime GitHub operations through `gh` | Yes |
 | MCP Client -> VYRELON | Free/local MCP access | Yes |
 | ChatGPT/Codex -> Secure MCP Tunnel -> VYRELON | Remote access to the developer's private/local project | Yes |
 | Codex -> tunnel-mcp -> tunnel-client | Tunnel runtime operations | Yes, when targeting VYRELON |
@@ -52,7 +52,7 @@ multiagentos init . --component all
 multiagentos status .
 ```
 
-VYRELON remains usable without OpenAI, ChatGPT, a `tunnel_id`, or `tunnel-client`.
+The Agent Execution Runtime remains usable without OpenAI, ChatGPT, a `tunnel_id`, or `tunnel-client`.
 
 ## 2. Connect GitHub
 
@@ -69,7 +69,7 @@ This path gives ChatGPT access to the selected remote repository. It does not gi
 
 For repositories using repository-level agent guidance, VYRELON can coexist with an `AGENTS.md` / Agent Skills workflow. The repository's own engineering instructions remain authoritative.
 
-### B. Local VYRELON GitHub connection
+### B. Local Agent Execution Runtime GitHub connection
 
 VYRELON can also operate against GitHub from the developer's machine:
 
@@ -77,7 +77,7 @@ VYRELON can also operate against GitHub from the developer's machine:
 Local Project
     |
     v
-VYRELON GitHub Runtime
+Agent Execution Runtime GitHub Runtime
     |
     v
 gh auth
@@ -105,7 +105,7 @@ MCP Client
     |
     | MCP / stdio
     v
-VYRELON MCP Server
+Agent Execution Runtime MCP Server
     |
     v
 Local Project
@@ -130,7 +130,7 @@ multiagentos mcp serve \
 
 No OpenAI account or tunnel is required for this path.
 
-## 4. Connect ChatGPT to the local VYRELON project
+## 4. Connect ChatGPT to the local Agent Execution Runtime project
 
 When ChatGPT needs access to the local/private project, use Secure MCP Tunnel:
 
@@ -146,7 +146,7 @@ tunnel-client
       |
       | stdio
       v
-VYRELON MCP Server
+Agent Execution Runtime MCP Server
       |
       v
 Local Project
@@ -174,7 +174,7 @@ See [Secure MCP Tunnel Setup](MCP_TUNNEL.md) for tunnel creation, credential sep
 
 ## 5. Codex
 
-The OpenAI `tunnel-client` distribution includes a thin Codex operator surface for tunnel management. It does not replace VYRELON's MCP server.
+The OpenAI `tunnel-client` distribution includes a thin Codex operator surface for tunnel management. It does not replace the Agent Execution Runtime MCP server.
 
 ```bash
 tunnel-client codex plugin install
@@ -186,7 +186,7 @@ For a persistent local runtime, use the native `tunnel-client runtimes ...` comm
 
 ## 6. Recommended developer workflow
 
-For a developer using both GitHub and local VYRELON:
+For a developer using both GitHub and local Agent Execution Runtime:
 
 ```text
                          GitHub
@@ -205,13 +205,13 @@ Secure MCP Tunnel (optional)
  tunnel-client
        |
        v
- VYRELON MCP Server
+ Agent Execution Runtime MCP Server
        |
        v
  Local Project
 ```
 
-Use GitHub for durable repository state and remote repository collaboration. Use VYRELON for the local project, local execution, and local MCP capabilities.
+Use GitHub for durable repository state and remote repository collaboration. Use the Agent Execution Runtime for the local project, local execution, and local MCP capabilities.
 
 The two paths should not be collapsed into a single server or credential boundary.
 
@@ -226,6 +226,6 @@ Keep credentials outside repositories:
 
 ## References
 
-- [VYRELON MCP Architecture](ARCHITECTURE_DECISIONS.md)
+- [Agent Execution Runtime MCP Architecture](ARCHITECTURE_DECISIONS.md)
 - [Secure MCP Tunnel Setup](MCP_TUNNEL.md)
-- [VYRELON GitHub Connection](VYRELON_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime GitHub Connection](VYRELON_GITHUB_CONNECTION.md)

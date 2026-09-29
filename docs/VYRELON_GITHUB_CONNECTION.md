@@ -1,6 +1,6 @@
-# VYRELON GitHub Connection
+# Agent Execution Runtime GitHub Connection
 
-VYRELON owns the **local** GitHub integration path.
+The Agent Execution Runtime owns the **local** GitHub integration path.
 
 ```
 VYRELON
@@ -12,7 +12,7 @@ VYRELON
 
 MultiAgentOS has no Luna-specific repository, agent, or runtime dependency.
 
-## Local VYRELON authentication
+## Local Agent Execution Runtime authentication
 
 Authentication remains external to the repository. Authenticate the host with:
 
@@ -35,13 +35,13 @@ multiagentos github probe eaglesjo/MultiAgentOS
 
 Expected output includes the repository, default branch, and current default-branch SHA.
 
-GitHub writes remain disabled unless the VYRELON execution policy enables `github.write`. Pull-request creation and merge additionally require explicit approval.
+GitHub writes remain disabled unless the Agent Execution Runtime execution policy enables `github.write`. Pull-request creation and merge additionally require explicit approval.
 
 ## This is separate from ChatGPT's GitHub app
 
 There are two different GitHub access paths:
 
-### Local VYRELON
+### Local Agent Execution Runtime
 
 ```
 your machine
@@ -50,7 +50,7 @@ your machine
   -> GitHub
 ```
 
-This gives the local VYRELON runtime access to the repositories allowed by the authenticated GitHub CLI account.
+This gives the local Agent Execution Runtime runtime access to the repositories allowed by the authenticated GitHub CLI account.
 
 ### ChatGPT
 
@@ -61,7 +61,7 @@ ChatGPT
   -> repositories explicitly selected by the user
 ```
 
-Connecting GitHub to ChatGPT does **not** grant ChatGPT access to your local filesystem or local VYRELON process.
+Connecting GitHub to ChatGPT does **not** grant ChatGPT access to your local filesystem or local Agent Execution Runtime process.
 
 OpenAI's current GitHub connection flow sends the user to GitHub to install/authorize the ChatGPT app and select the repositories it may access.
 
