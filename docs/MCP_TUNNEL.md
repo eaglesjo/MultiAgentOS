@@ -83,7 +83,7 @@ For a local stdio MCP server, the current managed-runtime path is:
 
 ```bash
 tunnel-client runtimes connect \
-  --alias vyrelon-local \
+  --alias agent-execution-runtime-local \
   --tunnel-id tunnel_... \
   --runtime-api-key env:CONTROL_PLANE_API_KEY \
   --mcp-command "multiagentos mcp serve --path /absolute/path/to/project"
@@ -92,7 +92,7 @@ tunnel-client runtimes connect \
 Validate the managed runtime:
 
 ```bash
-tunnel-client runtimes status vyrelon-local --json
+tunnel-client runtimes status agent-execution-runtime-local --json
 ```
 
 For older/profile-based tunnel-client workflows, the equivalent foreground setup is:
@@ -100,12 +100,12 @@ For older/profile-based tunnel-client workflows, the equivalent foreground setup
 ```bash
 tunnel-client init \
   --sample sample_mcp_stdio_local \
-  --profile vyrelon-local \
+  --profile agent-execution-runtime-local \
   --tunnel-id tunnel_... \
   --mcp-command "multiagentos mcp serve --path /absolute/path/to/project"
 
-tunnel-client doctor --profile vyrelon-local --explain
-tunnel-client run --profile vyrelon-local
+tunnel-client doctor --profile agent-execution-runtime-local --explain
+tunnel-client run --profile agent-execution-runtime-local
 ```
 
 Keep the tunnel runtime/process running while ChatGPT uses the connector.
