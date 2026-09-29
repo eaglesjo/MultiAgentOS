@@ -2,9 +2,9 @@
 
 > **Cost-Free Multi-Agent Development Orchestration**
 
-MultiAgentOS 是以 **VYRELON** 为核心的 Local-first AI 开发编排平台。
+MultiAgentOS 是以 **Agent Execution Runtime** 为核心的 Local-first AI 开发编排平台。
 
-Cost-Free 基线**不要求单独的付费 AI API Key**。MultiAgentOS 将可用的 AI 客户端、GitHub 和本地项目连接起来，同时把执行权限保持在 VYRELON 内部。
+Cost-Free 基线**不要求单独的付费 AI API Key**。MultiAgentOS 将可用的 AI 客户端、GitHub 和本地项目连接起来，同时把执行权限保持在 Agent Execution Runtime 内部。
 
 ## MultiAgentOS 做什么
 
@@ -12,10 +12,10 @@ MultiAgentOS 将**AI 协作**与**执行权限**分离。
 
 - **ChatGPT Web** — 唯一的用户入口
 - **ChatGPT Codex Connector** — 远程 GitHub Repository 访问
-- **VYRELON MCP / Secure Tunnel** — 本地项目连接
+- **Agent Execution Runtime MCP / Secure Tunnel** — 本地项目连接
 - **Orchestrator** — 多智能体协作的顶层协调
 - **MultiAgentWorkflow** — Developer → Tester → Reviewer
-- **VYRELON** — 权限与执行的最终边界
+- **Agent Execution Runtime** — 权限与执行的最终边界
 
 Agent 提供意图、计划和结果，但不直接拥有 filesystem、process、patch、Git 的执行权限。
 
@@ -30,7 +30,7 @@ Agent 提供意图、计划和结果，但不直接拥有 filesystem、process�
                     +---------+---------+
                     |                   |
                     v                   v
-       ChatGPT Codex Connector       VYRELON
+       ChatGPT Codex Connector       Agent Execution Runtime
                     |                MCP / Secure Tunnel
                     v                   |
             GitHub Repository            v
@@ -53,7 +53,7 @@ Agent 提供意图、计划和结果，但不直接拥有 filesystem、process�
                          Verification
                               |
                               v
-                           VYRELON
+                           Agent Execution Runtime
 ```
 
 ### 责任边界
@@ -62,11 +62,11 @@ Agent 提供意图、计划和结果，但不直接拥有 filesystem、process�
 | --- | --- |
 | **ChatGPT Web** | 用户入口 |
 | **ChatGPT Codex Connector** | 远程 GitHub Repository 访问 |
-| **VYRELON MCP / Secure Tunnel** | 本地项目连接 |
+| **Agent Execution Runtime MCP / Secure Tunnel** | 本地项目连接 |
 | **MultiAgentOS** | Agent 合约、路由、状态和编排 |
 | **Orchestrator** | 整体协作协调 |
 | **MultiAgentWorkflow** | stage、handoff、review、rework 语义 |
-| **VYRELON** | 权限与执行控制 |
+| **Agent Execution Runtime** | 权限与执行控制 |
 
 ## 多智能体工作流
 
@@ -96,7 +96,7 @@ Completed / Failed
 
 `Orchestrator.run_workflow()` 是稳定的上层编排入口。`MultiAgentWorkflow` 负责具体的 stage、handoff、review 和 rework 语义，`MultiAgentRuntime` 则作为 application/runtime adapter 使用这一编排边界。
 
-VYRELON 是 permission、filesystem、patch、process、Git 和 verification 的执行边界。
+Agent Execution Runtime 是 permission、filesystem、patch、process、Git 和 verification 的执行边界。
 
 ## 连接模型
 
@@ -118,18 +118,18 @@ GitHub Repository
 ChatGPT Web
     |
     v
-VYRELON MCP / Secure Tunnel
+Agent Execution Runtime MCP / Secure Tunnel
     |
     v
-VYRELON
+Agent Execution Runtime
     |
     v
 Local Project
 ```
 
-VYRELON **只有一个 MCP Server**。Secure MCP Tunnel 和 `tunnel-client` 是 transport/connection infrastructure，而不是第二个 MCP Server。
+Agent Execution Runtime **只有一个 MCP Server**。Secure MCP Tunnel 和 `tunnel-client` 是 transport/connection infrastructure，而不是第二个 MCP Server。
 
-本地 VYRELON MCP Server 可以在没有 OpenAI、ChatGPT、tunnel 或付费 AI API Key 的情况下独立使用。
+本地 Agent Execution Runtime MCP Server 可以在没有 OpenAI、ChatGPT、tunnel 或付费 AI API Key 的情况下独立使用。
 
 ## Cost-Free 基线
 
@@ -147,7 +147,7 @@ VYRELON **只有一个 MCP Server**。Secure MCP Tunnel 和 `tunnel-client` 是 
 
 ### 已验证的基础能力
 
-- VYRELON MCP stdio 初始化和 tool discovery
+- Agent Execution Runtime MCP stdio 初始化和 tool discovery
 - filesystem READ / WRITE
 - `patch.apply`
 - `shell.run`
@@ -185,7 +185,7 @@ multiagentos run --path . --objective "run tests" -- python -m unittest discover
 multiagentos chat --path . --objective "inspect the current project"
 ```
 
-### 启动 VYRELON MCP Server
+### 启动 Agent Execution Runtime MCP Server
 
 ```bash
 multiagentos mcp serve --path .
@@ -217,10 +217,10 @@ GitHub Actions 也会通过 CI 验证仓库。
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [VYRELON Connection Guide](docs/VYRELON_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](docs/Agent Execution Runtime_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
-- [VYRELON GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
-- [VYRELON MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
+- [Agent Execution Runtime GitHub Connection](docs/Agent Execution Runtime_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
 英文 README 是 canonical technical document。各 locale README 保持相同的架构、术语和 Cost-Free 基线。
 
