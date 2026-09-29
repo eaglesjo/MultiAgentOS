@@ -50,6 +50,8 @@ class VYRELONMCPServerTests(unittest.TestCase):
             root = Path(temp)
             target = root / "README.md"
             target.write_text("before\n", encoding="utf-8")
+            import subprocess
+            subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
             server = VYRELONMCPServer(root, allow_write=True)
 
             patch = """diff --git a/README.md b/README.md
