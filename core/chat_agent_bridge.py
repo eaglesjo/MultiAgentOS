@@ -223,6 +223,81 @@ class ChatAgentBridge:
         )
 
     
+    def execute_workflow(
+        self,
+        request: ChatAgentRequest,
+        adapter: ChatAgentAdapter,
+        stages: list[AgentContract],
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        *,
+        chat_agent_id: str | None = None,
+        preferred_model_ids: list[str] | None = None,
+        verifier: ResultVerifier | None = None,
+        reviewers=None,
+        reviewer_runner=None,
+        routing_strategy="pool",
+        state_store: WorkStateStore | None = None,
+        session_store: ChatSessionStore | None = None,
+        session: ChatSession | None = None,
+        artifact_store=None,
+        checkpoint=None,
+    ):
+        """Enter the concrete multi-agent workflow from a Chat Agent turn."""
+        work_unit, plan, response = self.request(request, adapter, agent_id=chat_agent_id)
+        if not stages:
+            raise ValueError("chat multi-agent execution requires at least one stage")
+        work_unit.metadata["execution_authority"] = "vyrelon"
+        work_unit.metadata["execution_agent_ids"] = [stage.id for stage in stages]
+        if session is not None:
+            session.work_unit_id = work_unit.id
+            session.metadata["execution_agent_ids"] = [stage.id for stage in stages]
+            if session_store is not None:
+                session_store.save(session)
+
+        def persist_checkpoint(unit: WorkUnit, **kwargs) -> None:
+            if checkpoint is not None:
+                checkpoint(unit, **kwargs)
+                return
+            if state_store is not None:
+                state_store.checkpoint(
+                    unit,
+                    workflow="multi_agent_chat",
+                    stage=str(kwargs.get("stage", unit.status.value)),
+                    sequence=int(kwargs.get("sequence", 0)),
+                    next_action=kwargs.get("next_action"),
+                    agent_ids=tuple(stage.id for stage in stages),
+                    model_ids=tuple(model.id for model in models),
+                    resumable=kwargs.get("next_action") is not None,
+                )
+
+        orchestration = self.orchestrator.run_workflow(
+            work_unit=work_unit,
+            stages=stages,
+            models=models,
+            executor=executor,
+            verifier=verifier,
+            reviewers=reviewers,
+            reviewer_runner=reviewer_runner,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            artifact_store=artifact_store,
+            checkpoint=persist_checkpoint,
+        )
+        work_unit.metadata["execution_evidence"] = [
+            "VYRELON multi-agent workflow completed",
+            "execution authority: vyrelon",
+            f"agents: {', '.join(stage.id for stage in stages)}",
+        ]
+        if verifier is not None:
+            work_unit.metadata["verification_evidence"] = ["VYRELON verifier accepted output"]
+        return ChatAgentExecutionResult(
+            work_unit=work_unit,
+            plan=plan,
+            chat_response=response,
+            orchestration=orchestration,
+        )
+
     def resume(
         self,
         work_unit_id: str,
