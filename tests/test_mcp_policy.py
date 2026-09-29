@@ -5,7 +5,7 @@ from unittest import TestCase
 
 from core.contracts.agent import AgentContract
 from core.contracts.mcp import MCPTool, MCPToolProfile
-from core.contracts.agent_execution_runtime_runtime import ToolSideEffect
+from core.contracts.agent_execution_runtime import ToolSideEffect
 from runtime.mcp.policy import MCPAuthorizationError, MCPToolAuthorizer, MCPToolProfileLoader
 
 
