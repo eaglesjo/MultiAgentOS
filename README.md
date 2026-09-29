@@ -1,6 +1,16 @@
 # MultiAgentOS
 
-MultiAgentOS is the foundation for VYRELON, a local-first, GitHub-native multi-agent development orchestrator.
+**A local-first, GitHub-native foundation for AI-assisted software development.**
+
+MultiAgentOS is the foundation for **VYRELON**, a policy-controlled runtime and multi-agent development orchestrator. It connects conversational AI to a real project without collapsing the boundary between a remote GitHub repository and the developer's local workspace.
+
+> **Two connections, two responsibilities**
+> - **GitHub URL → ChatGPT GitHub app → remote GitHub repository**
+> - **VYRELON → MCP / Secure MCP Tunnel → local project**
+>
+> These paths are complementary. The GitHub connection identifies and exposes the authorized remote repository; VYRELON provides the local filesystem, patch, process, and runtime boundary.
+
+**Documentation:** [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
 ## Core principles
 
@@ -294,6 +304,28 @@ Start here:
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md) — OpenAI tunnel/runtime setup and troubleshooting.
 - [VYRELON GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md) — local GitHub authentication and policy.
 - [VYRELON MCP Architecture](docs/ARCHITECTURE_DECISIONS.md) — locked one-server architecture.
+
+### GitHub vs VYRELON: the important boundary
+
+Think of the connection model as two parallel paths:
+
+```text
+                  MultiAgentOS
+                       |
+            +----------+----------+
+            |                     |
+            v                     v
+       GitHub path            Local path
+            |                     |
+ GitHub URL / repository      VYRELON runtime
+            |                     |
+ ChatGPT GitHub app       MCP / Secure MCP Tunnel
+            |                     |
+            v                     v
+   Remote GitHub repo         Local project
+```
+
+**GitHub URL is not a local-project connection.** It tells the ChatGPT GitHub integration which remote repository is relevant. **VYRELON is the local execution boundary.** It is the path that can expose local filesystem access, `patch.apply`, process execution, and other explicitly permitted runtime capabilities.
 
 ### Integration boundaries
 
