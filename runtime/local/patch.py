@@ -12,7 +12,12 @@ from runtime.process import ProcessResult, ProcessRuntime
 
 
 class PatchRuntime:
-    """Apply/check unified patches through the local Git patch engine."""
+    """Apply/check unified patches through the local Git patch engine.
+
+    Patch application is a filesystem-write capability. The Git subprocess used
+    internally is an implementation detail and must not grant or require the
+    separately exposed shell/process capability.
+    """
 
     def __init__(
         self,
@@ -23,7 +28,16 @@ class PatchRuntime:
         self.policy = policy or ExecutionPolicy()
         self.paths = paths or PathPolicy()
         self.permissions = LocalPermissionGuard(self.policy)
-        self.process = process or ProcessRuntime(self.policy)
+        self.process = process or ProcessRuntime(
+            ExecutionPolicy(
+                allow_process=True,
+                allow_filesystem_write=self.policy.allow_filesystem_write,
+                allow_git_write=self.policy.allow_git_write,
+                allow_network=self.policy.allow_network,
+                allow_github_write=self.policy.allow_github_write,
+                require_approval_for=self.policy.require_approval_for,
+            )
+        )
 
     def _with_patch_file(self, patch_text: str, callback):
         with tempfile.NamedTemporaryFile(
