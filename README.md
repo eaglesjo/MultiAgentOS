@@ -2,9 +2,9 @@
 
 > **Cost-Free Multi-Agent Development Orchestration**
 
-MultiAgentOS is a local-first development orchestration platform built around **VYRELON**.
+MultiAgentOS is a local-first development orchestration platform built around **Agent Execution Runtime**.
 
-The cost-free baseline does **not require a separate paid AI API key**. MultiAgentOS connects an already-available AI client with GitHub and a local project while keeping execution authority inside VYRELON.
+The cost-free baseline does **not require a separate paid AI API key**. MultiAgentOS connects an already-available AI client with GitHub and a local project while keeping execution authority inside Agent Execution Runtime.
 
 ## Why MultiAgentOS
 
@@ -12,10 +12,10 @@ MultiAgentOS separates **AI collaboration** from **execution authority**.
 
 - **ChatGPT Web** — single user-facing entry point
 - **ChatGPT Codex Connector** — remote GitHub repository access
-- **VYRELON MCP / Secure Tunnel** — local project access
+- **Agent Execution Runtime MCP / Secure Tunnel** — local project access
 - **Orchestrator** — top-level multi-agent coordination
 - **MultiAgentWorkflow** — concrete Developer → Tester → Reviewer execution
-- **VYRELON** — permission and execution authority
+- **Agent Execution Runtime** — permission and execution authority
 
 Agents provide intent, plans, and results. They do not directly own filesystem, process, patch, or Git execution authority.
 
@@ -30,7 +30,7 @@ Agents provide intent, plans, and results. They do not directly own filesystem, 
                     +---------+---------+
                     |                   |
                     v                   v
-       ChatGPT Codex Connector       VYRELON
+       ChatGPT Codex Connector       Agent Execution Runtime
                     |                MCP / Secure Tunnel
                     v                   |
             GitHub Repository            v
@@ -53,7 +53,7 @@ Agents provide intent, plans, and results. They do not directly own filesystem, 
                          Verification
                               |
                               v
-                           VYRELON
+                           Agent Execution Runtime
 ```
 
 ### Responsibility boundaries
@@ -62,11 +62,11 @@ Agents provide intent, plans, and results. They do not directly own filesystem, 
 | --- | --- |
 | **ChatGPT Web** | User-facing entry point |
 | **ChatGPT Codex Connector** | Remote GitHub repository access |
-| **VYRELON MCP / Secure Tunnel** | Local project connection |
+| **Agent Execution Runtime MCP / Secure Tunnel** | Local project connection |
 | **MultiAgentOS** | Agent contracts, routing, state, and orchestration |
 | **Orchestrator** | Overall collaboration coordination |
 | **MultiAgentWorkflow** | Stage, handoff, review, and rework semantics |
-| **VYRELON** | Permission and execution authority |
+| **Agent Execution Runtime** | Permission and execution authority |
 
 ## Multi-agent workflow
 
@@ -96,7 +96,7 @@ Completed / Failed
 
 `Orchestrator.run_workflow()` is the stable higher-level orchestration entry point. `MultiAgentWorkflow` owns the concrete stage, handoff, review, and rework semantics. `MultiAgentRuntime` remains an application/runtime adapter and delegates execution to the orchestration boundary.
 
-VYRELON remains the execution boundary for permissions, filesystem access, patch application, process execution, Git operations, and verification.
+Agent Execution Runtime remains the execution boundary for permissions, filesystem access, patch application, process execution, Git operations, and verification.
 
 ## Connection model
 
@@ -120,18 +120,22 @@ This path addresses the remote repository and its durable GitHub state.
 ChatGPT Web
     |
     v
-VYRELON MCP / Secure Tunnel
+Agent Execution Runtime MCP / Secure Tunnel
     |
     v
-VYRELON
+Agent Execution Runtime
     |
     v
 Local Project
 ```
 
-VYRELON has **one MCP Server**. Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure, not another MCP server.
+Agent Execution Runtime has **one MCP Server**. Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure, not another MCP server.
 
-The local VYRELON MCP server can be used independently without OpenAI, ChatGPT, a tunnel, or a paid AI API key.
+The local Agent Execution Runtime MCP server can be used independently without OpenAI, ChatGPT, a tunnel, or a paid AI API key.
+
+## Terminology
+
+**Agent Execution Runtime** is the descriptive architectural name for the local execution and permission boundary formerly referred to as **VYRELON**. `VYRELON` remains only as a compatibility/implementation identifier where existing package, integration, or protocol names still require it.
 
 ## Cost-Free baseline
 
@@ -149,7 +153,7 @@ AI-client/product plan limits still apply to the AI service you choose to use. �
 
 ### Verified baseline capabilities
 
-- VYRELON MCP stdio initialization and tool discovery
+- Agent Execution Runtime MCP stdio initialization and tool discovery
 - filesystem READ / WRITE
 - `patch.apply`
 - `shell.run`
@@ -187,7 +191,7 @@ multiagentos run --path . --objective "run tests" -- python -m unittest discover
 multiagentos chat --path . --objective "inspect the current project"
 ```
 
-### Expose the VYRELON MCP server
+### Expose the Agent Execution Runtime MCP server
 
 ```bash
 multiagentos mcp serve --path .
@@ -230,10 +234,10 @@ GitHub Actions validates the repository through CI.
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [VYRELON Connection Guide](docs/VYRELON_CONNECTIONS.md)
+- [Agent Execution Runtime Connection Guide](docs/Agent Execution Runtime_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
-- [VYRELON GitHub Connection](docs/VYRELON_GITHUB_CONNECTION.md)
-- [VYRELON MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
+- [Agent Execution Runtime GitHub Connection](docs/Agent Execution Runtime_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
 The English README is the canonical technical document. Localized READMEs preserve the same architecture, terminology, and cost-free baseline.
 
