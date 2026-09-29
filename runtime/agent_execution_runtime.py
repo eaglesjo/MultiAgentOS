@@ -12,6 +12,7 @@ from core.chat_agent_router import ChatAgentAssignment, ChatAgentRouter, ChatAge
 from core.chat_session import ChatSession, ChatSessionStore
 from core.contracts.human_review import HumanReviewDecision
 from core.contracts.resume import WorkflowResumeContext
+from core.contracts.recovery import RecoveryDisposition, RecoveryPlan
 from core.multi_agent_workflow import MultiAgentWorkflow, MultiAgentWorkflowResult
 from core.artifacts import ArtifactStore
 from runtime.chat_config import load_chat_config
@@ -390,6 +391,26 @@ class AgentExecutionRuntime:
             "pending_tool_call_ids": tuple(pending_calls),
         }
 
+    def recovery_plan(self, project_root: Path, work_unit_id: str) -> RecoveryPlan:
+        """Derive a conservative recovery decision without replaying any tool."""
+        snapshot = self.inspect_work_unit(project_root, work_unit_id)
+        state = snapshot["execution_state"]
+        pending = tuple(snapshot["pending_tool_call_ids"])
+        if state == "completed":
+            return RecoveryPlan(work_unit_id, RecoveryDisposition.COMPLETED, reason="execution already completed")
+        if state == "not_started":
+            return RecoveryPlan(work_unit_id, RecoveryDisposition.NOT_STARTED, safe_to_resume=True, reason="no durable execution evidence exists")
+        if state == "failed":
+            return RecoveryPlan(work_unit_id, RecoveryDisposition.RESUME, safe_to_resume=True, reason="WorkUnit is failed and has no in-flight tool call")
+        if pending:
+            return RecoveryPlan(
+                work_unit_id,
+                RecoveryDisposition.REVIEW_REQUIRED,
+                pending_tool_call_ids=pending,
+                reason="a tool call was recorded without a durable result; replay may duplicate side effects",
+            )
+        return RecoveryPlan(work_unit_id, RecoveryDisposition.RESUME, safe_to_resume=True, reason="durable execution ended between tool rounds")
+    
     def quota_store(self, project_root: Path):
         """Return the project-scoped persistent model quota store."""
         return QuotaStore(Path(project_root) / ".multiagentos" / "quota")
