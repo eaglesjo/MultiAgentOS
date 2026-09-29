@@ -128,6 +128,7 @@ class AgentExecutionRuntime:
         executor: AgentExecutor | None = None,
         verifier: ResultVerifier | None = None,
         reviewer: ResultReviewer | None = None,
+        adapter_overrides: dict[str, object] | None = None,
     ) -> dict[str, object]:
         """Turn an explicit IDE work request into a persistent Agent/WorkUnit execution."""
         project_root = Path(request.context.project_root).resolve()
@@ -179,14 +180,16 @@ class AgentExecutionRuntime:
                 reviewer=reviewer,
             )
         else:
-            result = self.run_persistent_registered_model(
-                project_root=project_root,
-                work_unit=work_unit,
-                agent=agent,
+            result = self.run_configured_work(
+                project_root,
+                objective=request.objective,
+                agent_id=request.agent_id,
                 preferred_model_ids=list(request.model_ids) or None,
-                verifier=effective_verifier,
-                reviewer=reviewer,
+                validation_commands=request.validation_commands,
+                apply_changes=request.apply_changes,
+                adapter_overrides=adapter_overrides,
             )
+        work_unit = result.work_unit
         output = result.output
         text = getattr(output, "text", str(output))
         ide_result = self.ide.execute(
