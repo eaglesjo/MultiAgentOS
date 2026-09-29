@@ -1,4 +1,4 @@
-"""Built-in VYRELON technology profile registry."""
+"""Built-in AGENT_EXECUTION_RUNTIME technology profile registry."""
 
 from core.contracts.profile import ProfileSpec
 from profiles.common import COMMON_ROLES

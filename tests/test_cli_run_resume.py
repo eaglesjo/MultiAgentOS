@@ -4,7 +4,7 @@ from pathlib import Path
 
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from multiagentos.cli import main
-from runtime.vyrelon import VYRELONRuntime
+from runtime.agent_execution_runtime import AgentExecutionRuntime
 
 
 class CLIRunResumeTests(unittest.TestCase):
@@ -28,7 +28,7 @@ class CLIRunResumeTests(unittest.TestCase):
             )
             self.assertEqual(result, 0)
 
-            work = VYRELONRuntime().state_store(root).load(work_id)
+            work = AgentExecutionRuntime().state_store(root).load(work_id)
             self.assertEqual(work.status, WorkStatus.COMPLETED)
             self.assertEqual(work.metadata["returncode"], 0)
             self.assertEqual(work.metadata["stdout"], "hello\n")
@@ -36,7 +36,7 @@ class CLIRunResumeTests(unittest.TestCase):
     def test_resume_executes_persisted_executing_work_unit(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            store = VYRELONRuntime().state_store(root)
+            store = AgentExecutionRuntime().state_store(root)
             work = WorkUnit("cli-resume", "resume a command")
             work.transition(WorkStatus.EXECUTING)
             work.metadata["command"] = ["python", "-c", "print('resumed')"]
