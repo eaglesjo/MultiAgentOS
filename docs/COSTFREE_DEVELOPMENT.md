@@ -10,7 +10,7 @@ The baseline architecture separates the development workspace from the AI provid
 AI client/provider
       |
       v
-MultiAgentOS / VYRELON
+MultiAgentOS / Agent Execution Runtime
       |
       +-- GitHub
       +-- local filesystem
@@ -18,7 +18,7 @@ MultiAgentOS / VYRELON
       +-- process/test
 ```
 
-Paid API providers are optional. A provider may be added later without changing the project workspace or VYRELON permission boundary.
+Paid API providers are optional. A provider may be added later without changing the project workspace or Agent Execution Runtime permission boundary.
 
 ## COSTFREE-001
 
@@ -33,7 +33,7 @@ Install MultiAgentOS
 multiagentos init .
     |
     v
-VYRELON MCP
+Agent Execution Runtime MCP
     |
     v
 AI client
@@ -57,9 +57,9 @@ The test is about **AI API cost**, not about whether an AI service account or pr
 | Paid AI API key | No |
 | Optional paid model/provider | Allowed |
 
-## Verified VYRELON client path
+## Verified Agent Execution Runtime client path
 
-A real Codex session successfully discovered the VYRELON MCP tool catalog and invoked the local runtime.
+A real Codex session successfully discovered the Agent Execution Runtime MCP tool catalog and invoked the local runtime.
 
 ### Filesystem WRITE/READ
 
@@ -102,7 +102,7 @@ stderr: ""
 
 ### Patch
 
-The AI client performed a real end-to-end `patch.apply` operation through VYRELON.
+The AI client performed a real end-to-end `patch.apply` operation through the Agent Execution Runtime.
 
 Test sequence:
 
@@ -142,7 +142,7 @@ OpenAI documents that a private/local MCP server can be connected to supported O
 
 The current MultiAgentOS local runtime uses:
 
-- VYRELON as the local MCP server
+- the Agent Execution Runtime as the local MCP server
 - `tunnel-client` as the outbound tunnel client
 - the `vyrelon-local` tunnel runtime
 - an absolute MultiAgentOS MCP command under the project's `.venv`
@@ -163,7 +163,7 @@ For the current Free account, ChatGPT Web write-capable custom MCP validation is
 
 | Layer | State |
 |---|---|
-| VYRELON local MCP | **PASS** |
+| Agent Execution Runtime local MCP | **PASS** |
 | Secure MCP Tunnel | **READY** |
 | Remote MCP architecture | **SUPPORTED** |
 | ChatGPT Web full MCP/write on current Free account | **BLOCKED BY PLAN** |
@@ -195,7 +195,7 @@ OpenAI's documented setup path is to create a custom app in Developer Mode, conf
 
 ### Verified
 
-- VYRELON MCP stdio initialization and tool discovery.
+- Agent Execution Runtime MCP stdio initialization and tool discovery.
 - Local runtime health/readiness.
 - Automatic runtime recovery through launchd.
 - GitHub-connected development path.
@@ -210,7 +210,7 @@ OpenAI's documented setup path is to create a custom app in Developer Mode, conf
 ### Deferred / plan-gated
 
 - ChatGPT Web custom MCP discovery against `vyrelon-local`.
-- ChatGPT Web local filesystem WRITE through VYRELON.
+- ChatGPT Web local filesystem WRITE through the Agent Execution Runtime.
 
 ## Design rule
 
