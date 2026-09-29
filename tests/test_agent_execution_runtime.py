@@ -65,7 +65,7 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
             self.assertEqual(persisted.assigned_agents, ["executor"])
             self.assertEqual(persisted.metadata["cwd"], str(root))
 
-    def test_ide_bridge_is_owned_by_agent_execution_runtime_runtime(self):
+    def test_ide_bridge_is_owned_by_agent_execution_runtime(self):
         runtime = AgentExecutionRuntime()
         server = runtime.start_ide_bridge(token="secret", port=0)
         try:
