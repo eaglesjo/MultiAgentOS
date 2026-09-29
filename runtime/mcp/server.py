@@ -1,4 +1,4 @@
-"""MCP stdio server exposing a deliberately scoped VYRELON local tool surface."""
+"""MCP stdio server exposing the Agent Execution Runtime local tool surface."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.policy import ExecutionPolicy
 from runtime.tool_calling import ToolRuntime
-from core.contracts.vyrelon_runtime import ToolRequest
+from core.contracts.agent_execution_runtime import ToolRequest
 
 
 def _server_version() -> str:
@@ -20,10 +20,11 @@ def _server_version() -> str:
         return "0.0.0-dev"
 
 
-class VYRELONMCPServer:
-    """Small stdio MCP server suitable for Secure MCP Tunnel's mcp-command."""
+class AgentExecutionRuntimeMCPServer:
+    """Canonical stdio MCP server for Secure MCP Tunnel's mcp-command."""
 
     PROTOCOL_VERSION = "2025-03-26"
+    SERVER_NAME = "Agent Execution Runtime"
 
     def __init__(
         self,
@@ -93,7 +94,7 @@ class VYRELONMCPServer:
                 "result": {
                     "protocolVersion": self.PROTOCOL_VERSION,
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "VYRELON", "version": _server_version()},
+                    "serverInfo": {"name": self.SERVER_NAME, "version": _server_version()},
                 },
             }
 
@@ -143,3 +144,4 @@ class VYRELONMCPServer:
             if response is not None:
                 stdout.write(json.dumps(response, ensure_ascii=False) + "\n")
                 stdout.flush()
+\n\nclass VYRELONMCPServer(AgentExecutionRuntimeMCPServer):\n    """Legacy compatibility facade for the canonical MCP server."""\n\n    SERVER_NAME = "VYRELON"\n\n\n__all__ = ["AgentExecutionRuntimeMCPServer", "VYRELONMCPServer"]\n
