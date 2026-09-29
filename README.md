@@ -122,6 +122,12 @@ The read-only `status` command reports installed components, detected profiles, 
         +-- Android Native
         +-- iOS Native
 
+## Cost-free baseline
+
+MultiAgentOS does not require a paid AI API key for its core local development path. The VYRELON MCP runtime provides local filesystem READ/WRITE, patch application, and process/test execution independently of a model-provider API.
+
+The verified baseline is documented in [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md). The current VYRELON runtime, filesystem WRITE/READ, `patch.apply`, `shell.run`, and local MCP/runtime tests are verified. Secure MCP Tunnel is ready for remote MCP integration; ChatGPT Web write-capable MCP access remains plan-gated by OpenAI's current product availability.
+
 ## Validation
 
     python -m unittest discover -s tests -v
