@@ -2,7 +2,7 @@
 
 import unittest
 
-from core.contracts.agent_execution_runtime_runtime import (
+from core.contracts.agent_execution_runtime import (
     FallbackPolicy,
     RuntimeEvent,
     RuntimeEventKind,
@@ -14,7 +14,7 @@ from core.contracts.agent_execution_runtime_runtime import (
 )
 
 
-class AgentExecutionRuntimeRuntimeContractsTests(unittest.TestCase):
+class AgentExecutionRuntimeContractsTests(unittest.TestCase):
     def test_session_is_independent_of_model_and_has_no_harness(self):
         session = SessionSpec(
             id="session-1",
