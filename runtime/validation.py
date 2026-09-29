@@ -1,4 +1,4 @@
-"""Provider-neutral validation runtime for VYRELON."""
+"""Provider-neutral validation runtime for AGENT_EXECUTION_RUNTIME."""
 
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ class ValidationReport:
 
 
 class ValidationRuntime:
-    """Execute deterministic project validation through VYRELON's local tool boundary."""
+    """Execute deterministic project validation through AGENT_EXECUTION_RUNTIME's local tool boundary."""
 
     def __init__(self, policy: ExecutionPolicy | None = None) -> None:
         self.policy = policy or ExecutionPolicy()
@@ -114,7 +114,7 @@ class ValidationRuntime:
             project_root=str(project_root),
             results=tuple(results),
             passed=passed,
-            metadata={"runtime": "vyrelon-validation"},
+            metadata={"runtime": "agent_execution_runtime-validation"},
         )
         if persist_evidence:
             report.persist(project_root / ".multiagentos" / "evidence" / "validation.json")

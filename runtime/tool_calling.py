@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Protocol
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
-from core.contracts.vyrelon_runtime import RuntimeEvent, RuntimeEventKind, SessionSpec, ToolRequest, ToolResult, ToolSideEffect, ToolSpec
+from core.contracts.agent_execution_runtime_runtime import RuntimeEvent, RuntimeEventKind, SessionSpec, ToolRequest, ToolResult, ToolSideEffect, ToolSpec
 from runtime.policy import ExecutionPolicy
 
 class ToolExecutionError(RuntimeError):

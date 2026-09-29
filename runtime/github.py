@@ -1,4 +1,4 @@
-"""Policy-controlled GitHub runtime for VYRELON."""
+"""Policy-controlled GitHub runtime for AGENT_EXECUTION_RUNTIME."""
 
 from __future__ import annotations
 

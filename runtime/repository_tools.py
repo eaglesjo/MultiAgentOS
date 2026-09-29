@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from core.contracts.mcp import MCPToolCall
-from core.contracts.vyrelon_runtime import ToolRequest, ToolSideEffect, ToolSpec
+from core.contracts.agent_execution_runtime_runtime import ToolRequest, ToolSideEffect, ToolSpec
 from runtime.git import GitRuntime
 from runtime.mcp.client import MCPClient
 from runtime.tool_calling import ToolRuntime

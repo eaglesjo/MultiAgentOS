@@ -32,7 +32,7 @@ DEFAULT_CHAT_CONFIG = ChatConfig(version=1, agent_id="chatgpt", model=None)
 def load_chat_config(project_root: Path) -> ChatConfig:
     path = project_root / ".multiagentos" / "chat.json"
     if not path.is_file():
-        raise FileNotFoundError(f"VYRELON chat config not found: {path}")
+        raise FileNotFoundError(f"AGENT_EXECUTION_RUNTIME chat config not found: {path}")
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("chat config must be a JSON object")

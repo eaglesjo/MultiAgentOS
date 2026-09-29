@@ -26,7 +26,7 @@ class RepositoryRuntime:
 
     def checkpoint(self, project_root: Path, *, metadata: dict[str, object] | None = None) -> RepositoryCheckpoint:
         checkpoint_id = f"cp-{uuid.uuid4().hex[:12]}"
-        marker = f"VYRELON checkpoint {checkpoint_id}"
+        marker = f"AGENT_EXECUTION_RUNTIME checkpoint {checkpoint_id}"
         initial_status = self.git.status(project_root.as_posix())
         has_changes = bool(initial_status.stdout.splitlines()[1:])
         stashed = False
@@ -76,7 +76,7 @@ class RepositoryRuntime:
             git_diff=diff.stdout,
             workflows=workflows,
             validation=validation,
-            metadata={"runtime": "vyrelon-repository"},
+            metadata={"runtime": "agent_execution_runtime-repository"},
         )
         path = project_root / ".multiagentos" / "evidence" / "repository.json"
         path.parent.mkdir(parents=True, exist_ok=True)

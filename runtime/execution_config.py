@@ -1,4 +1,4 @@
-"""Project-scoped execution configuration for VYRELON."""
+"""Project-scoped execution configuration for AGENT_EXECUTION_RUNTIME."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ DEFAULT_EXECUTION_CONFIG = ExecutionConfig(
 def load_execution_config(project_root: Path) -> ExecutionConfig:
     path = project_root / ".multiagentos" / "execution.json"
     if not path.is_file():
-        raise FileNotFoundError(f"VYRELON execution config not found: {path}")
+        raise FileNotFoundError(f"AGENT_EXECUTION_RUNTIME execution config not found: {path}")
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise ValueError("execution config must be a JSON object")
