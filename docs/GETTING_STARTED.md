@@ -16,7 +16,23 @@ It is intentionally separate from:
 
 These are complementary integration paths.
 
-## 2. Install VYRELON
+## 2. Cost-free baseline
+
+The core VYRELON runtime is intentionally independent of paid model APIs. A clean installation can use the local MCP server for filesystem READ/WRITE, patch application, and process/test execution without an OpenAI, Anthropic, Gemini, or other paid model API key.
+
+The verified acceptance evidence is maintained in [Cost-Free Development Baseline](COSTFREE_DEVELOPMENT.md). This is an **AI API cost** requirement; it does not assert that every optional AI product or account is free.
+
+Current verification:
+
+- VYRELON MCP: PASS
+- filesystem WRITE/READ: PASS
+- `patch.apply`: PASS
+- `shell.run`: PASS
+- local MCP/runtime tests: 10/10 PASS
+- Secure MCP Tunnel: READY
+- ChatGPT Web write-capable custom MCP: plan-gated on the current Free account
+
+## 3. Install VYRELON
 
 From a MultiAgentOS checkout:
 
@@ -37,7 +53,7 @@ The initializer writes project-local `.multiagentos/` configuration and runtime 
 
 VYRELON's standalone MCP server does not require OpenAI, ChatGPT, a `tunnel_id`, or `tunnel-client`.
 
-## 3. Choose your connection path
+## 4. Choose your connection path
 
 | Goal | Path | VYRELON required |
 | --- | --- | --- |
@@ -49,7 +65,7 @@ VYRELON's standalone MCP server does not require OpenAI, ChatGPT, a `tunnel_id`,
 
 The architecture has one actual VYRELON MCP server. Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure.
 
-## 4. ChatGPT + GitHub
+## 5. ChatGPT + GitHub
 
 Use this when the work can be performed against the remote repository without local filesystem access.
 
@@ -63,7 +79,7 @@ This connection gives ChatGPT access to the selected GitHub repository. It does 
 
 A repository can also carry its own `AGENTS.md` / Agent Skills instructions. Those project instructions remain authoritative.
 
-## 5. Local VYRELON + GitHub
+## 6. Local VYRELON + GitHub
 
 Install GitHub CLI and authenticate it:
 
@@ -93,7 +109,7 @@ ChatGPT       -> GitHub app -> authorized repositories
 
 Do not put GitHub tokens in the repository.
 
-## 6. Standalone VYRELON MCP
+## 7. Standalone VYRELON MCP
 
 From the project you want VYRELON to expose:
 
@@ -118,7 +134,7 @@ multiagentos mcp serve \
 
 This path is free/local and can be used by an MCP client without OpenAI.
 
-## 7. ChatGPT/Codex + local VYRELON
+## 8. ChatGPT/Codex + local VYRELON
 
 Use OpenAI Secure MCP Tunnel when the MCP server must remain on the developer's private/local machine.
 
@@ -170,7 +186,7 @@ Do not paste a local MCP URL into ChatGPT.
 
 See [Secure MCP Tunnel Setup](MCP_TUNNEL.md) for the complete key/tunnel/runtime procedure.
 
-## 8. Codex tunnel operations
+## 9. Codex tunnel operations
 
 The OpenAI `tunnel-client` distribution provides a thin Codex operator surface:
 
@@ -184,7 +200,7 @@ For a persistent runtime, use the native `tunnel-client runtimes ...` commands.
 
 The Codex plugin does not replace VYRELON's MCP server.
 
-## 9. Validate the local installation
+## 10. Validate the local installation
 
 Run:
 
@@ -210,7 +226,7 @@ tunnel-client runtimes status vyrelon-local --json
 
 A successful local MCP smoke test does not by itself prove that the external ChatGPT/Codex tunnel is working. End-to-end tunnel validation requires a real OpenAI workspace, tunnel, runtime API key, and running `tunnel-client`.
 
-## 10. Credential rules
+## 11. Credential rules
 
 Never commit:
 
@@ -230,7 +246,7 @@ For Secure MCP Tunnel:
 
 Do not use an admin key as a long-lived runtime credential.
 
-## 11. Next documents
+## 12. Next documents
 
 - [VYRELON Connection Guide](VYRELON_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](MCP_TUNNEL.md)
