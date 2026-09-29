@@ -43,7 +43,7 @@ class CLITests(unittest.TestCase):
             self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             status = project_status(Path(temp))
             self.assertTrue(status["initialized"])
-            self.assertEqual(status["components"], ["agent_execution_runtime"])
+            self.assertEqual(status["components"], ["agent-execution-runtime"])
             self.assertEqual(status["agents"], [])
             self.assertEqual(status["chat"], {"agent_id": "chatgpt", "model": None})
             self.assertEqual(
