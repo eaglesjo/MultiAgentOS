@@ -6,6 +6,7 @@ from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
+from core.contracts.agent_execution_runtime import RuntimeEvent
 from runtime.quota import QuotaIntelligence
 from runtime.capability import CapabilityRegistry
 from runtime.health import ModelHealthRegistry
@@ -27,6 +28,7 @@ class ModelAgentExecutor(AgentExecutor):
         health_registry: ModelHealthRegistry | None = None,
         model_control: ModelControlPlane | None = None,
         capability_registry: CapabilityRegistry | None = None,
+        event_sink: object | None = None,
     ):
         self.adapters = dict(adapters)
         self.models = {model.id: model for model in models}
@@ -36,6 +38,7 @@ class ModelAgentExecutor(AgentExecutor):
         self.health_registry = health_registry
         self.model_control = model_control
         self.capability_registry = capability_registry
+        self.event_sink = event_sink
 
     def _candidate_model_ids(self, model_id: str) -> tuple[str, ...]:
         return tuple(dict.fromkeys((model_id, *self.fallback_model_ids)))
@@ -151,6 +154,7 @@ class ModelAgentExecutor(AgentExecutor):
                     models={candidate_id: model},
                     adapters={candidate_id: adapter},
                     tools=tool_runtime,
+                    event_sink=self.event_sink,
                 )
                 result = runtime.execute(
                     request,
