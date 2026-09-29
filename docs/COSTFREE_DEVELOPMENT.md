@@ -102,9 +102,39 @@ stderr: ""
 
 ### Patch
 
-The `patch.apply` MCP tool is exposed by VYRELON and was discovered by the AI client.
+The AI client performed a real end-to-end `patch.apply` operation through VYRELON.
 
-**Actual patch application: PENDING**
+Test sequence:
+
+1. Created `VYRELON_PATCH_TEST.md` with the content `before`.
+2. Applied a unified Git patch through `mcp__vyrelon__patch_apply`.
+3. Read the file back through `mcp__vyrelon__filesystem_read`.
+
+Observed result:
+
+```
+patch.apply returncode: 0
+patch.apply stderr: ""
+filesystem.read result:
+after
+```
+
+**Result: PASS**
+
+The implementation intentionally treats `patch.apply` as a `filesystem.write` capability. Although the local implementation invokes Git internally, that subprocess is an implementation detail and does not require the separately exposed `process` capability.
+
+### Code-level runtime tests
+
+The local MCP/runtime test suite was executed after the patch-runtime change:
+
+```
+python3 -m unittest tests.test_mcp_server tests.test_local_tool_runtime
+
+Ran 10 tests
+OK
+```
+
+**Result: PASS (10/10)**
 
 ## ChatGPT Web and Secure MCP Tunnel
 
@@ -139,11 +169,13 @@ The ChatGPT Web path must be treated as an integration target, not as the only i
 - GitHub-connected development path.
 - AI-client VYRELON `filesystem.write` and `filesystem.read`.
 - AI-client VYRELON `shell_run`.
+- AI-client VYRELON `patch.apply` with filesystem readback.
 - End-to-end COSTFREE-001 filesystem WRITE/READ path.
+- End-to-end COSTFREE-001 PATCH path.
+- Local MCP/runtime tests: 10/10 PASS.
 
 ### Pending
 
-- Actual VYRELON `patch.apply` application and verification.
 - ChatGPT Web custom MCP discovery against `vyrelon-local`.
 - ChatGPT Web local filesystem WRITE through VYRELON.
 
@@ -163,8 +195,12 @@ The system may support:
 
 as interchangeable AI-side choices while keeping the project workspace and VYRELON runtime stable.
 
-## Next verification step
+## Verification record
 
-The next concrete runtime test is an actual `patch.apply` operation through VYRELON, followed by a VYRELON `filesystem.read` verification and a VYRELON `shell_run` test.
+- Patch-runtime fix commit: `49711818b5dbb267ee2d5b283c3a0da85ee101c8`
+- Runtime test result: `10/10 PASS`
+- VYRELON `patch.apply`: `returncode 0`, empty stderr
+- VYRELON readback: `after`
+- Paid AI API key required for these verified runtime capabilities: **No**
 
 Keep AI-client invocations minimal: once a capability is verified, reuse the evidence rather than spending additional client quota on redundant smoke tests.
