@@ -2,4 +2,4 @@
 
 from runtime.agent_execution_runtime import AgentExecutionRuntime
 
-__all__ = ["AgentExecutionRuntime", "AgentExecutionRuntime"]
+__all__ = ["AgentExecutionRuntime"]
