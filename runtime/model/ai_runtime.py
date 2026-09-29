@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
-from core.contracts.agent_execution_runtime_runtime import (
+from core.contracts.agent_execution_runtime import (
     FallbackPolicy,
     RuntimeEvent,
     RuntimeEventKind,
