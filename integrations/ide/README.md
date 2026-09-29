@@ -1,4 +1,4 @@
-# VYRELON IDE Adapters
+# Agent Execution Runtime IDE Adapters
 
 This directory is reserved for native IDE adapter projects.
 
@@ -8,4 +8,4 @@ This directory is reserved for native IDE adapter projects.
 
 Native IDE SDKs must remain isolated to their adapters. Do not import them into core/ or runtime/.
 
-IDE adapters are optional integrations. VYRELON core remains usable without an IDE installed.
+IDE adapters are optional integrations. Agent Execution Runtime core remains usable without an IDE installed.
