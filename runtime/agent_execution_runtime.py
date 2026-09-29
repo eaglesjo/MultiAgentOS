@@ -189,6 +189,7 @@ class AgentExecutionRuntime:
                 apply_changes=request.apply_changes,
                 adapter_overrides=adapter_overrides,
             )
+        work_unit = result.work_unit
         output = result.output
         text = getattr(output, "text", str(output))
         ide_result = self.ide.execute(
