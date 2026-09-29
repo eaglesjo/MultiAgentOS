@@ -10,7 +10,7 @@ MultiAgentOS is the foundation for **VYRELON**, a policy-controlled runtime and 
 >
 > These paths are complementary. The GitHub connection identifies and exposes the authorized remote repository; VYRELON provides the local filesystem, patch, process, and runtime boundary.
 
-**Documentation:** [English](README.md) · [한국어](README.ko.md)
+**Documentation:** [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
 ## Core principles
 
