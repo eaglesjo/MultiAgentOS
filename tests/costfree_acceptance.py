@@ -203,7 +203,7 @@ def run_acceptance() -> None:
                         proc,
                         7,
                         "shell.run",
-                        {"command": [sys.executable, "-c", "print('COSTFREE_TEST_PASS')"]},
+                        {"command": f"{sys.executable} -c \"print('COSTFREE_TEST_PASS')\""},
                     )
                 )
             )
