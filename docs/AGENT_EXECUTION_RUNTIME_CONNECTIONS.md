@@ -156,7 +156,7 @@ The managed runtime form is:
 
 ```bash
 tunnel-client runtimes connect \
-  --alias agent_execution_runtime-local \
+  --alias agent-execution-runtime-local \
   --tunnel-id tunnel_... \
   --runtime-api-key env:CONTROL_PLANE_API_KEY \
   --mcp-command "multiagentos mcp serve --path /absolute/path/to/project"
@@ -165,7 +165,7 @@ tunnel-client runtimes connect \
 Then verify:
 
 ```bash
-tunnel-client runtimes status agent_execution_runtime-local --json
+tunnel-client runtimes status agent-execution-runtime-local --json
 ```
 
 Only after the runtime is healthy should the ChatGPT connector be configured with **Connection: Tunnel**.
@@ -228,4 +228,4 @@ Keep credentials outside repositories:
 
 - [Agent Execution Runtime MCP Architecture](ARCHITECTURE_DECISIONS.md)
 - [Secure MCP Tunnel Setup](MCP_TUNNEL.md)
-- [Agent Execution Runtime GitHub Connection](Agent Execution Runtime_GITHUB_CONNECTION.md)
+- [Agent Execution Runtime GitHub Connection](AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
