@@ -1,7 +1,7 @@
 """Provider-neutral MCP runtime contracts for VYRELON."""
 from __future__ import annotations
 from dataclasses import dataclass, field
-from core.contracts.vyrelon_runtime import ToolSideEffect
+from core.contracts.agent_execution_runtime import ToolSideEffect
 
 @dataclass(frozen=True)
 class MCPServerSpec:
