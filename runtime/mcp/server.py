@@ -4,12 +4,20 @@ from __future__ import annotations
 
 import json
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.policy import ExecutionPolicy
 from runtime.tool_calling import ToolRuntime
 from core.contracts.vyrelon_runtime import ToolRequest
+
+
+def _server_version() -> str:
+    try:
+        return version("multiagentos")
+    except PackageNotFoundError:
+        return "0.0.0-dev"
 
 
 class VYRELONMCPServer:
@@ -85,7 +93,7 @@ class VYRELONMCPServer:
                 "result": {
                     "protocolVersion": self.PROTOCOL_VERSION,
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "VYRELON", "version": "0.3.0"},
+                    "serverInfo": {"name": "VYRELON", "version": _server_version()},
                 },
             }
 

@@ -107,6 +107,10 @@ class VYRELONMCPServerTests(unittest.TestCase):
             VYRELONMCPServer(root).serve_forever(stdin, stdout)
             responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
             self.assertEqual(responses[0]["result"]["serverInfo"]["name"], "VYRELON")
+            self.assertEqual(
+                responses[0]["result"]["serverInfo"]["version"],
+                "0.0.0-dev",
+            )
             self.assertIn("filesystem.read", {x["name"] for x in responses[1]["result"]["tools"]})
             self.assertEqual(responses[2]["result"]["content"][0]["text"], "hello")
 
