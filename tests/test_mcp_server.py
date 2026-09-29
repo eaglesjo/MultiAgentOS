@@ -45,6 +45,36 @@ class VYRELONMCPServerTests(unittest.TestCase):
             names = {item["name"] for item in tools["result"]["tools"]}
             self.assertTrue({"filesystem.write", "patch.apply", "shell.run"} <= names)
 
+    def test_patch_apply_round_trip(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            target = root / "README.md"
+            target.write_text("before\n", encoding="utf-8")
+            server = VYRELONMCPServer(root, allow_write=True)
+
+            patch = """diff --git a/README.md b/README.md
+index 7a2c2e3..9f4c5a1 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1 @@
+-before
++after
+"""
+
+            response = server.handle({
+                "jsonrpc": "2.0",
+                "id": 10,
+                "method": "tools/call",
+                "params": {
+                    "name": "patch.apply",
+                    "arguments": {"patch": patch},
+                },
+            })
+
+            self.assertFalse(response["result"]["isError"])
+            payload = json.loads(response["result"]["content"][0]["text"])
+            self.assertEqual(payload["returncode"], 0)
+            self.assertEqual(target.read_text(encoding="utf-8"), "after\n")
     def test_stdio_round_trip(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
