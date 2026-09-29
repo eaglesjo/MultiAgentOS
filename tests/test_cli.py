@@ -40,7 +40,7 @@ class CLITests(unittest.TestCase):
 
     def test_status_reports_agent_execution_runtime_only(self):
         with tempfile.TemporaryDirectory() as temp:
-            self.assertEqual(main(["init", temp, "--component", "agent_execution_runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             status = project_status(Path(temp))
             self.assertTrue(status["initialized"])
             self.assertEqual(status["components"], ["agent_execution_runtime"])
@@ -63,7 +63,7 @@ class CLITests(unittest.TestCase):
     def test_status_reports_durable_state(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent_execution_runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             state = root / ".multiagentos" / "state"
             checkpoints = root / ".multiagentos" / "checkpoints"
             state.mkdir()
@@ -84,7 +84,7 @@ class CLITests(unittest.TestCase):
     def test_run_uses_project_execution_config(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent_execution_runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             execution = root / ".multiagentos" / "execution.json"
             execution.write_text(json.dumps({
                 "version": 1,
@@ -105,7 +105,7 @@ class CLITests(unittest.TestCase):
     def test_run_supports_cli_agent_and_model_overrides(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent_execution_runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             self.assertEqual(
                 main([
                     "run", "--path", temp, "--agent", "cli-executor",
@@ -122,7 +122,7 @@ class CLITests(unittest.TestCase):
     def test_run_executes_command_and_persists_state(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent_execution_runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             self.assertEqual(
                 main(["run", "--path", temp, "--objective", "echo smoke test", "--", "python", "-c", "print('ok')"]),
                 0,
@@ -135,7 +135,7 @@ class CLITests(unittest.TestCase):
     def test_resume_rejects_terminal_work_unit(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent_execution_runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             self.assertEqual(
                 main(["run", "--path", temp, "--objective", "terminal", "--", "python", "-c", "print('done')"]),
                 0,
@@ -147,7 +147,7 @@ class CLITests(unittest.TestCase):
     def test_chat_uses_configured_chat_agent_and_persists_session(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent_execution_runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
 
             import multiagentos.cli as cli_module
             original = cli_module.AgentExecutionRuntime.project_chat_adapter
@@ -178,7 +178,7 @@ class CLITests(unittest.TestCase):
     def test_chat_execute_runs_explicit_command_through_agent_execution_runtime(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent_execution_runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
 
             import multiagentos.cli as cli_module
             from core.chat_agent_bridge import ChatAgentResponse
