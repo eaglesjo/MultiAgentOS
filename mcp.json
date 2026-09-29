@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "multiagentos": {
-      "command": "multiagentos",
-      "args": ["mcp", "serve", "--path", "${workspaceFolder}"]
-    }
-  }
-}
