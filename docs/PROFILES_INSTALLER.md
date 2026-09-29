@@ -1,6 +1,6 @@
-# VYRELON Profiles and Installer
+# Agent Execution Runtime Profiles and Installer
 
-VYRELON profiles describe technology environments, not product domains.
+Agent Execution Runtime profiles describe technology environments, not product domains.
 
 Built-in profiles:
 

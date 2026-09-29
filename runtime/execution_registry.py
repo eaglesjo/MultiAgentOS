@@ -1,4 +1,4 @@
-"""Built-in execution contracts used by the VYRELON CLI."""
+"""Built-in execution contracts used by the AGENT_EXECUTION_RUNTIME CLI."""
 
 from __future__ import annotations
 

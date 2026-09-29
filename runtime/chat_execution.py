@@ -11,7 +11,7 @@ from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifi
 from runtime import AgentExecutionRuntime
 
 # Legacy compatibility import surface for existing tests/integrations.
-VYRELONRuntime = AgentExecutionRuntime
+AgentExecutionRuntime = AgentExecutionRuntime
 
 
 def execute_project_chat_request(
