@@ -20,7 +20,10 @@ class LocalToolRuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             policy = PathPolicy((str(root),))
-            self.assertEqual(policy.resolve("nested/file.txt"), root / "nested" / "file.txt")
+            self.assertEqual(
+                policy.resolve("nested/file.txt"),
+                (root / "nested" / "file.txt").resolve(),
+            )
             with self.assertRaises(PathSecurityError):
                 policy.resolve(str(root.parent / "outside.txt"))
 
