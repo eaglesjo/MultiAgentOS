@@ -1,4 +1,4 @@
-# VYRELON GitHub Runtime
+# Agent Execution Runtime GitHub Runtime
 
 GitHub is a first-class lifecycle integration, but repository writes are policy-controlled.
 
@@ -6,7 +6,7 @@ GitHub is a first-class lifecycle integration, but repository writes are policy-
 
 - core/contracts/github.py defines provider-neutral repository, branch, file, issue, PR, review, merge, and workflow contracts.
 - integrations/github/gateway.py implements those contracts through the authenticated GitHub CLI.
-- runtime/github.py applies VYRELON execution policy before allowing repository mutations.
+- runtime/github.py applies Agent Execution Runtime execution policy before allowing repository mutations.
 
 ## Policy
 
@@ -18,6 +18,6 @@ When GitHub writes are enabled:
 - PR creation requires explicit approval
 - PR merge requires explicit approval
 
-This keeps VYRELON capable of real GitHub development without silently granting an AI unrestricted repository mutation authority.
+This keeps Agent Execution Runtime capable of real GitHub development without silently granting an AI unrestricted repository mutation authority.
 
 Authentication remains external to the repository through gh CLI authentication or the host environment.

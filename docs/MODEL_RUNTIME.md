@@ -1,4 +1,4 @@
-# VYRELON Model Runtime
+# Agent Execution Runtime Model Runtime
 
 The model runtime separates model identity from the mechanism used to invoke it.
 
@@ -15,7 +15,7 @@ A ModelSpec can declare an adapter_id in metadata. If it does not, provider_id i
 
 ## Generic CLI support
 
-CLIModelAdapter accepts an explicit argv command. This means VYRELON can integrate with any AI product that exposes a command-line interface without making that product a special case in the core.
+CLIModelAdapter accepts an explicit argv command. This means Agent Execution Runtime can integrate with any AI product that exposes a command-line interface without making that product a special case in the core.
 
 Examples include hosted AI CLIs, local model CLIs, custom organization agents, and future IDE or remote bridges.
 
