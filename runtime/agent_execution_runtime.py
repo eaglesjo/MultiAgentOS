@@ -619,7 +619,6 @@ class AgentExecutionRuntime:
         event_store = self.event_store(project_root)
 
         def persist_runtime_event(event):
-            event.sequence = event_store.next_sequence(event.work_unit_id) if False else event.sequence
             event_store.append(event)
 
         executor = ModelAgentExecutor(
