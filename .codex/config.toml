@@ -1,0 +1,15 @@
+# MultiAgentOS project MCP configuration for Codex.
+# This keeps the local VYRELON MCP server as a project-scoped tool provider.
+# Codex must trust this project before loading .codex/config.toml.
+
+[mcp_servers.vyrelon]
+command = "/bin/sh"
+args = [
+  "-lc",
+  "exec .venv/bin/multiagentos mcp serve --path . --allow-write --allow-process"
+]
+cwd = "."
+enabled = true
+default_tools_approval_mode = "prompt"
+startup_timeout_sec = 10
+tool_timeout_sec = 120
