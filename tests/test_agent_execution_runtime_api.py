@@ -9,7 +9,7 @@ from runtime.mcp.server import VYRELONMCPServer
 
 class AgentExecutionRuntimeAPITests(unittest.TestCase):
     def test_canonical_runtime_name_is_available(self):
-        self.assertTrue(issubclass(AgentExecutionRuntime, VYRELONRuntime))
+        self.assertIs(AgentExecutionRuntime, VYRELONRuntime)
         self.assertEqual(SessionSpec.__name__, "SessionSpec")
         self.assertIs(LegacySessionSpec, SessionSpec)
 

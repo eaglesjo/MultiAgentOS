@@ -6,7 +6,7 @@ from core.contracts import AgentContract, ModelSpec, WorkUnit, WorkStatus
 from core.contracts.model_runtime import ModelResponse
 from core.contracts.ide import IDEKind
 import json
-from runtime.vyrelon import VYRELONRuntime
+from runtime import AgentExecutionRuntime as VYRELONRuntime
 
 
 class FakeExecutor:
