@@ -14,6 +14,7 @@ from typing import Literal
 
 from mcp import Client
 import mcp.types as types
+from pydantic import ConfigDict, Field
 
 
 def _free_port() -> int:
@@ -139,16 +140,18 @@ async def _exercise_http_write_policy() -> None:
 
 
 class RecoveryParams(types.RequestParams):
-    workUnitId: str
+    model_config = ConfigDict(populate_by_name=True)
+    work_unit_id: str = Field(alias="workUnitId")
 
 
 class RecoveryResult(types.Result):
-    workUnitId: str
+    model_config = ConfigDict(populate_by_name=True)
+    work_unit_id: str = Field(alias="workUnitId")
     disposition: str
     replayed: bool
-    invocationId: str | None = None
-    idempotencyKey: str | None = None
-    humanDecision: str | None = None
+    invocation_id: str | None = Field(default=None, alias="invocationId")
+    idempotency_key: str | None = Field(default=None, alias="idempotencyKey")
+    human_decision: str | None = Field(default=None, alias="humanDecision")
 
 
 class RecoveryRequest(types.Request[RecoveryParams, Literal["runtime/recover"]]):
@@ -184,11 +187,11 @@ async def _exercise_http_recovery_method() -> None:
 
                 response = await client.session.send_request(
                     RecoveryRequest(
-                        params=RecoveryParams(workUnitId=work_unit_id),
+                        params=RecoveryParams(work_unit_id=work_unit_id),
                     ),
                     RecoveryResult,
                 )
-                assert response.workUnitId == work_unit_id
+                assert response.work_unit_id == work_unit_id
                 assert response.disposition == "completed"
                 assert response.replayed is False
         finally:
