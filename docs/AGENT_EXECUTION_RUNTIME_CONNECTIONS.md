@@ -227,5 +227,6 @@ Keep credentials outside repositories:
 ## References
 
 - [Agent Execution Runtime MCP Architecture](ARCHITECTURE_DECISIONS.md)
+- [MCP durable recovery contract](ARCHITECTURE_DECISIONS.md#mcp-durable-recovery-contract)
 - [Secure MCP Tunnel Setup](MCP_TUNNEL.md)
 - [Agent Execution Runtime GitHub Connection](AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
