@@ -13,6 +13,8 @@ from core.contracts.agent_execution_runtime import (
 from core.contracts.replay import ReplayDisposition, ReplayPolicy
 from core.contracts.policy_decision import DecisionCategory, DecisionDisposition, PolicyDecision
 from core.policy_decision import PolicyDecisionStore
+from core.recovery_audit import RecoveryAuditStore
+from core.contracts.recovery import RecoveryDisposition
 from core.contracts.tool_ledger import ToolInvocationRecord, ToolInvocationState
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.state import RuntimeEventStore, WorkStateStore
@@ -31,6 +33,7 @@ class MCPDurableExecutionBridge:
         self.event_store = RuntimeEventStore(durable_root / "events")
         self.ledger_store = ToolInvocationStore(durable_root / "tool-ledger")
         self.decision_store = PolicyDecisionStore(durable_root / "decisions")
+        self.recovery_audit_store = RecoveryAuditStore(durable_root / "recovery")
 
     def _replay_policy(self, tool_id: str) -> ReplayPolicy:
         if tool_id.startswith("filesystem.read") or tool_id in {"git.status", "git.diff"}:
@@ -56,6 +59,153 @@ class MCPDurableExecutionBridge:
                 payload=payload,
             )
         )
+
+    def recover(self, work_unit_id: str, *, session_id: str | None = None):
+        """Recover one interrupted MCP invocation using the existing durable replay contract."""
+        from runtime.agent_execution_runtime import AgentExecutionRuntime
+
+        runtime = AgentExecutionRuntime(policy=self.tool_runtime.policy)
+        plan = runtime.recovery_plan(self.project_root, work_unit_id)
+        self.recovery_audit_store.append(
+            plan,
+            source_identity=runtime.workspace_identity(self.project_root),
+        )
+        if plan.disposition is RecoveryDisposition.COMPLETED:
+            return {"work_unit_id": work_unit_id, "disposition": plan.disposition.value, "replayed": False}
+        if plan.disposition is RecoveryDisposition.REVIEW_REQUIRED:
+            self.decision_store.append(
+                PolicyDecision(
+                    work_unit_id=work_unit_id,
+                    category=DecisionCategory.RECOVERY,
+                    disposition=DecisionDisposition.REVIEW_REQUIRED,
+                    reason=plan.reason,
+                    action="mcp.recover",
+                    session_id=session_id,
+                    metadata={"source": "mcp", "pending_tool_call_ids": list(plan.pending_tool_call_ids)},
+                )
+            )
+            return {"work_unit_id": work_unit_id, "disposition": plan.disposition.value, "replayed": False}
+        if plan.disposition is not RecoveryDisposition.RESUME or not plan.safe_to_resume:
+            raise ValueError(f"MCP work unit is not safely resumable: {plan.reason}")
+
+        unresolved = self.ledger_store.unresolved(work_unit_id)
+        if not unresolved:
+            raise ValueError("MCP recovery plan requested resume but no unresolved invocation exists")
+        if len(unresolved) != 1:
+            raise ValueError("MCP recovery supports exactly one unresolved direct tool invocation")
+        record = unresolved[0]
+        if not record.replay_safe:
+            raise ValueError("MCP invocation is not replay-safe")
+
+        request = ToolRequest(
+            record.tool_id,
+            dict(record.arguments),
+            session_id=session_id,
+            work_unit_id=work_unit_id,
+            metadata={
+                "source": "mcp-recovery",
+                "call_id": record.call_id,
+                "invocation_id": record.invocation_id,
+                "idempotency_key": record.idempotency_key,
+            },
+        )
+        granted_permissions = frozenset(
+            {
+                "filesystem.write" if self.tool_runtime.policy.allow_filesystem_write else "",
+                "process" if self.tool_runtime.policy.allow_process else "",
+            }
+        ) - {""}
+        self.decision_store.append(
+            PolicyDecision(
+                work_unit_id=work_unit_id,
+                category=DecisionCategory.RECOVERY,
+                disposition=DecisionDisposition.ALLOW,
+                reason="MCP recovery replay is explicitly safe and idempotency-keyed",
+                action=record.tool_id,
+                session_id=session_id,
+                metadata={
+                    "source": "mcp",
+                    "invocation_id": record.invocation_id,
+                    "idempotency_key": record.idempotency_key,
+                },
+            )
+        )
+        self._append_event(
+            RuntimeEventKind.TOOL_CALL,
+            work_unit_id,
+            {
+                "source": "mcp-recovery",
+                "call_id": record.call_id,
+                "invocation_id": record.invocation_id,
+                "tool_id": record.tool_id,
+                "arguments": dict(record.arguments),
+                "idempotency_key": record.idempotency_key,
+            },
+            session_id=session_id,
+        )
+        result = self.tool_runtime.execute(
+            request,
+            granted_permissions=granted_permissions,
+            approved=True,
+        )
+        terminal_state = ToolInvocationState.COMPLETED if result.ok else ToolInvocationState.FAILED
+        result_reference = f"mcp:{record.invocation_id}" if result.ok else None
+        self.ledger_store.append(
+            ToolInvocationRecord(
+                invocation_id=record.invocation_id,
+                work_unit_id=work_unit_id,
+                tool_id=record.tool_id,
+                arguments=dict(record.arguments),
+                state=terminal_state,
+                replay_policy=record.replay_policy,
+                sequence=self.ledger_store.next_sequence(work_unit_id),
+                call_id=record.call_id,
+                result_reference=result_reference,
+                error=result.error,
+                idempotency_key=record.idempotency_key,
+            )
+        )
+        self._append_event(
+            RuntimeEventKind.TOOL_RESULT,
+            work_unit_id,
+            {
+                "source": "mcp-recovery",
+                "call_id": record.call_id,
+                "invocation_id": record.invocation_id,
+                "tool_id": result.tool_id,
+                "ok": result.ok,
+                "error": result.error,
+                "idempotency_key": record.idempotency_key,
+            },
+            session_id=session_id,
+        )
+        work_unit = self.work_store.load(work_unit_id)
+        if result.ok:
+            work_unit.transition(WorkStatus.COMPLETED)
+            work_unit.metadata["result_reference"] = result_reference
+            self._append_event(
+                RuntimeEventKind.COMPLETED,
+                work_unit_id,
+                {
+                    "source": "mcp-recovery",
+                    "call_id": record.call_id,
+                    "invocation_id": record.invocation_id,
+                    "tool_id": record.tool_id,
+                },
+                session_id=session_id,
+            )
+        else:
+            work_unit.transition(WorkStatus.FAILED)
+            work_unit.metadata["error"] = result.error
+        self.work_store.save(work_unit)
+        return {
+            "work_unit_id": work_unit_id,
+            "disposition": RecoveryDisposition.COMPLETED.value if result.ok else RecoveryDisposition.FAILED.value,
+            "replayed": True,
+            "invocation_id": record.invocation_id,
+            "idempotency_key": record.idempotency_key,
+            "result": result,
+        }
 
     def call(
         self,
