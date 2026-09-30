@@ -81,7 +81,7 @@ class ToolCallingRuntime:
         self.cursor_store = cursor_store
         self.agent_id = agent_id
 
-    def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False, start_round: int = 1) -> ToolCallingExecution:
+    def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False, start_round: int = 1, initial_cursor_sequence: int = 0, initial_conversation_revision: int = 0) -> ToolCallingExecution:
         model = self.models[model_id]
         adapter = self.adapters[model_id]
         generate = getattr(adapter, "generate_with_tools", None)
@@ -89,8 +89,8 @@ class ToolCallingRuntime:
             raise ToolExecutionError(f"model adapter does not support tool calling: {model_id}")
         current, results = request, []
         history: list[dict[str, object]] = list(request.metadata.get("tool_history", ()))
-        cursor_sequence = 0
-        conversation_revision = 0
+        cursor_sequence = initial_cursor_sequence
+        conversation_revision = initial_conversation_revision
         for offset in range(self.max_rounds):
             round_number = start_round + offset
             cursor_sequence += 1
@@ -330,7 +330,7 @@ class ToolCallingRuntime:
                     "error": result.error,
                     "invocation_id": record.invocation_id,
                 })
-                self.cursor_store.append_message(
+                conversation_revision = self.cursor_store.append_message(
                     work_unit_id,
                     role="tool",
                     round_number=cursor.round_number,
@@ -361,6 +361,16 @@ class ToolCallingRuntime:
                     "tool_history": tuple(history),
                 },
             )
+            self.cursor_store.save_cursor(ExecutionCursor(
+                work_unit_id=work_unit_id,
+                event_sequence=cursor.event_sequence + 1,
+                round_number=cursor.round_number,
+                agent_id=cursor.agent_id,
+                model_id=cursor.model_id,
+                conversation_revision=conversation_revision,
+                next_tool_call_id=None,
+            ))
+            next_cursor_sequence = cursor.event_sequence + 1
         return self.execute(
             request,
             model_id=model_id,
@@ -369,6 +379,8 @@ class ToolCallingRuntime:
             granted_permissions=granted_permissions,
             approved=approved,
             start_round=cursor.round_number + 1,
+            initial_cursor_sequence=next_cursor_sequence if pending else cursor.event_sequence,
+            initial_conversation_revision=conversation_revision,
         )
 
     def events(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False) -> Iterator[RuntimeEvent]:
