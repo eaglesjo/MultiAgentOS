@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from core.contracts.execution_cursor import ExecutionCursor
+from core.security import redact_sensitive
 
 
 class ExecutionStateStore:
@@ -63,8 +64,8 @@ class ExecutionStateStore:
             "revision": revision,
             "role": role,
             "round_number": round_number,
-            "content": content,
-            "metadata": dict(metadata or {}),
+            "content": redact_sensitive(content),
+            "metadata": redact_sensitive(dict(metadata or {})),
         }
         with path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")

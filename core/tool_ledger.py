@@ -8,6 +8,7 @@ from typing import Iterable
 
 from core.contracts.replay import ReplayDisposition, ReplayPolicy
 from core.contracts.tool_ledger import ToolInvocationRecord, ToolInvocationState
+from core.security import redact_sensitive
 
 
 class ToolInvocationStore:
@@ -26,7 +27,7 @@ class ToolInvocationStore:
             "work_unit_id": record.work_unit_id,
             "tool_id": record.tool_id,
             "call_id": record.call_id,
-            "arguments": record.arguments,
+            "arguments": redact_sensitive(record.arguments),
             "state": record.state.value,
             "replay_policy": {
                 "disposition": record.replay_policy.disposition.value,
@@ -35,7 +36,7 @@ class ToolInvocationStore:
             },
             "sequence": record.sequence,
             "result_reference": record.result_reference,
-            "error": record.error,
+            "error": redact_sensitive(record.error),
             "idempotency_key": record.idempotency_key,
         }
         with path.open("a", encoding="utf-8") as handle:
