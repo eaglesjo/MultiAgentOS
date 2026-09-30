@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 from core.contracts.ai import ModelSpec
