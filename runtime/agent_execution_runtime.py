@@ -59,6 +59,7 @@ from runtime.ide.runtime import IDERuntime
 from runtime.ide.bridge import IDEBridge, IDEBridgePolicy, IDEBridgeServer
 from runtime.agent.ide import IDECodingExecutor, IDEValidationVerifier
 from runtime.tool_calling import ToolRuntime
+from runtime.harness import ExecutionHarness
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.repository_tools import GitToolBindings, MCPToolBindings
 from runtime.quota import QuotaIntelligence, QuotaStore, quota_available
@@ -724,21 +725,20 @@ class AgentExecutionRuntime:
         capability_registry = self.capability_registry(project_root)
         health_registry = control_plane.health_registry
 
-        tool_runtime = ToolRuntime(self.policy)
-        BuiltinToolBindings(str(project_root), tool_runtime)
-        GitToolBindings(str(project_root), tool_runtime)
+        harness = ExecutionHarness.create(
+            project_root,
+            policy=self.policy,
+            apply_changes=apply_changes,
+        )
         for server_id in mcp_server_ids:
             client = self.mcp_clients.get(server_id) or self.connect_mcp(project_root, server_id)
-            MCPToolBindings(tool_runtime, client).register_tools()
-        if not apply_changes:
-            tool_runtime.unregister("patch.apply")
+            harness.register_mcp_client(client)
 
-        event_store = self.event_store(project_root)
-        ledger_store = self.tool_ledger_store(project_root)
-        execution_state_store = self.execution_state_store(project_root)
-
-        def persist_runtime_event(event):
-            event_store.append(event)
+        tool_runtime = harness.tool_runtime
+        event_store = harness.event_store
+        ledger_store = harness.ledger_store
+        execution_state_store = harness.execution_state_store
+        persist_runtime_event = harness.event_sink()
 
         executor = ModelAgentExecutor(
             adapters={
