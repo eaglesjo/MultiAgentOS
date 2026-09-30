@@ -16,6 +16,8 @@ set -euo pipefail
 #   MULTIAGENTOS_PROJECT_ROOT
 #   MULTIAGENTOS_HTTP_PORT
 #   MULTIAGENTOS_ALLOW_WRITE (default: 1)
+#   MULTIAGENTOS_TUNNEL_MODE (default: managed; set to launchd to reuse an existing tunnel-client)
+#   MULTIAGENTOS_MCP_MODE (default: ephemeral; set to launchd to reuse an existing MCP server)
 #   OPENAI_BASE_URL (default: https://api.openai.com/v1)
 
 if ! command -v tunnel-client >/dev/null 2>&1; then
@@ -37,6 +39,8 @@ done
 ROOT="${MULTIAGENTOS_PROJECT_ROOT:-$PWD}"
 PORT="${MULTIAGENTOS_HTTP_PORT:-8000}"
 ALLOW_WRITE="${MULTIAGENTOS_ALLOW_WRITE:-1}"
+TUNNEL_MODE="${MULTIAGENTOS_TUNNEL_MODE:-managed}"
+MCP_MODE="${MULTIAGENTOS_MCP_MODE:-ephemeral}"
 ALIAS="${MULTIAGENTOS_TUNNEL_ALIAS:-multiagentos-responses-e2e-$$}"
 BASE_URL="${OPENAI_BASE_URL:-https://api.openai.com/v1}"
 WRITE_PATH=".multiagentos/responses-api-tunnel-e2e-$$.txt"
@@ -44,49 +48,52 @@ WRITE_CONTENT="responses-api-tunnel-e2e-$$"
 SERVER_LOG="${TMPDIR:-/tmp}/multiagentos-responses-mcp-$$.log"
 
 cleanup() {
-  tunnel-client runtimes stop "$ALIAS" >/dev/null 2>&1 || true
-  kill "${SERVER_PID:-0}" >/dev/null 2>&1 || true
+  if [[ "$TUNNEL_MODE" == "managed" ]]; then tunnel-client runtimes stop "$ALIAS" >/dev/null 2>&1 || true; fi
+  if [[ "$MCP_MODE" == "ephemeral" ]]; then kill "${SERVER_PID:-0}" >/dev/null 2>&1 || true; fi
   rm -f "$ROOT/$WRITE_PATH" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT INT TERM
 
-echo "== Start MultiAgentOS Streamable HTTP =="
-SERVER_ARGS=(--path "$ROOT" --host 127.0.0.1 --port "$PORT")
-if [[ "$ALLOW_WRITE" == "1" ]]; then
-  SERVER_ARGS+=(--allow-write)
+if [[ "$MCP_MODE" == "ephemeral" ]]; then
+  echo "== Start MultiAgentOS Streamable HTTP =="
+  SERVER_ARGS=(--path "$ROOT" --host 127.0.0.1 --port "$PORT")
+  if [[ "$ALLOW_WRITE" == "1" ]]; then SERVER_ARGS+=(--allow-write); fi
+  python3 -m multiagentos.cli mcp serve-http "${SERVER_ARGS[@]}" >"$SERVER_LOG" 2>&1 &
+  SERVER_PID=$!
+else
+  echo "== Reuse existing MultiAgentOS Streamable HTTP =="
 fi
-python3 -m multiagentos.cli mcp serve-http "${SERVER_ARGS[@]}" >"$SERVER_LOG" 2>&1 &
-SERVER_PID=$!
 
-python3 - "$PORT" "$SERVER_PID" "$SERVER_LOG" <<'PY'
+python3 - "$PORT" "${SERVER_PID:-0}" "$SERVER_LOG" "$MCP_MODE" <<'PY'
 import os, socket, sys, time
-port, pid, log_path = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
+port, pid, log_path, mode = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3], sys.argv[4]
 deadline = time.time() + 30
 while time.time() < deadline:
     with socket.socket() as sock:
         sock.settimeout(0.5)
-        if sock.connect_ex(("127.0.0.1", port)) == 0:
-            raise SystemExit(0)
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        print(open(log_path, encoding="utf-8").read(), file=sys.stderr)
-        raise SystemExit("MultiAgentOS Streamable HTTP server exited")
+        if sock.connect_ex(("127.0.0.1", port)) == 0: raise SystemExit(0)
+    if mode == "ephemeral":
+        try: os.kill(pid, 0)
+        except ProcessLookupError:
+            print(open(log_path, encoding="utf-8").read(), file=sys.stderr)
+            raise SystemExit("MultiAgentOS Streamable HTTP server exited")
     time.sleep(0.25)
-print(open(log_path, encoding="utf-8").read(), file=sys.stderr)
 raise SystemExit("MultiAgentOS Streamable HTTP server did not become reachable")
 PY
 
-echo "== Connect managed tunnel-client =="
-tunnel-client runtimes connect \
-  --alias "$ALIAS" \
-  --tunnel-id "$CONTROL_PLANE_TUNNEL_ID" \
-  --runtime-api-key env:CONTROL_PLANE_API_KEY \
-  --mcp-server-url "http://127.0.0.1:$PORT/mcp"
-
-echo "== Verify managed runtime health =="
-tunnel-client runtimes status "$ALIAS" --json \
-  | python3 tests/tunnel_client_runtime_status.py
+if [[ "$TUNNEL_MODE" == "managed" ]]; then
+  echo "== Connect managed tunnel-client =="
+  tunnel-client runtimes connect --alias "$ALIAS" --tunnel-id "$CONTROL_PLANE_TUNNEL_ID" --runtime-api-key env:CONTROL_PLANE_API_KEY --mcp-server-url "http://127.0.0.1:$PORT/mcp"
+  echo "== Verify managed runtime health =="
+  tunnel-client runtimes status "$ALIAS" --json | python3 tests/tunnel_client_runtime_status.py
+elif [[ "$TUNNEL_MODE" == "launchd" ]]; then
+  echo "== Reuse launchd-managed tunnel-client =="
+  curl -fsS http://127.0.0.1:18080/readyz >/dev/null
+  echo "PASS: launchd tunnel-client is ready."
+else
+  echo "Unsupported MULTIAGENTOS_TUNNEL_MODE: $TUNNEL_MODE" >&2
+  exit 2
+fi
 
 echo "== Invoke MCP through hosted Responses API =="
 OPENAI_BASE_URL="$BASE_URL" python3 - "$WRITE_PATH" "$WRITE_CONTENT" "$ALLOW_WRITE" <<'PY'
