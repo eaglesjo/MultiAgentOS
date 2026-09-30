@@ -6,14 +6,10 @@ if ! command -v tunnel-client >/dev/null 2>&1; then
   exit 0
 fi
 
-ROOT="$MULTIAGENTOS_PROJECT_ROOT"
-if [[ -z "$ROOT" ]]; then ROOT="$PWD"; fi
-PORT="$MULTIAGENTOS_HTTP_PORT"
-if [[ -z "$PORT" ]]; then PORT=8000; fi
-ALLOW_WRITE="$MULTIAGENTOS_ALLOW_WRITE"
-if [[ -z "$ALLOW_WRITE" ]]; then ALLOW_WRITE=1; fi
-TMP="$TMPDIR"
-if [[ -z "$TMP" ]]; then TMP=/tmp; fi
+ROOT="${MULTIAGENTOS_PROJECT_ROOT:-$PWD}"
+PORT="${MULTIAGENTOS_HTTP_PORT:-8000}"
+ALLOW_WRITE="${MULTIAGENTOS_ALLOW_WRITE:-1}"
+TMP="${TMPDIR:-/tmp}"
 RUN_ID="$$"
 SERVER_LOG="$TMP/multiagentos-tunnel-server-$RUN_ID.log"
 PROXY_LOG="$TMP/multiagentos-tunnel-proxy-$RUN_ID.log"
@@ -21,8 +17,8 @@ WRITE_PATH=".multiagentos/tunnel-client-tool-e2e-$RUN_ID.txt"
 WRITE_CONTENT="tunnel-client-tool-e2e-$RUN_ID"
 
 cleanup() {
-  kill "$PROXY_PID" >/dev/null 2>&1 || true
-  kill "$SERVER_PID" >/dev/null 2>&1 || true
+  kill "${PROXY_PID:-0}" >/dev/null 2>&1 || true
+  kill "${SERVER_PID:-0}" >/dev/null 2>&1 || true
   rm -f "$ROOT/$WRITE_PATH" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT INT TERM
