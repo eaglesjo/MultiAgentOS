@@ -23,7 +23,7 @@ class CLIRunResumeTests(unittest.TestCase):
                     "--objective",
                     "run a command",
                     "--command",
-                    "python",
+                    sys.executable,
                     "-c",
                     "print('hello')",
                 ]
