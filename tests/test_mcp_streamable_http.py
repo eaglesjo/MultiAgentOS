@@ -93,6 +93,7 @@ async def _exercise_http_read_and_policy() -> None:
             async with Client(f"http://127.0.0.1:{port}/mcp") as client:
                 assert client.server_info is not None
                 assert client.server_info.name == "Agent Execution Runtime"
+                assert client.protocol_version == "2026-07-28"
                 assert client.server_capabilities.tools is not None
 
                 tools = await client.list_tools()
