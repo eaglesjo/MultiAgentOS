@@ -34,7 +34,7 @@ class MCPDurableExecutionTests(unittest.TestCase):
 
             durable = root / ".multiagentos"
 
-            work_units = list((durable / "work-state").glob("*.json"))
+            work_units = list((durable / "state").glob("*.json"))
             self.assertEqual(len(work_units), 1)
 
             work_unit = json.loads(work_units[0].read_text(encoding="utf-8"))
