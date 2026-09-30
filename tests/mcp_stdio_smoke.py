@@ -67,7 +67,7 @@ def run_smoke() -> None:
                     },
                 },
             )
-            assert initialized["result"]["serverInfo"]["name"] == "AGENT_EXECUTION_RUNTIME"
+            assert initialized["result"]["serverInfo"]["name"] == "Agent Execution Runtime"
 
             _notify(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
 
