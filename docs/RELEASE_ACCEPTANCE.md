@@ -20,8 +20,8 @@ On the maintainer's macOS machine:
 cd /Volumes/DevFiles/GitHubProject
 git clone https://github.com/eaglesjo/MultiAgentOS.git MultiAgentOS-release-test
 cd MultiAgentOS-release-test
-git fetch origin feat/recovery-packaging-ide-plugin
-git switch --detach origin/feat/recovery-packaging-ide-plugin
+git fetch origin main
+git switch --detach origin/main
 ```
 
 Python package smoke test:
