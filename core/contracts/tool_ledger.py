@@ -30,7 +30,6 @@ class ToolInvocationRecord:
     idempotency_key: str | None = None
 
     @property
-    @property
     def idempotency_contract(self) -> IdempotencyContract:
         return IdempotencyContract(
             IdempotencyMode.KEYED if self.idempotency_key else IdempotencyMode.NONE,
