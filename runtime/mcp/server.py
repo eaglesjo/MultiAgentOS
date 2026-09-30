@@ -69,6 +69,22 @@ class AgentExecutionRuntimeMCPServer:
             return {"content": [{"type": "text", "text": text}], "isError": False}
         return {"content": [{"type": "text", "text": result.error or "tool execution failed"}], "isError": True}
 
+    def _recover(self, arguments: dict[str, object]) -> dict[str, object]:
+        work_unit_id = arguments.get("workUnitId")
+        if not isinstance(work_unit_id, str) or not work_unit_id:
+            raise ValueError("workUnitId is required")
+        session_id = arguments.get("sessionId")
+        if session_id is not None and not isinstance(session_id, str):
+            raise ValueError("sessionId must be a string")
+        result = self.durable_bridge.recover(work_unit_id, session_id=session_id)
+        return {
+            "work_unit_id": result["work_unit_id"],
+            "disposition": result["disposition"],
+            "replayed": result["replayed"],
+            "invocation_id": result.get("invocation_id"),
+            "idempotency_key": result.get("idempotency_key"),
+        }
+
     def handle(self, message: dict[str, object]) -> dict[str, object] | None:
         method = message.get("method")
         request_id = message.get("id")
@@ -93,6 +109,19 @@ class AgentExecutionRuntimeMCPServer:
                 "id": request_id,
                 "result": {"tools": self._visible_tools()},
             }
+
+        if method == "runtime/recover":
+            params = message.get("params")
+            if not isinstance(params, dict):
+                return self._error(request_id, -32602, "params must be an object")
+            try:
+                return {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "result": self._recover(dict(params)),
+                }
+            except Exception as exc:
+                return self._error(request_id, -32000, str(exc))
 
         if method == "tools/call":
             params = message.get("params")
