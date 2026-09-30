@@ -4,16 +4,33 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import Any
 
 
-def validate(payload: dict[str, object]) -> list[str]:
+def _component_ok(value: Any) -> bool:
+    if value is True:
+        return True
+    if isinstance(value, str):
+        return value.lower() in {"ok", "healthy", "ready", "true"}
+    if isinstance(value, dict):
+        status = value.get("status")
+        state = value.get("state")
+        return status == "ok" or state in {"healthy", "ready", "running"}
+    return False
+
+
+def validate(payload: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    if payload.get("process_running") is not True:
-        errors.append("process_running must be true")
-    if payload.get("healthy") is not True:
-        errors.append("healthy must be true")
-    if payload.get("ready") is not True:
-        errors.append("ready must be true")
+    for field in ("process_running", "healthy", "ready"):
+        if payload.get(field) is not True:
+            errors.append(f"{field} must be true")
+
+    poll = payload.get("control_plane_poll_health")
+    if poll is None:
+        errors.append("control_plane_poll_health is missing")
+    elif not _component_ok(poll):
+        errors.append("control_plane_poll_health is not healthy")
+
     return errors
 
 
@@ -24,7 +41,10 @@ def main() -> int:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         return 1
-    print("tunnel-client managed runtime: process_running=true healthy=true ready=true")
+    print(
+        "tunnel-client managed runtime: "
+        "process_running=true healthy=true ready=true control_plane_poll_health=ok"
+    )
     return 0
 
 
