@@ -38,6 +38,21 @@ class RuntimeSecurityBoundaryTests(unittest.TestCase):
     def test_none_idempotency_is_not_replay_safe(self):
         self.assertFalse(IdempotencyContract(IdempotencyMode.NONE).replay_safe)
 
+    def test_tool_ledger_requires_idempotency_for_replay(self):
+        base = dict(
+            invocation_id="inv-1",
+            work_unit_id="work-1",
+            tool_id="filesystem.read",
+            arguments={},
+            state=ToolInvocationState.STARTED,
+            replay_policy=ReplayPolicy(ReplayDisposition.SAFE),
+            sequence=1,
+        )
+        without_key = ToolInvocationRecord(**base)
+        with_key = ToolInvocationRecord(**base, idempotency_key="work-1:inv-1")
+        self.assertFalse(without_key.replay_safe)
+        self.assertTrue(with_key.replay_safe)
+
     def test_durable_stores_redact_sensitive_values(self):
         with tempfile.TemporaryDirectory() as root:
             base = Path(root)
