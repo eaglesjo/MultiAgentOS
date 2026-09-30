@@ -8,6 +8,7 @@ from pathlib import Path
 from core.contracts.checkpoint import WorkflowCheckpoint
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.agent_execution_runtime import RuntimeEvent, SessionSpec, SessionState
+from core.security import redact_sensitive
 
 
 class WorkStateStore:
@@ -124,9 +125,9 @@ class RuntimeEventStore:
             "kind": event.kind.value,
             "session_id": event.session_id,
             "work_unit_id": event.work_unit_id,
-            "payload": event.payload,
+            "payload": redact_sensitive(event.payload),
             "sequence": sequence,
-            "metadata": event.metadata,
+            "metadata": redact_sensitive(event.metadata),
         }
         with path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
