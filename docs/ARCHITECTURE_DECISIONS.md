@@ -171,3 +171,22 @@ Recovery is durable and idempotent:
 - Recovery state and decisions remain under the project's durable `.multiagentos/` state boundary.
 
 This contract is intentionally separate from `tools/call`: normal tool invocation records durable execution evidence, while `runtime/recover` explicitly requests reconciliation of an interrupted work unit.
+
+## Recovery decision state machine
+
+Durable recovery is owned by the Agent Execution Runtime rather than an MCP-specific policy path.
+
+The recovery contract is:
+
+`not_started -> resume`
+
+`tool_in_flight + replay-safe -> resume -> completed|failed`
+
+`tool_in_flight + review-required -> review_required`
+
+`review_required + approve -> authorized replay -> completed|failed`
+
+`review_required + reject -> failed`
+
+Human approval authorizes the pending replay but does not itself execute the tool. The runtime records the decision durably before the transport-specific bridge performs the replay. Repeated recovery after a terminal state is non-replaying and therefore idempotent.
+
