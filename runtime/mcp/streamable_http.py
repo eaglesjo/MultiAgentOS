@@ -169,7 +169,7 @@ class AgentExecutionRuntimeStreamableHTTPServer:
             human_decision=result.get("human_decision"),
         )
 
-    def app(self):
+    def app(self, *, host: str = "127.0.0.1"):
         """Build the official SDK Streamable HTTP ASGI application."""
         return self._server.streamable_http_app(
             streamable_http_path="/mcp",
