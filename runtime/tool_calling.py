@@ -272,6 +272,8 @@ class ToolCallingRuntime:
             if item.get("role") == "tool" and int(item.get("round_number", 0)) == cursor.round_number
         }
         pending = [call for call in calls if call["call_id"] not in completed_messages]
+        conversation_revision = cursor.conversation_revision
+        next_cursor_sequence = cursor.event_sequence
         if pending:
             round_results = []
             for call in pending:
