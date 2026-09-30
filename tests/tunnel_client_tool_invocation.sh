@@ -74,31 +74,50 @@ PROXY_PID=$!
 if ! MCP_URL="$(
 python3 - "$PROXY_LOG" "$PROXY_PID" <<'PY'
 import json, os, sys, time
+
 path = sys.argv[1]
 pid = int(sys.argv[2])
 deadline = time.time() + 30
+
+def find_mcp_url(text):
+    decoder = json.JSONDecoder()
+    # tunnel-client emits diagnostics before the pretty-printed connection
+    # object, so the object is not guaranteed to occupy one log line.
+    for marker in ('{"tunnel_id"', '{\n  "tunnel_id"'):
+        start = text.find(marker)
+        if start < 0:
+            continue
+        try:
+            payload, _ = decoder.raw_decode(text[start:])
+        except json.JSONDecodeError:
+            continue
+        url = payload.get("mcp_url") if isinstance(payload, dict) else None
+        if isinstance(url, str) and url:
+            return url
+    return None
+
 while time.time() < deadline:
+    text = ""
     try:
         with open(path, encoding="utf-8") as handle:
             text = handle.read()
-        for line in text.splitlines():
-            try:
-                payload = json.loads(line.strip())
-            except json.JSONDecodeError:
-                continue
-            url = payload.get("mcp_url")
-            if isinstance(url, str) and url:
-                print(url)
-                raise SystemExit(0)
     except FileNotFoundError:
-        text = ""
+        pass
+
+    url = find_mcp_url(text)
+    if url:
+        print(url)
+        raise SystemExit(0)
+
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
         print("tunnel-client dev proxy exited before publishing an MCP URL.", file=sys.stderr)
         print(text, file=sys.stderr)
         raise SystemExit(1)
+
     time.sleep(0.25)
+
 print("tunnel-client dev proxy did not publish an MCP URL.", file=sys.stderr)
 try:
     print(open(path, encoding="utf-8").read(), file=sys.stderr)
