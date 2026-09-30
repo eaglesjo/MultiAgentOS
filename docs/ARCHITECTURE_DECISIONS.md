@@ -168,6 +168,9 @@ Recovery is durable and idempotent:
 - A safe read-only invocation interrupted after the durable `STARTED` boundary may be replayed with the original invocation and idempotency identity.
 - A completed work unit is not replayed again; the response reports `replayed: false`.
 - Side-effecting invocations are not automatically replayed after a crash. They resolve to `review_required` and require an explicit human decision.
+- `humanDecision` accepts `approve` or `reject`; `notes` is optional durable audit context.
+- `approve` authorizes exactly the pending replay; the transport bridge performs execution only after the runtime records the approval.
+- `reject` transitions the interrupted work unit to `failed` without executing the pending tool.
 - Recovery state and decisions remain under the project's durable `.multiagentos/` state boundary.
 
 This contract is intentionally separate from `tools/call`: normal tool invocation records durable execution evidence, while `runtime/recover` explicitly requests reconciliation of an interrupted work unit.
