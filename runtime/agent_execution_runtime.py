@@ -28,6 +28,7 @@ from core.planning import BasicPlanner
 from core.state import RuntimeEventStore, SessionStateStore, WorkStateStore
 from core.tool_ledger import ToolInvocationStore
 from core.execution_state import ExecutionStateStore
+from core.recovery_audit import RecoveryAuditStore
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.routing import AIRouter, RoutingStrategy
 from profiles.detector import ProfileDetector
@@ -356,6 +357,12 @@ class AgentExecutionRuntime:
     def execution_state_store(self, project_root: Path):
         return ExecutionStateStore(Path(project_root) / ".multiagentos" / "execution-state")
 
+    def recovery_audit_store(self, project_root: Path):
+        return RecoveryAuditStore(Path(project_root) / ".multiagentos" / "recovery")
+
+    def workspace_identity(self, project_root: Path) -> dict[str, object] | None:
+        return self.git.identity(str(Path(project_root).resolve()))
+
     def load_execution_cursor(self, project_root: Path, work_unit_id: str):
         return self.execution_state_store(project_root).load_cursor(work_unit_id)
 
@@ -413,6 +420,15 @@ class AgentExecutionRuntime:
 
     def recovery_plan(self, project_root: Path, work_unit_id: str) -> RecoveryPlan:
         """Derive a conservative recovery decision without replaying any tool."""
+        work_unit = self.state_store(project_root).load(work_unit_id)
+        expected_identity = work_unit.metadata.get("source_identity")
+        current_identity = self.workspace_identity(project_root)
+        if isinstance(expected_identity, dict) and current_identity is not None and dict(expected_identity) != current_identity:
+            return RecoveryPlan(
+                work_unit_id,
+                RecoveryDisposition.REVIEW_REQUIRED,
+                reason="workspace source identity changed since the durable execution began",
+            )
         snapshot = self.inspect_work_unit(project_root, work_unit_id)
         state = snapshot["execution_state"]
         pending = tuple(snapshot["pending_tool_call_ids"])
@@ -891,6 +907,10 @@ class AgentExecutionRuntime:
             raise LookupError(f"Persisted WorkUnit not found: {work_unit_id}")
         work_unit = store.load(work_unit_id)
         plan = self.recovery_plan(project_root, work_unit_id)
+        self.recovery_audit_store(project_root).append(
+            plan,
+            source_identity=self.workspace_identity(project_root),
+        )
         if plan.disposition == RecoveryDisposition.COMPLETED:
             raise ValueError(f"WorkUnit {work_unit_id} is already completed")
         if plan.requires_human_review:
@@ -943,6 +963,10 @@ class AgentExecutionRuntime:
     ) -> OrchestrationResult:
         """Run through the AGENT_EXECUTION_RUNTIME lifecycle while persisting every terminal state."""
         work_unit.metadata["cwd"] = str(project_root)
+        if "source_identity" not in work_unit.metadata:
+            identity = self.workspace_identity(project_root)
+            if identity is not None:
+                work_unit.metadata["source_identity"] = identity
         store = self.state_store(project_root)
         if work_unit.status == WorkStatus.FAILED:
             work_unit.transition(WorkStatus.EXECUTING)
