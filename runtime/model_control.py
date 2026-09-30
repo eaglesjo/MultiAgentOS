@@ -16,6 +16,7 @@ from core.contracts.ai import ModelSpec
 from core.contracts.health import ModelHealth, ModelHealthRegistry, ModelHealthStore
 from core.contracts.quota import QuotaSnapshot
 from runtime.quota import QuotaStore, quota_available, quota_score
+from runtime.capability import CapabilityRegistry, CapabilityStore
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class ModelControlState:
     provider_id: str
     health: ModelHealth | None
     quota: QuotaSnapshot | None
+    capabilities: frozenset[str] = frozenset()
 
     @property
     def available(self) -> bool:
@@ -83,6 +85,7 @@ class ModelControlPlane:
         root = Path(project_root) / ".multiagentos"
         self.root = root
         self.quota_store = QuotaStore(root / "quota")
+        self.capability_registry = CapabilityRegistry(CapabilityStore(root / "capabilities"))
         self.health_registry = ModelHealthRegistry(ModelHealthStore(root / "health"))
         self.events = ModelControlEventStore(root / "control" / "events.jsonl")
 
@@ -92,6 +95,7 @@ class ModelControlPlane:
             provider_id=model.provider_id,
             health=self.health_registry.get(model.id),
             quota=self.quota_store.load(model.id) if self.quota_store.exists(model.id) else None,
+            capabilities=self.capability_registry.profile(model).capabilities,
         )
 
     def states(self, models: list[ModelSpec]) -> tuple[ModelControlState, ...]:
