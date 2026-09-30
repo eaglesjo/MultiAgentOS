@@ -30,8 +30,6 @@ class AgentExecutionRuntimeStreamableHTTPServer:
         *,
         allow_write: bool = False,
         allow_process: bool = False,
-        allowed_hosts: tuple[str, ...] | None = None,
-        allowed_origins: tuple[str, ...] | None = None,
     ) -> None:
         try:
             from mcp.server import Server
@@ -44,8 +42,6 @@ class AgentExecutionRuntimeStreamableHTTPServer:
             ) from exc
 
         self.project_root = project_root.resolve()
-        self.allowed_hosts = tuple(allowed_hosts or ())
-        self.allowed_origins = tuple(allowed_origins or ())
         self.runtime = ToolRuntime(
             ExecutionPolicy(
                 allow_process=allow_process,
@@ -169,7 +165,7 @@ class AgentExecutionRuntimeStreamableHTTPServer:
             human_decision=result.get("human_decision"),
         )
 
-    def app(self, *, host: str = "127.0.0.1"):
+    def app(self):
         """Build the official SDK Streamable HTTP ASGI application."""
         return self._server.streamable_http_app(
             streamable_http_path="/mcp",
