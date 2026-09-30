@@ -267,9 +267,9 @@ For Streamable HTTP, the binding remains:
 MCP_SERVER_URL=http://127.0.0.1:8000/mcp
 ```
 
-The current tunnel-client documentation identifies Streamable HTTP as the `MCP_SERVER_URL` binding and recommends `runtimes connect` followed by `runtimes status` before declaring the runtime usable. citeturn0search1turn0search6
+The current tunnel-client documentation identifies Streamable HTTP as the `MCP_SERVER_URL` binding and recommends `runtimes connect` followed by `runtimes status` before declaring the runtime usable.
 
-The tunnel-client 2026-07-28 negotiation issue was also resolved upstream in v0.0.13: the client now uses `server/discover` for the modern protocol before falling back to legacy `initialize`. This is important because MultiAgentOS's modern Streamable HTTP compatibility contract requires 2026-07-28. citeturn0search5
+The tunnel-client 2026-07-28 negotiation issue was also resolved upstream in v0.0.13: the client now uses `server/discover` for the modern protocol before falling back to legacy `initialize`. This is important because MultiAgentOS's modern Streamable HTTP compatibility contract requires 2026-07-28.
 
 ## Official references
 
