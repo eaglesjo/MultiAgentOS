@@ -66,35 +66,50 @@ fi
 
 echo "== Start tunnel-client local forwarding proxy =="
 tunnel-client dev proxy \
-  --tunnel-id "tunnel_00000000000000000000000000000001" \
   --mcp-server-url "http://127.0.0.1:$PORT/mcp" \
   --listen 127.0.0.1:0 \
   --print-json >"$PROXY_LOG" 2>&1 &
 PROXY_PID=$!
 
-MCP_URL="$(
-python3 - "$PROXY_LOG" <<'PY'
-import json, sys, time
+if ! MCP_URL="$(
+python3 - "$PROXY_LOG" "$PROXY_PID" <<'PY'
+import json, os, sys, time
 path = sys.argv[1]
+pid = int(sys.argv[2])
 deadline = time.time() + 30
 while time.time() < deadline:
     try:
         with open(path, encoding="utf-8") as handle:
-            for line in handle:
-                try:
-                    payload = json.loads(line.strip())
-                except json.JSONDecodeError:
-                    continue
-                url = payload.get("mcp_url")
-                if isinstance(url, str) and url:
-                    print(url)
-                    raise SystemExit(0)
+            text = handle.read()
+        for line in text.splitlines():
+            try:
+                payload = json.loads(line.strip())
+            except json.JSONDecodeError:
+                continue
+            url = payload.get("mcp_url")
+            if isinstance(url, str) and url:
+                print(url)
+                raise SystemExit(0)
     except FileNotFoundError:
-        pass
+        text = ""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        print("tunnel-client dev proxy exited before publishing an MCP URL.", file=sys.stderr)
+        print(text, file=sys.stderr)
+        raise SystemExit(1)
     time.sleep(0.25)
-raise SystemExit("tunnel-client dev proxy did not publish an MCP URL")
+print("tunnel-client dev proxy did not publish an MCP URL.", file=sys.stderr)
+try:
+    print(open(path, encoding="utf-8").read(), file=sys.stderr)
+except OSError:
+    pass
+raise SystemExit(1)
 PY
-)"
+)"; then
+  echo "Proxy startup diagnostics are shown above." >&2
+  exit 1
+fi
 
 echo "MCP ingress: $MCP_URL"
 
