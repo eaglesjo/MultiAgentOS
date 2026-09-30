@@ -140,7 +140,10 @@ The Agent Execution Runtime MCP server exposes durable recovery through the `run
   "id": 42,
   "method": "runtime/recover",
   "params": {
-    "workUnitId": "work-unit-id"
+    "workUnitId": "work-unit-id",
+    "sessionId": "session-id",
+    "humanDecision": "approve",
+    "notes": "verified the interrupted side effect was not applied"
   }
 }
 ```
@@ -158,7 +161,8 @@ The Agent Execution Runtime MCP server exposes durable recovery through the `run
     "disposition": "completed",
     "replayed": true,
     "invocationId": "invocation-id",
-    "idempotencyKey": "idempotency-key"
+    "idempotencyKey": "idempotency-key",
+    "humanDecision": "approve"
   }
 }
 ```
