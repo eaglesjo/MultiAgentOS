@@ -24,6 +24,8 @@ from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifi
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.agent_execution_runtime import SessionSpec, SessionState
 from core.contracts.execution_limits import ExecutionBudget, RateLimit
+from core.contracts.policy_decision import DecisionCategory, DecisionDisposition, PolicyDecision
+from core.policy_decision import PolicyDecisionStore
 from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import RuntimeEventStore, SessionStateStore, WorkStateStore
@@ -753,6 +755,7 @@ class AgentExecutionRuntime:
             limit_store=harness.execution_limit_store,
             execution_budget=execution_budget,
             rate_limit=rate_limit,
+            decision_store=harness.decision_store,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,
@@ -793,6 +796,19 @@ class AgentExecutionRuntime:
             )
         if session_id:
             self.attach_work_unit(project_root, session_id, work_unit.id)
+        harness.decision_store.append(PolicyDecision(
+            work_unit_id=work_unit.id,
+            category=DecisionCategory.MODEL_ROUTING,
+            disposition=DecisionDisposition.ALLOW,
+            reason="model routing selected the configured execution model",
+            action="model.route",
+            session_id=session_id,
+            metadata={
+                "strategy": str(routing_strategy),
+                "model_id": preferred_model_ids[0] if preferred_model_ids else None,
+                "fallback_count": len(fallback_model_ids),
+            },
+        ))
         return self.run_persistent(
             project_root=project_root,
             work_unit=work_unit,
@@ -909,6 +925,18 @@ class AgentExecutionRuntime:
             plan,
             source_identity=self.workspace_identity(project_root),
         )
+        PolicyDecisionStore(Path(project_root) / ".multiagentos" / "decisions").append(PolicyDecision(
+            work_unit_id=work_unit_id,
+            category=DecisionCategory.RECOVERY,
+            disposition=(
+                DecisionDisposition.REVIEW_REQUIRED
+                if plan.requires_human_review
+                else DecisionDisposition.ALLOW
+            ),
+            reason=plan.reason,
+            action="recovery.resume",
+            metadata={"safe_to_resume": plan.safe_to_resume},
+        ))
         if plan.disposition == RecoveryDisposition.COMPLETED:
             raise ValueError(f"WorkUnit {work_unit_id} is already completed")
         if plan.requires_human_review:
