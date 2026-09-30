@@ -6,6 +6,8 @@ from core.contracts.agent_execution_runtime import ToolSideEffect, ToolSpec
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelRequest, ModelResponse
 from core.contracts.tool_ledger import ToolInvocationState
+from core.contracts.work_unit import WorkUnit
+from core.contracts.recovery import RecoveryDisposition
 from core.tool_ledger import ToolInvocationStore
 from runtime.tool_calling import ToolCallingRuntime, ToolRuntime
 
@@ -65,6 +67,27 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
             self.assertEqual(records[0].tool_id, "filesystem.read")
             self.assertEqual(result.rounds, 2)
             self.assertFalse(store.has_unresolved("work-1"))
+
+    def test_recovery_gate_allows_explicitly_safe_unresolved_invocation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = __import__("runtime", fromlist=["AgentExecutionRuntime"]).AgentExecutionRuntime()
+            work = WorkUnit("work-1", "inspect")
+            work.transition("executing")
+            runtime.state_store(root).save(work)
+            from core.contracts.replay import ReplayDisposition, ReplayPolicy
+            from core.contracts.tool_ledger import ToolInvocationRecord
+
+            runtime.tool_ledger_store(root).append(ToolInvocationRecord(
+                "inv-1", "work-1", "filesystem.read", {"path": "README.md"},
+                ToolInvocationState.STARTED,
+                ReplayPolicy(ReplayDisposition.SAFE, reason="read-only"),
+                1,
+            ))
+            plan = runtime.recovery_plan(root, "work-1")
+            self.assertEqual(plan.disposition, RecoveryDisposition.RESUME)
+            self.assertTrue(plan.safe_to_resume)
+            self.assertEqual(plan.pending_tool_call_ids, ("inv-1",))
 
     def test_started_invocation_is_unresolved_after_runtime_crash_boundary(self):
         with tempfile.TemporaryDirectory() as temp:
