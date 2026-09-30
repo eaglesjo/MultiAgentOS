@@ -11,6 +11,8 @@ from core.contracts.agent_execution_runtime import (
     ToolRequest,
 )
 from core.contracts.replay import ReplayDisposition, ReplayPolicy
+from core.contracts.policy_decision import DecisionCategory, DecisionDisposition, PolicyDecision
+from core.policy_decision import PolicyDecisionStore
 from core.contracts.tool_ledger import ToolInvocationRecord, ToolInvocationState
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.state import RuntimeEventStore, WorkStateStore
@@ -28,6 +30,7 @@ class MCPDurableExecutionBridge:
         self.work_store = WorkStateStore(durable_root / "work-state")
         self.event_store = RuntimeEventStore(durable_root / "events")
         self.ledger_store = ToolInvocationStore(durable_root / "tool-ledger")
+        self.decision_store = PolicyDecisionStore(durable_root / "decisions")
 
     def _replay_policy(self, tool_id: str) -> ReplayPolicy:
         if tool_id.startswith("filesystem.read") or tool_id in {"git.status", "git.diff"}:
@@ -80,6 +83,21 @@ class MCPDurableExecutionBridge:
         )
         work_unit.transition(WorkStatus.EXECUTING)
         self.work_store.save(work_unit)
+
+        self.decision_store.append(
+            PolicyDecision(
+                work_unit_id=work_unit_id,
+                category=DecisionCategory.CAPABILITY,
+                disposition=DecisionDisposition.ALLOW,
+                reason="MCP tool call entered the Agent Execution Runtime durable boundary",
+                action=name,
+                session_id=session_id,
+                metadata={
+                    "source": "mcp",
+                    "replay_disposition": replay_policy.disposition.value,
+                },
+            )
+        )
 
         self._append_event(
             RuntimeEventKind.REQUEST,
