@@ -301,6 +301,13 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_serve.add_argument("--allow-write", action="store_true", help="expose filesystem write and patch tools")
     mcp_serve.add_argument("--allow-process", action="store_true", help="expose shell execution")
 
+    mcp_http = mcp_sub.add_parser("serve-http", help="run Agent Execution Runtime as a Streamable HTTP MCP server")
+    mcp_http.add_argument("--path", default=".")
+    mcp_http.add_argument("--host", default="127.0.0.1")
+    mcp_http.add_argument("--port", type=int, default=8000)
+    mcp_http.add_argument("--allow-write", action="store_true", help="expose filesystem write and patch tools")
+    mcp_http.add_argument("--allow-process", action="store_true", help="expose shell execution")
+
     github = subparsers.add_parser("github", help="use Agent Execution Runtime GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
     probe_parser = github_sub.add_parser(
@@ -533,6 +540,16 @@ def main(argv: list[str] | None = None) -> int:
             allow_write=args.allow_write,
             allow_process=args.allow_process,
         ).serve_forever()
+        return 0
+
+    if args.command == "mcp" and args.mcp_command == "serve-http":
+        from runtime.mcp.streamable_http import AgentExecutionRuntimeStreamableHTTPServer
+        root = Path(args.path).expanduser().resolve()
+        AgentExecutionRuntimeStreamableHTTPServer(
+            root,
+            allow_write=args.allow_write,
+            allow_process=args.allow_process,
+        ).run(host=args.host, port=args.port)
         return 0
 
     if args.command == "github" and args.github_command == "probe":
