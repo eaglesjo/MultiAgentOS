@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 
 from core.contracts.agent_execution_runtime import RuntimeEventKind
+from core.contracts.recovery import RecoveryDisposition
+from runtime.agent_execution_runtime import AgentExecutionRuntime
 from runtime.mcp.server import AgentExecutionRuntimeMCPServer
 
 
@@ -70,6 +72,20 @@ class MCPDurableExecutionTests(unittest.TestCase):
                     if "requires_recovery_review" in item
                 )
             )
+
+            decisions = [
+                json.loads(line)
+                for line in (durable / "decisions" / f"{work_unit_id}.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertEqual(decisions[-1]["category"], "capability")
+            self.assertEqual(decisions[-1]["disposition"], "allow")
+            self.assertEqual(decisions[-1]["action"], "filesystem.read")
+
+            runtime = AgentExecutionRuntime()
+            plan = runtime.recovery_plan(root, work_unit_id)
+            self.assertEqual(plan.disposition, RecoveryDisposition.COMPLETED)
 
 
 if __name__ == "__main__":
