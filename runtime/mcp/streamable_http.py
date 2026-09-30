@@ -30,6 +30,8 @@ class AgentExecutionRuntimeStreamableHTTPServer:
         *,
         allow_write: bool = False,
         allow_process: bool = False,
+        allowed_hosts: tuple[str, ...] | None = None,
+        allowed_origins: tuple[str, ...] | None = None,
     ) -> None:
         try:
             from mcp.server import Server
