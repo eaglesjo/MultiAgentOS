@@ -155,21 +155,22 @@ class MCPDurableExecutionBridge:
                 "process" if self.tool_runtime.policy.allow_process else "",
             }
         ) - {""}
-        self.decision_store.append(
-            PolicyDecision(
-                work_unit_id=work_unit_id,
-                category=DecisionCategory.RECOVERY,
-                disposition=DecisionDisposition.ALLOW,
-                reason="MCP recovery replay is explicitly safe and idempotency-keyed",
-                action=record.tool_id,
-                session_id=session_id,
-                metadata={
-                    "source": "mcp",
-                    "invocation_id": record.invocation_id,
-                    "idempotency_key": record.idempotency_key,
-                },
+        if not recovery_authorized:
+            self.decision_store.append(
+                PolicyDecision(
+                    work_unit_id=work_unit_id,
+                    category=DecisionCategory.RECOVERY,
+                    disposition=DecisionDisposition.ALLOW,
+                    reason="MCP recovery replay is explicitly safe and idempotency-keyed",
+                    action=record.tool_id,
+                    session_id=session_id,
+                    metadata={
+                        "source": "mcp",
+                        "invocation_id": record.invocation_id,
+                        "idempotency_key": record.idempotency_key,
+                    },
+                )
             )
-        )
         self._append_event(
             RuntimeEventKind.TOOL_CALL,
             work_unit_id,
