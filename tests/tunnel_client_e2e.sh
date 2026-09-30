@@ -42,11 +42,17 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 echo "== Start MultiAgentOS Streamable HTTP =="
-python3 -m multiagentos.cli mcp serve-http \
-  --path "$ROOT" \
-  --host 127.0.0.1 \
-  --port "$PORT" >"$SERVER_LOG" 2>&1 &
-SERVER_PID=$
+SERVER_ARGS=(
+  --path "$ROOT"
+  --host 127.0.0.1
+  --port "$PORT"
+)
+if [[ "$ALLOW_WRITE" == "1" ]]; then
+  SERVER_ARGS+=(--allow-write)
+fi
+
+python3 -m multiagentos.cli mcp serve-http "${SERVER_ARGS[@]}" >"$SERVER_LOG" 2>&1 &
+SERVER_PID=$!
 
 python3 - "$PORT" <<'PY'
 import socket
