@@ -74,7 +74,7 @@ echo "== Verify managed runtime =="
 tunnel-client runtimes status "$ALIAS" --json \
   | python3 tests/tunnel_client_runtime_status.py
 
-echo "== Verify tunnel-client MCP health ==" 
-tunnel-client runtimes status "$ALIAS" --json
+echo "== Verify tunnel-client MCP discovery =="
+MULTIAGENTOS_TUNNEL_ALIAS="$ALIAS" bash tests/tunnel_client_mcp_acceptance.sh
 
-echo "PASS: tunnel-client managed runtime is running, healthy, and ready."
+echo "PASS: tunnel-client managed runtime is running, healthy, ready, and has complete MCP discovery evidence."
