@@ -236,6 +236,7 @@ GitHub Actions validates the repository through CI.
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
 - [Agent Execution Runtime Connection Guide](docs/AGENT_EXECUTION_RUNTIME_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
+- [macOS MCP Service](docs/MACOS_MCP_SERVICE.md)
 - [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
 - [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 - [Agent Plugin Marketplace](docs/PLUGIN_MARKETPLACE.md)
