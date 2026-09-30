@@ -19,8 +19,8 @@ class ToolInvocationRecord:
     invocation_id: str
     work_unit_id: str
     tool_id: str
-    call_id: str | None = None
     arguments: dict[str, Any]
+    call_id: str | None = None
     state: ToolInvocationState
     replay_policy: ReplayPolicy
     sequence: int
