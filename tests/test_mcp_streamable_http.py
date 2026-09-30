@@ -54,20 +54,16 @@ def _start_server(
 
 
 def _wait_for_http(port: int, process: subprocess.Popen[str]) -> None:
-    import urllib.request
-
     deadline = time.time() + 10
-    url = f"http://127.0.0.1:{port}/mcp"
     while time.time() < deadline:
         if process.poll() is not None:
             stderr = process.stderr.read() if process.stderr else ""
             raise AssertionError(f"HTTP MCP server exited early: {stderr}")
         try:
-            urllib.request.urlopen(url, timeout=0.5)
-        except Exception:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                return
+        except OSError:
             time.sleep(0.1)
-        else:
-            return
     raise AssertionError("timed out waiting for Streamable HTTP MCP server")
 
 
