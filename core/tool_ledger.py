@@ -25,6 +25,7 @@ class ToolInvocationStore:
             "invocation_id": record.invocation_id,
             "work_unit_id": record.work_unit_id,
             "tool_id": record.tool_id,
+            "call_id": record.call_id,
             "arguments": record.arguments,
             "state": record.state.value,
             "replay_policy": {
@@ -56,6 +57,7 @@ class ToolInvocationStore:
                 work_unit_id=raw["work_unit_id"],
                 tool_id=raw["tool_id"],
                 arguments=dict(raw.get("arguments", {})),
+                call_id=raw.get("call_id"),
                 state=ToolInvocationState(raw["state"]),
                 replay_policy=ReplayPolicy(
                     ReplayDisposition(policy["disposition"]),
