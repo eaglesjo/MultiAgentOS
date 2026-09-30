@@ -11,6 +11,7 @@ from core.contracts.memory import MemoryKind, ProjectMemory
 from core.execution_state import ExecutionStateStore
 from core.memory import ProjectMemoryStore
 from runtime.model_control import ModelControlPlane
+from runtime.observability import ExecutionObservability, ExecutionEvidenceSummary
 from core.recovery_audit import RecoveryAuditStore
 from core.state import RuntimeEventStore
 from core.tool_ledger import ToolInvocationStore
@@ -33,6 +34,7 @@ class ExecutionHarness:
     recovery_audit_store: RecoveryAuditStore
     memory_store: ProjectMemoryStore
     model_control: ModelControlPlane
+    observability: ExecutionObservability
 
     @classmethod
     def create(
@@ -60,6 +62,7 @@ class ExecutionHarness:
             recovery_audit_store=RecoveryAuditStore(durable_root / "recovery"),
             memory_store=ProjectMemoryStore(durable_root / "memory"),
             model_control=ModelControlPlane(root),
+            observability=ExecutionObservability(root),
         )
 
     def register_mcp_client(self, client) -> None:
@@ -77,3 +80,4 @@ class ExecutionHarness:
     def recall(self, query: str = "", *, limit: int = 20) -> tuple[ProjectMemory, ...]:
         """Retrieve bounded project context without touching execution journals."""
         return self.memory_store.search(query, limit=limit)
+
