@@ -6,7 +6,7 @@ from core.contracts.agent_execution_runtime import ToolSideEffect, ToolSpec
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelRequest, ModelResponse
 from core.contracts.tool_ledger import ToolInvocationState
-from core.contracts.work_unit import WorkUnit
+from core.contracts.work_unit import WorkUnit, WorkStatus
 from core.contracts.recovery import RecoveryDisposition
 from core.tool_ledger import ToolInvocationStore
 from runtime.tool_calling import ToolCallingRuntime, ToolRuntime
@@ -73,7 +73,7 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
             root = Path(temp)
             runtime = __import__("runtime", fromlist=["AgentExecutionRuntime"]).AgentExecutionRuntime()
             work = WorkUnit("work-1", "inspect")
-            work.transition("executing")
+            work.transition(WorkStatus.EXECUTING)
             runtime.state_store(root).save(work)
             from core.contracts.replay import ReplayDisposition, ReplayPolicy
             from core.contracts.tool_ledger import ToolInvocationRecord
