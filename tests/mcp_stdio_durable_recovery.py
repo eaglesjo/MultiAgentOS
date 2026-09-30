@@ -314,6 +314,75 @@ def test_mcp_stdio_side_effecting_crash_requires_human_review() -> None:
             for decision in decisions
         )
 
+
+def test_mcp_stdio_side_effecting_recovery_human_approve_replays_once() -> None:
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        target = root / "approved-side-effect.txt"
+        target.write_text("before", encoding="utf-8")
+        crashed = _server(root, crash_after_started=True, allow_write=True)
+        try:
+            _initialize(crashed)
+            try:
+                _send(crashed, {"jsonrpc": "2.0", "id": 10, "method": "tools/call", "params": {"name": "filesystem.write", "arguments": {"path": target.name, "content": "after"}}})
+            except RuntimeError:
+                pass
+        finally:
+            if crashed.poll() is None:
+                crashed.kill()
+            crashed.wait(timeout=5)
+        runtime = AgentExecutionRuntime()
+        work_unit_id = runtime.state_store(root).list_ids()[0]
+        recovered = _server(root, crash_after_started=False, allow_write=True)
+        try:
+            _initialize(recovered)
+            approved = _send(recovered, {"jsonrpc": "2.0", "id": 11, "method": "runtime/recover", "params": {"workUnitId": work_unit_id, "humanDecision": "approve", "notes": "Verified the interrupted write had not reached the filesystem."}})
+            assert approved["result"]["disposition"] == "completed"
+            assert approved["result"]["replayed"] is True
+            assert approved["result"]["human_decision"] == "approve"
+            assert target.read_text(encoding="utf-8") == "after"
+            repeated = _send(recovered, {"jsonrpc": "2.0", "id": 12, "method": "runtime/recover", "params": {"workUnitId": work_unit_id, "humanDecision": "approve"}})
+            assert repeated["result"]["disposition"] == "completed"
+            assert repeated["result"]["replayed"] is False
+        finally:
+            recovered.terminate()
+            recovered.wait(timeout=5)
+        decisions = runtime.decision_store(root).load(work_unit_id)
+        assert any(item["category"] == "recovery" and item["disposition"] == "allow" and item["metadata"].get("human_decision") == "approve" for item in decisions)
+
+
+def test_mcp_stdio_side_effecting_recovery_human_reject_is_terminal_and_safe() -> None:
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        target = root / "rejected-side-effect.txt"
+        target.write_text("before", encoding="utf-8")
+        crashed = _server(root, crash_after_started=True, allow_write=True)
+        try:
+            _initialize(crashed)
+            try:
+                _send(crashed, {"jsonrpc": "2.0", "id": 20, "method": "tools/call", "params": {"name": "filesystem.write", "arguments": {"path": target.name, "content": "after"}}})
+            except RuntimeError:
+                pass
+        finally:
+            if crashed.poll() is None:
+                crashed.kill()
+            crashed.wait(timeout=5)
+        runtime = AgentExecutionRuntime()
+        work_unit_id = runtime.state_store(root).list_ids()[0]
+        recovered = _server(root, crash_after_started=False, allow_write=True)
+        try:
+            _initialize(recovered)
+            rejected = _send(recovered, {"jsonrpc": "2.0", "id": 21, "method": "runtime/recover", "params": {"workUnitId": work_unit_id, "humanDecision": "reject", "notes": "Do not replay an uncertain side effect."}})
+            assert rejected["result"]["disposition"] == "failed"
+            assert rejected["result"]["replayed"] is False
+            assert target.read_text(encoding="utf-8") == "before"
+        finally:
+            recovered.terminate()
+            recovered.wait(timeout=5)
+        assert runtime.state_store(root).load(work_unit_id).status.value == "failed"
+        decisions = runtime.decision_store(root).load(work_unit_id)
+        assert any(item["category"] == "recovery" and item["disposition"] == "deny" and item["metadata"].get("human_decision") == "reject" for item in decisions)
+
 if __name__ == "__main__":
     test_mcp_stdio_crash_restart_recovers_same_safe_invocation()
     print("AGENT_EXECUTION_RUNTIME MCP stdio durable recovery E2E: PASS")
