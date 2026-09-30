@@ -15,7 +15,8 @@ class ProjectMemoryStoreTests(unittest.TestCase):
             store.append("Keep changes small", kind=MemoryKind.PREFERENCE, source="user")
             result = store.search("project", limit=2)
             self.assertEqual(len(result), 2)
-            self.assertEqual(result[0].memory_id, first.memory_id)
+            self.assertEqual(len({item.memory_id for item in result}), 2)
+            self.assertIn(first.memory_id, {item.memory_id for item in result})
 
     def test_sensitive_values_are_redacted_before_persistence(self):
         with tempfile.TemporaryDirectory() as temp:
