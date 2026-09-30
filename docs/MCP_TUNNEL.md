@@ -221,3 +221,24 @@ The final connector/runtime step remains environment-specific and must be valida
 - tunnel-client repository: https://github.com/openai/tunnel-client
 - Latest tunnel-client release: https://github.com/openai/tunnel-client/releases/latest
 - tunnel-client end-user guide: https://github.com/openai/tunnel-client/blob/master/docs/end-user-guide.md
+
+
+### Host compatibility checkpoint
+
+The Streamable HTTP endpoint is now exercised with the official MCP Python SDK client and the official MCP Inspector CLI. Inspector supports ad-hoc Streamable HTTP targets with `--transport http` and the same client configuration model used by its Web/TUI clients. The repository smoke test exercises both `tools/list` and a real `filesystem.read` call against the HTTP endpoint.
+
+A host that supports MCP Streamable HTTP should therefore connect to:
+
+```text
+http://127.0.0.1:8000/mcp
+```
+
+For a deployed endpoint, configure the host with the HTTPS `/mcp` URL and the required authentication headers. The SDK's default HTTP server security is localhost-only; a non-local deployment must explicitly configure the transport host allowlist. This is an intentional deployment boundary, not a reason to weaken the local default.
+
+Filesystem write remains an explicit capability:
+
+```bash
+multiagentos mcp serve-http --path /absolute/path/to/project --allow-write
+```
+
+The Host compatibility boundary does not authorize writes by itself; `ExecutionPolicy` remains the authority for `filesystem.write` and `process`.
