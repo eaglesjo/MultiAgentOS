@@ -12,7 +12,7 @@ from core.chat_agent_router import ChatAgentAssignment, ChatAgentRouter, ChatAge
 from core.chat_session import ChatSession, ChatSessionStore
 from core.contracts.human_review import HumanReviewDecision
 from core.contracts.resume import WorkflowResumeContext
-from core.contracts.recovery import RecoveryDisposition, RecoveryPlan
+from core.contracts.recovery import RecoveryAuthorization, RecoveryDecision, RecoveryDisposition, RecoveryPlan
 from core.multi_agent_workflow import MultiAgentWorkflow, MultiAgentWorkflowResult
 from core.artifacts import ArtifactStore
 from runtime.chat_config import load_chat_config
@@ -469,6 +469,67 @@ class AgentExecutionRuntime:
             reason="durable execution ended between tool rounds",
         )
     
+    def resolve_recovery_review(
+        self,
+        project_root: Path,
+        work_unit_id: str,
+        *,
+        decision: RecoveryDecision | str,
+        notes: str = "",
+        session_id: str | None = None,
+    ) -> RecoveryAuthorization:
+        """Durably resolve a recovery review without executing the pending tool."""
+        root = Path(project_root).resolve()
+        plan = self.recovery_plan(root, work_unit_id)
+        decision = RecoveryDecision(decision)
+        if plan.disposition is not RecoveryDisposition.REVIEW_REQUIRED:
+            raise ValueError(
+                f"recovery review is not pending: {plan.disposition.value}"
+            )
+        reason = notes.strip()
+        if decision is RecoveryDecision.REJECT:
+            work_unit = self.state_store(root).load(work_unit_id)
+            if work_unit.status not in {WorkStatus.FAILED, WorkStatus.COMPLETED}:
+                work_unit.transition(WorkStatus.FAILED)
+                work_unit.metadata["recovery_decision"] = decision.value
+                if reason:
+                    work_unit.metadata["recovery_notes"] = reason
+                self.state_store(root).save(work_unit)
+            disposition = DecisionDisposition.DENY
+            authorized = False
+        else:
+            disposition = DecisionDisposition.ALLOW
+            authorized = True
+        self.policy_decision_store(root).append(
+            PolicyDecision(
+                work_unit_id=work_unit_id,
+                category=DecisionCategory.RECOVERY,
+                disposition=disposition,
+                reason=reason or (
+                    "Human approved recovery replay"
+                    if decision is RecoveryDecision.APPROVE
+                    else "Human rejected recovery replay"
+                ),
+                action="runtime.recover",
+                session_id=session_id,
+                metadata={
+                    "source": "agent-execution-runtime",
+                    "human_decision": decision.value,
+                    "pending_tool_call_ids": list(plan.pending_tool_call_ids),
+                },
+            )
+        )
+        return RecoveryAuthorization(
+            work_unit_id=work_unit_id,
+            decision=decision,
+            notes=reason,
+            session_id=session_id,
+            authorized=authorized,
+        )
+
+    def policy_decision_store(self, project_root: Path) -> PolicyDecisionStore:
+        return PolicyDecisionStore(Path(project_root).resolve() / ".multiagentos" / "decisions")
+
     def quota_store(self, project_root: Path):
         """Return the project-scoped persistent model quota store."""
         return QuotaStore(Path(project_root) / ".multiagentos" / "quota")
