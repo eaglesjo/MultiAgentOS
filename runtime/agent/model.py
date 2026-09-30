@@ -13,6 +13,8 @@ from runtime.health import ModelHealthRegistry
 from runtime.model_control import ModelControlPlane
 from runtime.tool_calling import ToolCallingExecution, ToolCallingRuntime, ToolRuntime
 from core.contracts.work_unit import WorkUnit
+from core.contracts.execution_limits import ExecutionBudget, RateLimit
+from core.execution_limits import ExecutionLimitStore
 
 
 class ModelAgentExecutor(AgentExecutor):
@@ -31,6 +33,9 @@ class ModelAgentExecutor(AgentExecutor):
         event_sink: object | None = None,
         ledger_store: object | None = None,
         cursor_store: object | None = None,
+        limit_store: ExecutionLimitStore | None = None,
+        execution_budget: ExecutionBudget | None = None,
+        rate_limit: RateLimit | None = None,
     ):
         self.adapters = dict(adapters)
         self.models = {model.id: model for model in models}
@@ -43,6 +48,9 @@ class ModelAgentExecutor(AgentExecutor):
         self.event_sink = event_sink
         self.ledger_store = ledger_store
         self.cursor_store = cursor_store
+        self.limit_store = limit_store
+        self.execution_budget = execution_budget
+        self.rate_limit = rate_limit
 
     def _candidate_model_ids(self, model_id: str) -> tuple[str, ...]:
         return tuple(dict.fromkeys((model_id, *self.fallback_model_ids)))
@@ -162,6 +170,9 @@ class ModelAgentExecutor(AgentExecutor):
                     ledger_store=self.ledger_store,
                     cursor_store=self.cursor_store,
                     agent_id=agent.id,
+                    limit_store=self.limit_store,
+                    execution_budget=self.execution_budget,
+                    rate_limit=self.rate_limit,
                 )
                 if work_unit.metadata.get("resume_from_cursor"):
                     result = runtime.resume(
