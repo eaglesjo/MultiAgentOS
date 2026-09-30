@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Callable
 
 from core.contracts.agent_execution_runtime import RuntimeEvent
+from core.contracts.memory import MemoryKind, ProjectMemory
 from core.execution_state import ExecutionStateStore
+from core.memory import ProjectMemoryStore
 from core.recovery_audit import RecoveryAuditStore
 from core.state import RuntimeEventStore
 from core.tool_ledger import ToolInvocationStore
@@ -28,6 +30,7 @@ class ExecutionHarness:
     ledger_store: ToolInvocationStore
     execution_state_store: ExecutionStateStore
     recovery_audit_store: RecoveryAuditStore
+    memory_store: ProjectMemoryStore
 
     @classmethod
     def create(
@@ -53,6 +56,7 @@ class ExecutionHarness:
             ledger_store=ToolInvocationStore(durable_root / "tool-ledger"),
             execution_state_store=ExecutionStateStore(durable_root / "execution-state"),
             recovery_audit_store=RecoveryAuditStore(durable_root / "recovery"),
+            memory_store=ProjectMemoryStore(durable_root / "memory"),
         )
 
     def register_mcp_client(self, client) -> None:
@@ -62,3 +66,11 @@ class ExecutionHarness:
     def event_sink(self) -> Callable[[RuntimeEvent], None]:
         """Return the durable event sink for model/tool execution."""
         return self.event_store.append
+
+    def remember(self, content: str, *, kind: MemoryKind = MemoryKind.NOTE, source: str = "runtime", metadata: dict[str, object] | None = None) -> ProjectMemory:
+        """Persist project context through the harness security boundary."""
+        return self.memory_store.append(content, kind=kind, source=source, metadata=metadata)
+
+    def recall(self, query: str = "", *, limit: int = 20) -> tuple[ProjectMemory, ...]:
+        """Retrieve bounded project context without touching execution journals."""
+        return self.memory_store.search(query, limit=limit)
