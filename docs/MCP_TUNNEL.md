@@ -242,6 +242,35 @@ Treat the runtime as connected only when status reports the managed process runn
 
 Do not publish port 8000 solely for ChatGPT connectivity. The tunnel-client establishes the outbound tunnel; the local MCP server can remain private.
 
+### Acceptance gate for the real tunnel-client
+
+The repository does not store tunnel credentials and CI does not attempt to create or connect an OpenAI tunnel. The final environment-specific gate is the JSON status emitted by the locally installed `tunnel-client`:
+
+```bash
+tunnel-client runtimes status agent-execution-runtime-http --json \
+  | python tests/tunnel_client_runtime_status.py
+```
+
+The gate requires all three runtime facts:
+
+```text
+process_running = true
+healthy         = true
+ready           = true
+```
+
+This intentionally does not inspect or print the tunnel ID, API key, OAuth tokens, MCP payloads, or endpoint credentials.
+
+For Streamable HTTP, the binding remains:
+
+```text
+MCP_SERVER_URL=http://127.0.0.1:8000/mcp
+```
+
+The current tunnel-client documentation identifies Streamable HTTP as the `MCP_SERVER_URL` binding and recommends `runtimes connect` followed by `runtimes status` before declaring the runtime usable. citeturn0search1turn0search6
+
+The tunnel-client 2026-07-28 negotiation issue was also resolved upstream in v0.0.13: the client now uses `server/discover` for the modern protocol before falling back to legacy `initialize`. This is important because MultiAgentOS's modern Streamable HTTP compatibility contract requires 2026-07-28. citeturn0search5
+
 ## Official references
 
 - OpenAI Secure MCP Tunnel: https://developers.openai.com/api/docs/guides/secure-mcp-tunnels
