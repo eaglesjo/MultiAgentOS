@@ -91,6 +91,47 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
             self.assertTrue(plan.safe_to_resume)
             self.assertEqual(plan.pending_tool_call_ids, ("inv-1",))
 
+    def test_cursor_resume_returns_persisted_final_response_without_new_model_call(self):
+        class FailingAdapter:
+            def generate_with_tools(self, model, request, tools):
+                raise AssertionError("model must not be called for an already persisted final response")
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            state = ExecutionStateStore(root / "execution-state")
+            state.append_message(
+                "work-1",
+                role="request",
+                round_number=1,
+                content="inspect",
+                metadata={"system": "system", "request": {}},
+            )
+            state.append_message(
+                "work-1",
+                role="assistant",
+                round_number=1,
+                content="already complete",
+                metadata={"model_id": "model-a", "response": {"model_id": "model-a", "tool_calls": []}},
+            )
+            state.save_cursor(
+                ExecutionCursor("work-1", 2, 1, "developer", "model-a", 2, None)
+            )
+            tools = ToolRuntime()
+            runtime = ToolCallingRuntime(
+                models={"model-a": ModelSpec("model-a", "provider-a", frozenset({"code"}))},
+                adapters={"model-a": FailingAdapter()},
+                tools=tools,
+                cursor_store=state,
+                agent_id="developer",
+            )
+            result = runtime.resume(
+                ModelRequest(prompt="inspect", system="system", metadata={}),
+                model_id="model-a",
+                work_unit_id="work-1",
+            )
+            self.assertEqual(result.response.text, "already complete")
+            self.assertEqual(result.rounds, 1)
+
     def test_cursor_resume_executes_pending_safe_tool_then_continues_model_round(self):
         class Adapter:
             def generate_with_tools(self, model, request, tools):
