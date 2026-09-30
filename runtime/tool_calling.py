@@ -230,7 +230,10 @@ class ToolCallingRuntime:
         """Resume a persisted tool-calling round from its durable cursor."""
         if self.cursor_store is None:
             raise ToolExecutionError("durable cursor store is required for resume")
-        cursor = self.cursor_store.load_cursor(work_unit_id)
+        try:
+            cursor = self.cursor_store.load_cursor(work_unit_id)
+        except FileNotFoundError:
+            return self.execute(request, model_id=model_id, session=session, work_unit_id=work_unit_id, granted_permissions=granted_permissions, approved=approved)
         messages = self.cursor_store.load_messages(work_unit_id)
         if not messages:
             return self.execute(
