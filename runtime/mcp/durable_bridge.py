@@ -60,7 +60,14 @@ class MCPDurableExecutionBridge:
             )
         )
 
-    def recover(self, work_unit_id: str, *, session_id: str | None = None):
+    def recover(
+        self,
+        work_unit_id: str,
+        *,
+        session_id: str | None = None,
+        human_decision: str | None = None,
+        notes: str = "",
+    ):
         """Recover one interrupted MCP invocation using the existing durable replay contract."""
         from runtime.agent_execution_runtime import AgentExecutionRuntime
 
@@ -73,19 +80,80 @@ class MCPDurableExecutionBridge:
         if plan.disposition is RecoveryDisposition.COMPLETED:
             return {"work_unit_id": work_unit_id, "disposition": plan.disposition.value, "replayed": False}
         if plan.disposition is RecoveryDisposition.REVIEW_REQUIRED:
+            decision = human_decision.strip().lower() if isinstance(human_decision, str) else None
+            if decision is None:
+                self.decision_store.append(
+                    PolicyDecision(
+                        work_unit_id=work_unit_id,
+                        category=DecisionCategory.RECOVERY,
+                        disposition=DecisionDisposition.REVIEW_REQUIRED,
+                        reason=plan.reason,
+                        action="mcp.recover",
+                        session_id=session_id,
+                        metadata={"source": "mcp", "pending_tool_call_ids": list(plan.pending_tool_call_ids)},
+                    )
+                )
+                return {"work_unit_id": work_unit_id, "disposition": plan.disposition.value, "replayed": False}
+
+            if decision == "reject":
+                self.decision_store.append(
+                    PolicyDecision(
+                        work_unit_id=work_unit_id,
+                        category=DecisionCategory.RECOVERY,
+                        disposition=DecisionDisposition.DENY,
+                        reason=notes.strip() or "Human rejected MCP recovery replay",
+                        action="mcp.recover",
+                        session_id=session_id,
+                        metadata={"source": "mcp", "human_decision": "reject"},
+                    )
+                )
+                work_unit = self.work_store.load(work_unit_id)
+                if work_unit.status not in {WorkStatus.FAILED, WorkStatus.COMPLETED}:
+                    work_unit.transition(WorkStatus.FAILED)
+                    work_unit.metadata["recovery_decision"] = "reject"
+                    self.work_store.save(work_unit)
+                return {
+                    "work_unit_id": work_unit_id,
+                    "disposition": RecoveryDisposition.FAILED.value,
+                    "replayed": False,
+                    "human_decision": "reject",
+                }
+
+            if decision != "approve":
+                raise ValueError("humanDecision must be 'approve' or 'reject'")
+
+            unresolved = self.ledger_store.unresolved(work_unit_id)
+            if not unresolved:
+                return {
+                    "work_unit_id": work_unit_id,
+                    "disposition": RecoveryDisposition.COMPLETED.value,
+                    "replayed": False,
+                    "human_decision": "approve",
+                }
+            if len(unresolved) != 1:
+                raise ValueError("MCP recovery supports exactly one unresolved direct tool invocation")
+            approved_record = unresolved[0]
             self.decision_store.append(
                 PolicyDecision(
                     work_unit_id=work_unit_id,
                     category=DecisionCategory.RECOVERY,
-                    disposition=DecisionDisposition.REVIEW_REQUIRED,
-                    reason=plan.reason,
-                    action="mcp.recover",
+                    disposition=DecisionDisposition.ALLOW,
+                    reason=notes.strip() or "Human explicitly approved MCP recovery replay",
+                    action=approved_record.tool_id,
                     session_id=session_id,
-                    metadata={"source": "mcp", "pending_tool_call_ids": list(plan.pending_tool_call_ids)},
+                    metadata={
+                        "source": "mcp",
+                        "human_decision": "approve",
+                        "invocation_id": approved_record.invocation_id,
+                        "idempotency_key": approved_record.idempotency_key,
+                    },
                 )
             )
-            return {"work_unit_id": work_unit_id, "disposition": plan.disposition.value, "replayed": False}
-        if plan.disposition is not RecoveryDisposition.RESUME or not plan.safe_to_resume:
+            plan_safe_override = True
+        else:
+            plan_safe_override = False
+
+        if plan.disposition is not RecoveryDisposition.RESUME or (not plan.safe_to_resume and not plan_safe_override):
             raise ValueError(f"MCP work unit is not safely resumable: {plan.reason}")
 
         unresolved = self.ledger_store.unresolved(work_unit_id)
