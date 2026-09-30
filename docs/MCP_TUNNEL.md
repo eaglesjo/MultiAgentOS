@@ -307,3 +307,47 @@ multiagentos mcp serve-http --path /absolute/path/to/project --allow-write
 ```
 
 The Host compatibility boundary does not authorize writes by itself; `ExecutionPolicy` remains the authority for `filesystem.write` and `process`.
+
+
+### Tool invocation acceptance: tunnel-client forwarding path
+
+The repository now has a separate forwarding-level acceptance script:
+
+```bash
+bash tests/tunnel_client_tool_invocation.sh
+```
+
+This gate starts the real MultiAgentOS Streamable HTTP server, starts the official `tunnel-client dev proxy` local integration mode, then sends MCP JSON-RPC through the tunnel-client ingress and verifies:
+
+- `tools/list`
+- an actual `filesystem.read` call
+- an actual `filesystem.write` call when `MULTIAGENTOS_ALLOW_WRITE=1`
+- a write/read round trip proving the write reached the MultiAgentOS tool runtime
+
+The write path is deliberately enabled for this acceptance test only. Normal MultiAgentOS MCP exposure remains read-only unless `--allow-write` is supplied.
+
+This is stronger than `/health/mcp` discovery evidence because it exercises real `tools/call` traffic through tunnel-client. It uses tunnel-client's local integration control plane, so it does **not** prove that a particular OpenAI workspace or ChatGPT connector can invoke the hosted tunnel.
+
+### Hosted Secure MCP Tunnel tool-call gate
+
+The final hosted boundary is still the actual OpenAI connector path:
+
+```text
+ChatGPT / OpenAI product
+  -> OpenAI hosted /v1/mcp/{tunnel_id}
+  -> tunnel-client
+  -> MultiAgentOS /mcp
+  -> filesystem.read / filesystem.write
+```
+
+OpenAI's current tunnel architecture documents that connector JSON-RPC is POSTed to the hosted tunnel endpoint, queued by the tunnel service, forwarded by tunnel-client, and returned through the same tunnel. The current ChatGPT UI uses **Connection: Tunnel** with the `tunnel_id`; the private `MCP_SERVER_URL` stays on the tunnel-client side.
+
+For the hosted acceptance, use the actual ChatGPT connector and invoke both:
+
+```text
+filesystem.read
+filesystem.write
+filesystem.read   # verify the write
+```
+
+Record the corresponding request/response observation on the MultiAgentOS side. The repository intentionally does not automate or store ChatGPT connector credentials, so a hosted tool-call pass cannot be claimed from CI alone.
