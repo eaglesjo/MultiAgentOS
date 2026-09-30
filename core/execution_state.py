@@ -1,4 +1,4 @@
-"""Durable execution cursor and model/message state."""
+"""Durable execution cursor, model/message, and streaming checkpoint state."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from core.contracts.execution_cursor import ExecutionCursor
+from core.contracts.streaming import StreamCheckpoint, StreamCheckpointStatus
 from core.security import redact_sensitive
 
 
@@ -16,8 +17,10 @@ class ExecutionStateStore:
         self.root = root
         self.cursor_root = root / "cursors"
         self.message_root = root / "messages"
+        self.checkpoint_root = root / "stream-checkpoints"
         self.cursor_root.mkdir(parents=True, exist_ok=True)
         self.message_root.mkdir(parents=True, exist_ok=True)
+        self.checkpoint_root.mkdir(parents=True, exist_ok=True)
 
     def save_cursor(self, cursor: ExecutionCursor) -> Path:
         path = self.cursor_root / f"{cursor.work_unit_id}.json"
@@ -84,3 +87,54 @@ class ExecutionStateStore:
     def next_message_revision(self, work_unit_id: str) -> int:
         messages = self.load_messages(work_unit_id)
         return int(messages[-1].get("revision") or 0) + 1 if messages else 1
+
+    def save_stream_checkpoint(self, checkpoint: StreamCheckpoint) -> Path:
+        """Persist an explicit streaming boundary after redaction."""
+
+        path = self.checkpoint_root / f"{checkpoint.work_unit_id}.json"
+        payload = {
+            "checkpoint_id": checkpoint.checkpoint_id,
+            "work_unit_id": checkpoint.work_unit_id,
+            "status": checkpoint.status.value,
+            "sequence": checkpoint.sequence,
+            "model_id": checkpoint.model_id,
+            "round_number": checkpoint.round_number,
+            "text": redact_sensitive(checkpoint.text),
+            "reasoning": redact_sensitive(checkpoint.reasoning),
+            "tool_calls": redact_sensitive(checkpoint.tool_calls),
+            "cursor_sequence": checkpoint.cursor_sequence,
+            "conversation_revision": checkpoint.conversation_revision,
+        }
+        path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False, default=str) + "\n",
+            encoding="utf-8",
+        )
+        return path
+
+    def load_stream_checkpoint(self, work_unit_id: str) -> StreamCheckpoint:
+        """Load the latest explicit streaming boundary."""
+
+        data = json.loads(
+            (self.checkpoint_root / f"{work_unit_id}.json").read_text(encoding="utf-8")
+        )
+        return StreamCheckpoint(
+            checkpoint_id=str(data["checkpoint_id"]),
+            work_unit_id=str(data["work_unit_id"]),
+            status=StreamCheckpointStatus(str(data["status"])),
+            sequence=int(data["sequence"]),
+            model_id=str(data["model_id"]),
+            round_number=int(data["round_number"]),
+            text=str(data.get("text", "")),
+            reasoning=str(data.get("reasoning", "")),
+            tool_calls=tuple(data.get("tool_calls", ())),
+            cursor_sequence=(
+                int(data["cursor_sequence"])
+                if data.get("cursor_sequence") is not None
+                else None
+            ),
+            conversation_revision=(
+                int(data["conversation_revision"])
+                if data.get("conversation_revision") is not None
+                else None
+            ),
+        )
