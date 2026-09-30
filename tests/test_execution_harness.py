@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from runtime.harness import ExecutionHarness
+from core.contracts.memory import MemoryKind
 
 
 class ExecutionHarnessTests(unittest.TestCase):
@@ -31,5 +32,18 @@ class ExecutionHarnessTests(unittest.TestCase):
             self.assertIs(harness.event_sink().__self__, harness.event_store)
 
 
+    def test_memory_is_project_scoped_and_redacted(self):
+        with tempfile.TemporaryDirectory() as temp:
+            harness = ExecutionHarness.create(Path(temp))
+            memory = harness.remember(
+                "Use the durable runtime for project execution",
+                kind=MemoryKind.DECISION,
+                metadata={"api_key": "secret-value"},
+            )
+            recalled = harness.recall("durable runtime")
+            self.assertEqual(recalled[0].memory_id, memory.memory_id)
+            self.assertEqual(recalled[0].metadata["api_key"], "[REDACTED]")
+            self.assertTrue(harness.memory_store.root.exists())
+            self.assertNotEqual(harness.memory_store.root, harness.event_store.root)
 if __name__ == "__main__":
     unittest.main()
