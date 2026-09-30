@@ -27,7 +27,7 @@ class ModelRuntimeTests(unittest.TestCase):
     def test_generic_cli_adapter(self):
         model = ModelSpec("local-cli", "local")
         response = CLIModelAdapter(
-            command=("python", "-c", "import sys; print(sys.stdin.read().upper())")
+            command=(sys.executable, "-c", "import sys; print(sys.stdin.read().upper())")
         ).generate(model, ModelRequest(prompt="hello"))
         self.assertEqual(response.text.strip(), "HELLO")
 
