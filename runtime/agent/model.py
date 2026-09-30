@@ -30,6 +30,7 @@ class ModelAgentExecutor(AgentExecutor):
         capability_registry: CapabilityRegistry | None = None,
         event_sink: object | None = None,
         ledger_store: object | None = None,
+        cursor_store: object | None = None,
     ):
         self.adapters = dict(adapters)
         self.models = {model.id: model for model in models}
@@ -41,6 +42,7 @@ class ModelAgentExecutor(AgentExecutor):
         self.capability_registry = capability_registry
         self.event_sink = event_sink
         self.ledger_store = ledger_store
+        self.cursor_store = cursor_store
 
     def _candidate_model_ids(self, model_id: str) -> tuple[str, ...]:
         return tuple(dict.fromkeys((model_id, *self.fallback_model_ids)))
@@ -158,6 +160,8 @@ class ModelAgentExecutor(AgentExecutor):
                     tools=tool_runtime,
                     event_sink=self.event_sink,
                     ledger_store=self.ledger_store,
+                    cursor_store=self.cursor_store,
+                    agent_id=agent.id,
                 )
                 result = runtime.execute(
                     request,
