@@ -64,7 +64,7 @@ class MCPDurableExecutionBridge:
         """Recover one interrupted MCP invocation using the existing durable replay contract."""
         from runtime.agent_execution_runtime import AgentExecutionRuntime
 
-        runtime = AgentExecutionRuntime(policy=self.tool_runtime.policy)
+        runtime = AgentExecutionRuntime()
         plan = runtime.recovery_plan(self.project_root, work_unit_id)
         self.recovery_audit_store.append(
             plan,
