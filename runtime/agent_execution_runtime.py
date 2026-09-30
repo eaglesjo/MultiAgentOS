@@ -423,7 +423,7 @@ class AgentExecutionRuntime:
         work_unit = self.state_store(project_root).load(work_unit_id)
         expected_identity = work_unit.metadata.get("source_identity")
         current_identity = self.workspace_identity(project_root)
-        if isinstance(expected_identity, dict) and current_identity is not None and dict(expected_identity) != current_identity:
+        if isinstance(expected_identity, dict) and (current_identity is None or dict(expected_identity) != current_identity):
             return RecoveryPlan(
                 work_unit_id,
                 RecoveryDisposition.REVIEW_REQUIRED,
