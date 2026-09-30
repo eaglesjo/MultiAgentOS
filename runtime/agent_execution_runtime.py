@@ -26,6 +26,7 @@ from core.contracts.agent_execution_runtime import SessionSpec, SessionState
 from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import RuntimeEventStore, SessionStateStore, WorkStateStore
+from core.tool_ledger import ToolInvocationStore
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.routing import AIRouter, RoutingStrategy
 from profiles.detector import ProfileDetector
@@ -348,6 +349,9 @@ class AgentExecutionRuntime:
     def event_store(self, project_root: Path):
         return RuntimeEventStore(Path(project_root) / ".multiagentos" / "events")
 
+    def tool_ledger_store(self, project_root: Path):
+        return ToolInvocationStore(Path(project_root) / ".multiagentos" / "tool-ledger")
+
     def load_runtime_events(self, project_root: Path, work_unit_id: str) -> tuple[dict[str, object], ...]:
         """Load the durable runtime journal for a WorkUnit."""
         return self.event_store(project_root).load(work_unit_id)
@@ -356,6 +360,7 @@ class AgentExecutionRuntime:
         """Return a deterministic execution snapshot derived from WorkUnit state and events."""
         work_unit = self.state_store(project_root).load(work_unit_id)
         events = self.event_store(project_root).load(work_unit_id)
+        ledger = self.tool_ledger_store(project_root).load(work_unit_id)
         pending_calls: list[str] = []
         completed_calls: set[str] = set()
         last_kind = events[-1]["kind"] if events else None
@@ -371,6 +376,9 @@ class AgentExecutionRuntime:
             elif event.get("kind") == "tool_result":
                 completed_calls.add(call_id)
         pending_calls = [call_id for call_id in pending_calls if call_id not in completed_calls]
+        unresolved_ledger = self.tool_ledger_store(project_root).unresolved(work_unit_id)
+        if unresolved_ledger:
+            pending_calls = [record.invocation_id for record in unresolved_ledger]
         if last_kind == "completed":
             execution_state = "completed"
         elif pending_calls:
@@ -389,6 +397,8 @@ class AgentExecutionRuntime:
             "last_sequence": events[-1].get("sequence") if events else None,
             "last_event_kind": last_kind,
             "pending_tool_call_ids": tuple(pending_calls),
+            "tool_invocation_count": len(ledger),
+            "unresolved_tool_invocations": tuple(record.invocation_id for record in unresolved_ledger),
         }
 
     def recovery_plan(self, project_root: Path, work_unit_id: str) -> RecoveryPlan:
@@ -690,6 +700,7 @@ class AgentExecutionRuntime:
             tool_runtime.unregister("patch.apply")
 
         event_store = self.event_store(project_root)
+        ledger_store = self.tool_ledger_store(project_root)
 
         def persist_runtime_event(event):
             event_store.append(event)
@@ -707,6 +718,7 @@ class AgentExecutionRuntime:
             model_control=control_plane,
             capability_registry=capability_registry,
             event_sink=persist_runtime_event,
+            ledger_store=ledger_store,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,
