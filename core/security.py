@@ -6,7 +6,7 @@ import re
 from typing import Any
 
 _SENSITIVE_KEY = re.compile(
-    r"(api[_-]?key|access[_-]?token|auth(?:orization)?|credential|"
+    r"(api[_-]?key|access[_-]?token|session[_-]?token|token|auth(?:orization)?|credential|"
     r"password|passwd|secret|private[_-]?key|session[_-]?token|cookie)",
     re.IGNORECASE,
 )
