@@ -1,7 +1,10 @@
 # Python
 __pycache__/
 *.py[cod]
+build/
+dist/
 .venv/
+.venv*/
 venv/
 
 # Local AGENT_EXECUTION_RUNTIME runtime state

@@ -1,3 +1,5 @@
+import sys
+
 import unittest
 
 from core.contracts import AgentContract, WorkUnit
@@ -14,7 +16,7 @@ class LocalProcessExecutorTests(unittest.TestCase):
             work_unit=WorkUnit(
                 id="wu-process",
                 objective="run validation",
-                inputs={"command": ["python", "-c", "print('ok')"]},
+                inputs={"command": [sys.executable, "-c", "print('ok')"]},
             ),
         )
 

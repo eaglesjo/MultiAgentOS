@@ -1,4 +1,5 @@
 import io
+from importlib.metadata import PackageNotFoundError, version
 import json
 import subprocess
 import tempfile
@@ -111,9 +112,13 @@ class AgentExecutionRuntimeMCPServerTests(unittest.TestCase):
             AgentExecutionRuntimeMCPServer(root).serve_forever(stdin, stdout)
             responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
             self.assertEqual(responses[0]["result"]["serverInfo"]["name"], "Agent Execution Runtime")
+            try:
+                expected_version = version("multiagentos")
+            except PackageNotFoundError:
+                expected_version = "0.0.0-dev"
             self.assertEqual(
                 responses[0]["result"]["serverInfo"]["version"],
-                "0.0.0-dev",
+                expected_version,
             )
             self.assertIn("filesystem.read", {x["name"] for x in responses[1]["result"]["tools"]})
             self.assertEqual(responses[2]["result"]["content"][0]["text"], "hello")

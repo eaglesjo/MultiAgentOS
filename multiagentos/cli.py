@@ -684,10 +684,10 @@ def main(argv: list[str] | None = None) -> int:
                 role=agent_id,
                 capabilities=frozenset({"execution"}),
             )
-            result = runtime.run_persistent_registered_model(
+            result = runtime.resume_work(
                 root,
-                work,
-                agent,
+                work.id,
+                agent_id=agent_id,
                 preferred_model_ids=[model_id],
             )
             print(result.output.text, end="")

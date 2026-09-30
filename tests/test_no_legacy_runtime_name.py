@@ -11,11 +11,13 @@ class NoLegacyRuntimeNameTests(unittest.TestCase):
         legacy_lower = "vy" + "relon"
         legacy_title = "Vy" + "relon"
 
-        ignored_dirs = {".git", ".venv", "__pycache__", "node_modules"}
+        ignored_dirs = {".git", "__pycache__", "node_modules", "build", "dist", ".pytest_cache"}
+        # Ignore virtual environments by prefix while still scanning repository source/docs.
+        ignored_dir_prefixes = (".venv", "venv")
         offenders = []
 
         for path in root.rglob("*"):
-            if not path.is_file() or any(part in ignored_dirs for part in path.parts):
+            if not path.is_file() or any(part in ignored_dirs or part.startswith(ignored_dir_prefixes) for part in path.parts):
                 continue
             try:
                 source = path.read_text(encoding="utf-8")
