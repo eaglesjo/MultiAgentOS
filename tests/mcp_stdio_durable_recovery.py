@@ -186,6 +186,71 @@ def test_mcp_stdio_crash_restart_recovers_same_safe_invocation() -> None:
         assert ledger[-1].idempotency_key == original.idempotency_key
 
 
+def test_mcp_stdio_recovery_is_idempotent_and_side_effects_require_review() -> None:
+    with tempfile.TemporaryDirectory() as temp:
+        root = Path(temp)
+        target = root / "mcp-recovery.txt"
+        target.write_text("durable MCP recovery", encoding="utf-8")
+
+        crashed = _server(root, crash_after_started=True)
+        try:
+            _initialize(crashed)
+            try:
+                _send(
+                    crashed,
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 2,
+                        "method": "tools/call",
+                        "params": {
+                            "name": "filesystem.read",
+                            "arguments": {"path": target.name},
+                        },
+                    },
+                )
+            except RuntimeError:
+                pass
+        finally:
+            if crashed.poll() is None:
+                crashed.kill()
+            crashed.wait(timeout=5)
+
+        runtime = AgentExecutionRuntime()
+        work_unit_id = runtime.state_store(root).list_ids()[0]
+        original = runtime.tool_ledger_store(root).unresolved(work_unit_id)[0]
+
+        recovered = _server(root, crash_after_started=False)
+        try:
+            _initialize(recovered)
+            first = _send(
+                recovered,
+                {
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "method": "runtime/recover",
+                    "params": {"workUnitId": work_unit_id},
+                },
+            )
+            second = _send(
+                recovered,
+                {
+                    "jsonrpc": "2.0",
+                    "id": 4,
+                    "method": "runtime/recover",
+                    "params": {"workUnitId": work_unit_id},
+                },
+            )
+            assert first["result"]["replayed"] is True
+            assert first["result"]["invocation_id"] == original.invocation_id
+            assert second["result"]["replayed"] is False
+            assert second["result"]["disposition"] == "completed"
+        finally:
+            recovered.terminate()
+            recovered.wait(timeout=5)
+
+        assert runtime.recovery_plan(root, work_unit_id).disposition.value == "completed"
+
+
 if __name__ == "__main__":
     test_mcp_stdio_crash_restart_recovers_same_safe_invocation()
     print("AGENT_EXECUTION_RUNTIME MCP stdio durable recovery E2E: PASS")
