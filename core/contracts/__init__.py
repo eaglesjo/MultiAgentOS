@@ -11,6 +11,9 @@ from core.contracts.runtime import ExecutionRequest, RuntimeExecutor
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.profile import DetectionResult, ProfileSpec
 from core.contracts.planning import PlanStep, WorkPlan
+from core.contracts.execution_cursor import ExecutionCursor
+from core.contracts.replay import ReplayDisposition, ReplayPolicy
+from core.contracts.tool_ledger import ToolInvocationRecord, ToolInvocationState
 
 __all__ = [
     "AgentContract", "ChatAgentContract", "ChatAgentProvider", "AIProvider", "ModelSpec",
@@ -19,4 +22,6 @@ __all__ = [
     "ModelAdapter", "ModelRequest", "ModelResponse", "HealthStatus", "ModelHealth",
     "ExecutionRequest", "RuntimeExecutor", "DetectionResult", "ProfileSpec",
     "PlanStep", "WorkPlan", "WorkStatus", "WorkUnit",
+    "ExecutionCursor", "ReplayDisposition", "ReplayPolicy",
+    "ToolInvocationRecord", "ToolInvocationState",
 ]
