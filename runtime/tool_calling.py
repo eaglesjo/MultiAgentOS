@@ -73,7 +73,7 @@ class ToolCallingExecution:
 
 class ToolCallingRuntime:
     """Execute normalized model tool calls until the model returns a final response."""
-    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None) -> None:
+    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None, cursor_store: object | None = None, agent_id: str = "unknown") -> None:
         if max_rounds < 1:
             raise ValueError("max_rounds must be at least 1")
         self.models, self.adapters, self.tools, self.max_rounds, self.event_sink = models, adapters, tools, max_rounds, event_sink
