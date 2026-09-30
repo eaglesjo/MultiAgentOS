@@ -24,6 +24,17 @@ class GitRuntime:
             command.append("--")
         return self.process.run(command, cwd)
 
+    def identity(self, cwd: str) -> dict[str, object] | None:
+        """Return stable repository source identity for recovery guards."""
+        head = self.process.run(["git", "rev-parse", "HEAD"], cwd)
+        if head.returncode != 0:
+            return None
+        status = self.process.run(["git", "status", "--porcelain"], cwd)
+        return {
+            "head": head.stdout.strip(),
+            "dirty": bool(status.stdout.strip()),
+        }
+
     def log(self, cwd: str, count: int = 10):
         return self.process.run(["git", "log", "--oneline", "-n", str(count)], cwd)
 
