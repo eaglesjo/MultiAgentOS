@@ -1,3 +1,5 @@
+import sys
+
 import contextlib
 import io
 import json
@@ -95,7 +97,7 @@ class CLITests(unittest.TestCase):
             self.assertEqual(
                 main([
                     "run", "--path", temp, "--objective", "configured execution",
-                    "--", "python", "-c", "print('ok')"
+                    "--", sys.executable, "-c", "print('ok')"
                 ]),
                 0,
             )
@@ -110,7 +112,7 @@ class CLITests(unittest.TestCase):
                 main([
                     "run", "--path", temp, "--agent", "cli-executor",
                     "--model", "local-process", "--objective", "override",
-                    "--", "python", "-c", "print('ok')"
+                    "--", sys.executable, "-c", "print('ok')"
                 ]),
                 0,
             )
@@ -124,7 +126,7 @@ class CLITests(unittest.TestCase):
             root = Path(temp)
             self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             self.assertEqual(
-                main(["run", "--path", temp, "--objective", "echo smoke test", "--", "python", "-c", "print('ok')"]),
+                main(["run", "--path", temp, "--objective", "echo smoke test", "--", sys.executable, "-c", "print('ok')"]),
                 0,
             )
             status = project_status(root)
@@ -137,7 +139,7 @@ class CLITests(unittest.TestCase):
             root = Path(temp)
             self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             self.assertEqual(
-                main(["run", "--path", temp, "--objective", "terminal", "--", "python", "-c", "print('done')"]),
+                main(["run", "--path", temp, "--objective", "terminal", "--", sys.executable, "-c", "print('done')"]),
                 0,
             )
             work_unit_id = project_status(root)["work_units"][0]["id"]
@@ -200,7 +202,7 @@ class CLITests(unittest.TestCase):
                             "chat", "--path", temp, "--execute",
                             "--objective", "run the smoke command",
                             "--session", "exec-1",
-                            "--", "python", "-c", "print('chat-executed')",
+                            "--", sys.executable, "-c", "print('chat-executed')",
                         ]),
                         0,
                     )
