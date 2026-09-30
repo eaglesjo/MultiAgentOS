@@ -238,6 +238,7 @@ GitHub Actions validates the repository through CI.
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
 - [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
 - [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
+- [Agent Plugin Marketplace](docs/PLUGIN_MARKETPLACE.md)
 
 The English README is the canonical technical document. Localized READMEs preserve the same architecture, terminology, and cost-free baseline.
 
