@@ -251,15 +251,16 @@ tunnel-client runtimes status agent-execution-runtime-http --json \
   | python tests/tunnel_client_runtime_status.py
 ```
 
-The gate requires all three runtime facts:
+The gate requires the managed runtime to report all core lifecycle facts plus healthy control-plane polling:
 
 ```text
 process_running = true
 healthy         = true
 ready           = true
+control_plane_poll_health = healthy/ok
 ```
 
-This intentionally does not inspect or print the tunnel ID, API key, OAuth tokens, MCP payloads, or endpoint credentials.
+This intentionally does not inspect or print the tunnel ID, API key, OAuth tokens, MCP payloads, or endpoint credentials. Control-plane polling is checked only as a health state, never as credential material.
 
 For Streamable HTTP, the binding remains:
 
