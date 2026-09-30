@@ -10,10 +10,10 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import Literal
 
 from mcp import Client
-from mcp.types import Request
-from pydantic import TypeAdapter
+import mcp.types as types
 
 
 def _free_port() -> int:
@@ -138,6 +138,24 @@ async def _exercise_http_write_policy() -> None:
             _stop_server(process)
 
 
+class RecoveryParams(types.RequestParams):
+    workUnitId: str
+
+
+class RecoveryResult(types.Result):
+    workUnitId: str
+    disposition: str
+    replayed: bool
+    invocationId: str | None = None
+    idempotencyKey: str | None = None
+    humanDecision: str | None = None
+
+
+class RecoveryRequest(types.Request[RecoveryParams, Literal["runtime/recover"]]):
+    method: Literal["runtime/recover"] = "runtime/recover"
+    params: RecoveryParams
+
+
 def test_official_mcp_sdk_streamable_http_recovery_method() -> None:
     asyncio.run(_exercise_http_recovery_method())
 
@@ -165,15 +183,14 @@ async def _exercise_http_recovery_method() -> None:
                 )["id"]
 
                 response = await client.session.send_request(
-                    Request(
-                        method="runtime/recover",
-                        params={"workUnitId": work_unit_id},
+                    RecoveryRequest(
+                        params=RecoveryParams(workUnitId=work_unit_id),
                     ),
-                    TypeAdapter(dict[str, object]),
+                    RecoveryResult,
                 )
-                assert response["workUnitId"] == work_unit_id
-                assert response["disposition"] == "completed"
-                assert response["replayed"] is False
+                assert response.workUnitId == work_unit_id
+                assert response.disposition == "completed"
+                assert response.replayed is False
         finally:
             _stop_server(process)
 
