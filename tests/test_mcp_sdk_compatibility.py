@@ -8,6 +8,10 @@ import tempfile
 from pathlib import Path
 
 from mcp import Client, StdioServerParameters
+from mcp.client.session import ClientSession
+from mcp.client.stdio import stdio_client
+from mcp.types import Request
+from pydantic import TypeAdapter
 
 
 def test_official_mcp_sdk_stdio_compatibility() -> None:
@@ -51,6 +55,68 @@ async def _exercise_stdio_client() -> None:
             assert not result.is_error
             assert result.content
             assert getattr(result.content[0], "text", None) == "mcp-sdk-compatibility"
+
+
+if __name__ == "__main__":
+    test_official_mcp_sdk_stdio_compatibility()
+
+
+def test_official_mcp_sdk_low_level_custom_recovery() -> None:
+    asyncio.run(_exercise_low_level_recovery())
+
+
+async def _exercise_low_level_recovery() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        target = root / "sdk-low-level.txt"
+        target.write_text("mcp-sdk-low-level", encoding="utf-8")
+
+        server = StdioServerParameters(
+            command=sys.executable,
+            args=[
+                "-m",
+                "multiagentos.cli",
+                "mcp",
+                "serve",
+                "--path",
+                str(root),
+            ],
+            cwd=str(Path.cwd()),
+        )
+
+        async with stdio_client(server) as (read_stream, write_stream):
+            async with ClientSession(read_stream, write_stream) as session:
+                initialize = await session.initialize()
+                assert initialize.server_info is not None
+                assert initialize.server_info.name == "Agent Execution Runtime"
+
+                result = await session.call_tool(
+                    "filesystem.read",
+                    {"path": target.name},
+                )
+                assert not result.is_error
+                assert result.content
+                assert getattr(result.content[0], "text", None) == "mcp-sdk-low-level"
+
+                durable = root / ".multiagentos"
+                state_files = list((durable / "state").glob("*.json"))
+                assert len(state_files) == 1
+                work_unit_id = __import__("json").loads(
+                    state_files[0].read_text(encoding="utf-8")
+                )["id"]
+
+                request = Request(
+                    method="runtime/recover",
+                    params={"workUnitId": work_unit_id},
+                )
+                response = await session.send_request(
+                    request,
+                    TypeAdapter(dict[str, object]),
+                )
+
+                assert response["workUnitId"] == work_unit_id
+                assert response["disposition"] == "completed"
+                assert response["replayed"] is False
 
 
 if __name__ == "__main__":
