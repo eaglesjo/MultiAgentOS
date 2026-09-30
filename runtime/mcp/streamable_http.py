@@ -44,6 +44,8 @@ class AgentExecutionRuntimeStreamableHTTPServer:
             ) from exc
 
         self.project_root = project_root.resolve()
+        self.allowed_hosts = tuple(allowed_hosts or ())
+        self.allowed_origins = tuple(allowed_origins or ())
         self.runtime = ToolRuntime(
             ExecutionPolicy(
                 allow_process=allow_process,
