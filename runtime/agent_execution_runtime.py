@@ -677,6 +677,7 @@ class AgentExecutionRuntime:
         self.configure_model_adapters()
 
         agent = self.agent_profile(project_root, agent_id)
+        control_plane = self.model_control_plane(project_root)
         if preferred_model_ids:
             for model_id in preferred_model_ids:
                 self.providers.get_model(model_id)
@@ -685,26 +686,21 @@ class AgentExecutionRuntime:
         else:
             # Project-aware automatic routing also considers the latest persisted quota.
             router = AIRouter()
-            quota_store = self.quota_store(project_root)
-            health_registry = self.health_registry(project_root)
-            capability_registry = self.capability_registry(project_root)
-            quota_snapshots = {
-                model.id: quota_store.load(model.id)
-                for model in models
-                if quota_store.exists(model.id)
-            }
+            quota_snapshots = {}
             health_snapshots = {}
             for model in models:
-                health = health_registry.get(model.id)
-                if health is not None:
-                    health_snapshots[model.id] = health
+                state = control_plane.state(model)
+                if state.quota is not None:
+                    quota_snapshots[model.id] = state.quota
+                if state.health is not None:
+                    health_snapshots[model.id] = state.health
             assignment = router.assign(
                 agent,
                 models,
                 strategy=RoutingStrategy(routing_strategy),
                 quota_snapshots=quota_snapshots,
                 health_snapshots=health_snapshots,
-                capability_registry=capability_registry,
+                capability_registry=control_plane.capability_registry,
             )
             preferred_model_ids = [assignment.model_id]
             fallback_model_ids = tuple(
@@ -712,15 +708,10 @@ class AgentExecutionRuntime:
                 for model in models
                 if model.id != assignment.model_id
                 and router.compatible(agent, model)
-                and health_registry.available(model.id)
-                and (
-                    not quota_store.exists(model.id)
-                    or quota_available(quota_store.load(model.id))
-                )
+                and control_plane.state(model).available
             )
 
         from runtime.agent.model import ModelAgentExecutor
-        control_plane = self.model_control_plane(project_root)
         quota_intelligence = QuotaIntelligence(control_plane.quota_store)
         capability_registry = self.capability_registry(project_root)
         health_registry = control_plane.health_registry
