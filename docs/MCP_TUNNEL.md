@@ -272,6 +272,14 @@ The current tunnel-client documentation identifies Streamable HTTP as the `MCP_S
 
 The tunnel-client 2026-07-28 negotiation issue was also resolved upstream in v0.0.13: the client now uses `server/discover` for the modern protocol before falling back to legacy `initialize`. This is important because MultiAgentOS's modern Streamable HTTP compatibility contract requires 2026-07-28.
 
+For the Streamable HTTP tunnel acceptance gate, run:
+
+```bash
+bash tests/tunnel_client_mcp_acceptance.sh
+```
+
+In addition to process/health/readiness, this gate requires the tunnel-client `/health/mcp` evidence to report `status=ok`, `state=discovered`, an unbounded discovery result, a complete `tools/list` observation, and the expected `filesystem.read` tool. This is discovery evidence retained by tunnel-client; OpenAI documents that health reads do not perform a fresh MCP probe, so it is not equivalent to a live ChatGPT tool invocation.
+
 ## Official references
 
 - OpenAI Secure MCP Tunnel: https://developers.openai.com/api/docs/guides/secure-mcp-tunnels
