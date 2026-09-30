@@ -6,6 +6,8 @@ from typing import Callable, Protocol
 from uuid import uuid4
 from core.contracts.ai import ModelSpec
 from core.contracts.approval import ApprovalGrant
+from core.contracts.execution_limits import ExecutionBudget, RateLimit, LimitDisposition
+from core.execution_limits import ExecutionLimitStore
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
 from core.contracts.agent_execution_runtime import RuntimeEvent, RuntimeEventKind, SessionSpec, ToolRequest, ToolResult, ToolSideEffect, ToolSpec
 from runtime.policy import ExecutionPolicy
@@ -74,13 +76,16 @@ class ToolCallingExecution:
 
 class ToolCallingRuntime:
     """Execute normalized model tool calls until the model returns a final response."""
-    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None, cursor_store: object | None = None, agent_id: str = "unknown") -> None:
+    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None, cursor_store: object | None = None, agent_id: str = "unknown", limit_store: ExecutionLimitStore | None = None, execution_budget: ExecutionBudget | None = None, rate_limit: RateLimit | None = None) -> None:
         if max_rounds < 1:
             raise ValueError("max_rounds must be at least 1")
         self.models, self.adapters, self.tools, self.max_rounds, self.event_sink = models, adapters, tools, max_rounds, event_sink
         self.ledger_store = ledger_store
         self.cursor_store = cursor_store
         self.agent_id = agent_id
+        self.limit_store = limit_store
+        self.execution_budget = execution_budget
+        self.rate_limit = rate_limit
 
     def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False, start_round: int = 1, initial_cursor_sequence: int = 0, initial_conversation_revision: int = 0) -> ToolCallingExecution:
         model = self.models[model_id]
@@ -94,6 +99,11 @@ class ToolCallingRuntime:
         conversation_revision = initial_conversation_revision
         for offset in range(self.max_rounds):
             round_number = start_round + offset
+            if self.limit_store is not None and work_unit_id is not None and self.execution_budget is not None:
+                decision = self.limit_store.check_round(work_unit_id, budget=self.execution_budget)
+                if decision.disposition is LimitDisposition.DENY:
+                    raise ToolExecutionError(decision.reason)
+                self.limit_store.record_round(work_unit_id)
             cursor_sequence += 1
             if self.cursor_store is not None and work_unit_id is not None:
                 self.cursor_store.save_cursor(ExecutionCursor(
@@ -142,6 +152,11 @@ class ToolCallingRuntime:
             round_results = []
             for index, call in enumerate(calls):
                 invocation_id = f"inv-{uuid4().hex}"
+                if self.limit_store is not None and work_unit_id is not None and self.execution_budget is not None:
+                    decision = self.limit_store.check_tool_call(work_unit_id, budget=self.execution_budget, rate_limit=self.rate_limit)
+                    if decision.disposition is LimitDisposition.DENY:
+                        raise ToolExecutionError(decision.reason)
+                    self.limit_store.record_tool_call(work_unit_id, rate_limit=self.rate_limit)
                 if self.cursor_store is not None and work_unit_id is not None:
                     cursor_sequence += 1
                     self.cursor_store.save_cursor(ExecutionCursor(

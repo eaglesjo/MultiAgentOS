@@ -23,6 +23,7 @@ from core.contracts.ai import AIProvider, ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.agent_execution_runtime import SessionSpec, SessionState
+from core.contracts.execution_limits import ExecutionBudget, RateLimit
 from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import RuntimeEventStore, SessionStateStore, WorkStateStore
@@ -661,6 +662,8 @@ class AgentExecutionRuntime:
         mcp_server_ids: tuple[str, ...] = (),
         fallback_model_ids: tuple[str, ...] = (),
         routing_strategy="pool",
+        execution_budget: ExecutionBudget | None = None,
+        rate_limit: RateLimit | None = None,
     ) -> OrchestrationResult:
         """Run project-configured work without caller-side provider/model wiring."""
         project_root = Path(project_root).resolve()
@@ -730,6 +733,7 @@ class AgentExecutionRuntime:
         ledger_store = harness.ledger_store
         execution_state_store = harness.execution_state_store
         persist_runtime_event = harness.event_sink()
+        execution_budget = execution_budget or ExecutionBudget()
 
         executor = ModelAgentExecutor(
             adapters={
@@ -746,6 +750,9 @@ class AgentExecutionRuntime:
             event_sink=persist_runtime_event,
             ledger_store=ledger_store,
             cursor_store=execution_state_store,
+            limit_store=harness.execution_limit_store,
+            execution_budget=execution_budget,
+            rate_limit=rate_limit,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,
