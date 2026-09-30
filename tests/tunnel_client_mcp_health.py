@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 
 
 EXPECTED_TOOL = "filesystem.read"
+OPTIONAL_WRITE_TOOL = "filesystem.write"
 
 
 def validate(payload: dict[str, object]) -> list[str]:
@@ -45,6 +47,8 @@ def validate(payload: dict[str, object]) -> list[str]:
         errors.append("MCP tools_list tool_names is missing or invalid")
     elif EXPECTED_TOOL not in tool_names:
         errors.append(f"expected MCP tool is missing: {EXPECTED_TOOL}")
+    if os.environ.get("EXPECT_FILESYSTEM_WRITE") == "1" and OPTIONAL_WRITE_TOOL not in tool_names:
+        errors.append(f"expected MCP tool is missing: {OPTIONAL_WRITE_TOOL}")
 
     return errors
 
