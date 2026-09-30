@@ -3,10 +3,13 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Callable, Protocol
+from uuid import uuid4
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
 from core.contracts.agent_execution_runtime import RuntimeEvent, RuntimeEventKind, SessionSpec, ToolRequest, ToolResult, ToolSideEffect, ToolSpec
 from runtime.policy import ExecutionPolicy
+from core.contracts.replay import ReplayDisposition, ReplayPolicy
+from core.contracts.tool_ledger import ToolInvocationRecord, ToolInvocationState
 
 class ToolExecutionError(RuntimeError):
     pass
@@ -69,10 +72,11 @@ class ToolCallingExecution:
 
 class ToolCallingRuntime:
     """Execute normalized model tool calls until the model returns a final response."""
-    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None) -> None:
+    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None) -> None:
         if max_rounds < 1:
             raise ValueError("max_rounds must be at least 1")
         self.models, self.adapters, self.tools, self.max_rounds, self.event_sink = models, adapters, tools, max_rounds, event_sink
+        self.ledger_store = ledger_store
 
     def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False) -> ToolCallingExecution:
         model = self.models[model_id]
@@ -95,16 +99,54 @@ class ToolCallingRuntime:
                 return ToolCallingExecution(response, model_id, round_number, tuple(results))
             round_results = []
             for call in calls:
+                invocation_id = f"inv-{uuid4().hex}"
+                policy = self._replay_policy(call["tool_id"])
+                if self.ledger_store is not None and work_unit_id is not None:
+                    self.ledger_store.append(ToolInvocationRecord(
+                        invocation_id=invocation_id,
+                        work_unit_id=work_unit_id,
+                        tool_id=call["tool_id"],
+                        arguments=call["arguments"],
+                        state=ToolInvocationState.REQUESTED,
+                        replay_policy=policy,
+                        sequence=self.ledger_store.next_sequence(work_unit_id),
+                        idempotency_key=invocation_id,
+                    ))
                 if self.event_sink is not None:
-                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_CALL, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "tool_id": call["tool_id"], "arguments": call["arguments"], "round": round_number}))
+                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_CALL, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "invocation_id": invocation_id, "tool_id": call["tool_id"], "arguments": call["arguments"], "round": round_number}))
+                if self.ledger_store is not None and work_unit_id is not None:
+                    self.ledger_store.append(ToolInvocationRecord(
+                        invocation_id=invocation_id,
+                        work_unit_id=work_unit_id,
+                        tool_id=call["tool_id"],
+                        arguments=call["arguments"],
+                        state=ToolInvocationState.STARTED,
+                        replay_policy=policy,
+                        sequence=self.ledger_store.next_sequence(work_unit_id),
+                        idempotency_key=invocation_id,
+                    ))
                 result = self.tools.execute(
-                    ToolRequest(call["tool_id"], call["arguments"], session_id=session.id if session else None, work_unit_id=work_unit_id, metadata={"call_id": call["call_id"]}),
+                    ToolRequest(call["tool_id"], call["arguments"], session_id=session.id if session else None, work_unit_id=work_unit_id, metadata={"call_id": call["call_id"], "invocation_id": invocation_id}),
                     granted_permissions=granted_permissions, approved=approved,
                 )
                 results.append(result)
+                terminal_state = ToolInvocationState.COMPLETED if result.ok else ToolInvocationState.FAILED
+                if self.ledger_store is not None and work_unit_id is not None:
+                    self.ledger_store.append(ToolInvocationRecord(
+                        invocation_id=invocation_id,
+                        work_unit_id=work_unit_id,
+                        tool_id=call["tool_id"],
+                        arguments=call["arguments"],
+                        state=terminal_state,
+                        replay_policy=policy,
+                        sequence=self.ledger_store.next_sequence(work_unit_id),
+                        result_reference=invocation_id if result.ok else None,
+                        error=result.error,
+                        idempotency_key=invocation_id,
+                    ))
                 if self.event_sink is not None:
-                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_RESULT, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error, "round": round_number}))
-                round_results.append({"call_id": call["call_id"], "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error})
+                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_RESULT, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "invocation_id": invocation_id, "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error, "round": round_number}))
+                round_results.append({"call_id": call["call_id"], "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error, "invocation_id": invocation_id})
             history.append({"tool_calls": calls, "tool_results": tuple(round_results)})
             metadata = dict(current.metadata)
             metadata["tool_results"] = tuple(round_results)
@@ -125,6 +167,15 @@ class ToolCallingRuntime:
             yield emit(RuntimeEventKind.TOOL_RESULT, item)
         yield emit(RuntimeEventKind.MESSAGE, {"model_id": result.model_id, "text": result.response.text})
         yield emit(RuntimeEventKind.COMPLETED, {"model_id": result.model_id, "rounds": result.rounds})
+
+    @staticmethod
+    def _replay_policy(tool_id: str) -> ReplayPolicy:
+        if tool_id.startswith("filesystem.read") or tool_id in {"git.status", "git.diff"}:
+            return ReplayPolicy(ReplayDisposition.SAFE, reason="read-only tool")
+        return ReplayPolicy(
+            ReplayDisposition.REVIEW_REQUIRED,
+            reason="tool may have an external or persistent side effect",
+        )
 
     @staticmethod
     def _normalize_calls(value: object) -> tuple[dict[str, object], ...]:
