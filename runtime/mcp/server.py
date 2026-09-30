@@ -8,9 +8,9 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from runtime.builtin_tools import BuiltinToolBindings
+from runtime.mcp.durable_bridge import MCPDurableExecutionBridge
 from runtime.policy import ExecutionPolicy
 from runtime.tool_calling import ToolRuntime
-from core.contracts.agent_execution_runtime import ToolRequest
 
 
 def _server_version() -> str:
@@ -41,6 +41,7 @@ class AgentExecutionRuntimeMCPServer:
             )
         )
         BuiltinToolBindings(str(self.project_root), self.runtime)
+        self.durable_bridge = MCPDurableExecutionBridge(self.project_root, self.runtime)
 
     def _visible_tools(self) -> list[dict[str, object]]:
         result = []
@@ -61,19 +62,7 @@ class AgentExecutionRuntimeMCPServer:
         return result
 
     def _call(self, name: str, arguments: dict[str, object]) -> dict[str, object]:
-        result = self.runtime.execute(
-            ToolRequest(name, arguments),
-            granted_permissions=frozenset(
-                {
-                    "filesystem.write"
-                    if self.runtime.policy.allow_filesystem_write
-                    else "",
-                    "process" if self.runtime.policy.allow_process else "",
-                }
-            )
-            - {""},
-            approved=True,
-        )
+        result = self.durable_bridge.call(name, arguments)
         if result.ok:
             output = result.output
             text = output if isinstance(output, str) else json.dumps(output, ensure_ascii=False, default=str)
