@@ -27,16 +27,4 @@ trap 'rm -f "${TMPDIR:-/tmp}/multiagentos-mcp-health-$$.url"' EXIT
 echo "== tunnel-client /health/mcp =="
 HEALTH_JSON="$(curl --fail --silent --show-error "$MCP_HEALTH_URL")"
 
-python3 -c '
-import json
-import sys
-p=json.loads(sys.stdin.read())
-if p.get("status") != "ok":
-    raise SystemExit(f"MCP component status is not ok: {p.get('status')!r}")
-if p.get("state") != "discovered":
-    raise SystemExit(f"MCP component state is not discovered: {p.get('state')!r}")
-details=p.get("details") or {}
-if details.get("limited") is True:
-    raise SystemExit("MCP discovery evidence is limited")
-print("PASS: tunnel-client observed MCP discovery with status=ok state=discovered")
-' <<<"$HEALTH_JSON"
+python3 tests/tunnel_client_mcp_health.py <<<"$HEALTH_JSON"
