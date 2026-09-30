@@ -10,6 +10,8 @@ from core.contracts.agent_execution_runtime import RuntimeEvent
 from core.contracts.memory import MemoryKind, ProjectMemory
 from core.approval import ApprovalStore
 from core.execution_state import ExecutionStateStore
+from core.execution_limits import ExecutionLimitStore
+from core.contracts.execution_limits import ExecutionBudget, RateLimit
 from core.memory import ProjectMemoryStore
 from runtime.model_control import ModelControlPlane
 from runtime.observability import ExecutionObservability, ExecutionEvidenceSummary
@@ -37,6 +39,7 @@ class ExecutionHarness:
     model_control: ModelControlPlane
     observability: ExecutionObservability
     approval_store: ApprovalStore
+    execution_limit_store: ExecutionLimitStore
 
     @classmethod
     def create(
@@ -66,6 +69,7 @@ class ExecutionHarness:
             model_control=ModelControlPlane(root),
             observability=ExecutionObservability(root),
             approval_store=ApprovalStore(durable_root / "approvals"),
+            execution_limit_store=ExecutionLimitStore(durable_root / "limits"),
         )
 
     def register_mcp_client(self, client) -> None:
@@ -84,3 +88,16 @@ class ExecutionHarness:
         """Retrieve bounded project context without touching execution journals."""
         return self.memory_store.search(query, limit=limit)
 
+
+
+    def check_tool_limit(self, work_unit_id: str, *, budget: ExecutionBudget, rate_limit: RateLimit | None = None):
+        return self.execution_limit_store.check_tool_call(work_unit_id, budget=budget, rate_limit=rate_limit)
+
+    def record_tool_call(self, work_unit_id: str, *, rate_limit: RateLimit | None = None) -> None:
+        self.execution_limit_store.record_tool_call(work_unit_id, rate_limit=rate_limit)
+
+    def check_round_limit(self, work_unit_id: str, *, budget: ExecutionBudget):
+        return self.execution_limit_store.check_round(work_unit_id, budget=budget)
+
+    def record_round(self, work_unit_id: str) -> None:
+        self.execution_limit_store.record_round(work_unit_id)
