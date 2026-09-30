@@ -33,8 +33,8 @@ class AgentExecutionRuntimeStreamableHTTPServer:
     ) -> None:
         try:
             from mcp.server import Server
-            from mcp.types import RequestParams
-            from pydantic import BaseModel, ConfigDict, Field
+            from mcp.types import RequestParams, Result
+            from pydantic import ConfigDict, Field
         except ImportError as exc:  # pragma: no cover
             raise RuntimeError(
                 'Streamable HTTP requires the optional MCP SDK dependency. '
@@ -61,7 +61,7 @@ class AgentExecutionRuntimeStreamableHTTPServer:
             human_decision: str | None = Field(default=None, alias="humanDecision")
             notes: str = ""
 
-        class RecoveryResult(BaseModel):
+        class RecoveryResult(Result):
             model_config = ConfigDict(populate_by_name=True)
             work_unit_id: str = Field(alias="workUnitId")
             disposition: str
