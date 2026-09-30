@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from core.contracts.approval import ApprovalGrant
+
 
 @dataclass(frozen=True)
 class ExecutionPolicy:
@@ -24,5 +26,23 @@ class ExecutionPolicy:
         }
         return mapping.get(capability, False)
 
-    def requires_approval(self, action: str) -> bool:
-        return action in self.require_approval_for
+    def requires_approval(self, action: str, capability: str | None = None) -> bool:
+        """Return whether an execution action requires explicit approval."""
+        return action in self.require_approval_for or (capability is not None and capability in self.require_approval_for)
+
+    def approval_valid(
+        self,
+        grant: ApprovalGrant | None,
+        *,
+        action: str,
+        capability: str | None = None,
+        work_unit_id: str | None = None,
+        session_id: str | None = None,
+    ) -> bool:
+        if not self.requires_approval(action, capability):
+            return True
+        return grant is not None and grant.is_valid(
+            action=action,
+            work_unit_id=work_unit_id,
+            session_id=session_id,
+        )
