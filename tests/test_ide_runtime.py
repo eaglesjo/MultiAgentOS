@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -156,7 +158,7 @@ class IDECodeChangeTests(unittest.TestCase):
                 agent_id="coder",
                 model_ids=("fake-model",),
                 apply_changes=True,
-                validation_commands=("python -m py_compile hello.py",),
+                validation_commands=(f"{sys.executable} -m py_compile hello.py",),
             )
             result = runtime.submit_ide_work(
                 request,
