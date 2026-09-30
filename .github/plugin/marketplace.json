@@ -1,0 +1,19 @@
+{
+  "name": "multiagentos",
+  "owner": {"name": "eaglesjo"},
+  "metadata": {
+    "description": "MultiAgentOS Agent Execution Runtime plugins",
+    "version": "1.0.0"
+  },
+  "plugins": [{
+    "name": "multiagentos",
+    "description": "MultiAgentOS Agent Execution Runtime skills and local runtime integration for AI development tools.",
+    "version": "0.4.0",
+    "author": {"name": "eaglesjo"},
+    "homepage": "https://github.com/eaglesjo/MultiAgentOS",
+    "repository": "https://github.com/eaglesjo/MultiAgentOS",
+    "license": "MIT",
+    "keywords": ["multi-agent", "agent-execution-runtime", "developer-tools"],
+    "source": "."
+  }]
+}
