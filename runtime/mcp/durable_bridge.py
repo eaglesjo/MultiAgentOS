@@ -79,6 +79,7 @@ class MCPDurableExecutionBridge:
         )
         if plan.disposition is RecoveryDisposition.COMPLETED:
             return {"work_unit_id": work_unit_id, "disposition": plan.disposition.value, "replayed": False}
+        recovery_authorized = False
         if plan.disposition is RecoveryDisposition.REVIEW_REQUIRED:
             decision = human_decision.strip().lower() if isinstance(human_decision, str) else None
             if decision is None:
@@ -119,6 +120,7 @@ class MCPDurableExecutionBridge:
                 }
             if len(unresolved) != 1:
                 raise ValueError("MCP recovery supports exactly one unresolved direct tool invocation")
+            recovery_authorized = True
             plan_safe_override = True
         else:
             plan_safe_override = False
@@ -132,7 +134,7 @@ class MCPDurableExecutionBridge:
         if len(unresolved) != 1:
             raise ValueError("MCP recovery supports exactly one unresolved direct tool invocation")
         record = unresolved[0]
-        if not record.replay_safe:
+        if not record.replay_safe and not recovery_authorized:
             raise ValueError("MCP invocation is not replay-safe")
 
         request = ToolRequest(
