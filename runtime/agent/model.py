@@ -163,13 +163,22 @@ class ModelAgentExecutor(AgentExecutor):
                     cursor_store=self.cursor_store,
                     agent_id=agent.id,
                 )
-                result = runtime.execute(
-                    request,
-                    model_id=candidate_id,
-                    work_unit_id=work_unit.id,
-                    granted_permissions=agent.permissions,
-                    approved=approved,
-                )
+                if work_unit.metadata.get("resume_from_cursor"):
+                    result = runtime.resume(
+                        request,
+                        model_id=candidate_id,
+                        work_unit_id=work_unit.id,
+                        granted_permissions=agent.permissions,
+                        approved=approved,
+                    )
+                else:
+                    result = runtime.execute(
+                        request,
+                        model_id=candidate_id,
+                        work_unit_id=work_unit.id,
+                        granted_permissions=agent.permissions,
+                        approved=approved,
+                    )
                 attempts.append(candidate_id)
                 work_unit.metadata["model_response"] = result.response.text
                 work_unit.metadata["model_id"] = result.model_id
