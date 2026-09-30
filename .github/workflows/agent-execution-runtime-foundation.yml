@@ -10,6 +10,41 @@ permissions:
   contents: read
 
 jobs:
+  mcp-inspector-streamable-http:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install package and MCP HTTP dependencies
+        run: python -m pip install -e ".[mcp-http]"
+      - name: Start Streamable HTTP server
+        run: |
+          nohup python -m multiagentos.cli mcp serve-http --path "$PWD" --host 127.0.0.1 --port 8000 > /tmp/mcp-http.log 2>&1 &
+          echo $! > /tmp/mcp-http.pid
+          python - <<'PY'
+          import socket, time
+          deadline = time.time() + 20
+          while time.time() < deadline:
+              try:
+                  with socket.create_connection(("127.0.0.1", 8000), timeout=0.5):
+                      raise SystemExit(0)
+              except OSError:
+                  time.sleep(0.2)
+          raise SystemExit("Streamable HTTP server did not start")
+          PY
+      - name: Inspect tools through official MCP Inspector
+        run: bash tests/mcp_inspector_http_smoke.sh
+      - name: Stop Streamable HTTP server
+        if: always()
+        run: |
+          if test -f /tmp/mcp-http.pid; then kill "$(cat /tmp/mcp-http.pid)" || true; fi
+          cat /tmp/mcp-http.log || true
+
   contract-tests:
     runs-on: ubuntu-latest
     steps:
