@@ -8,6 +8,7 @@ from typing import Callable
 
 from core.contracts.agent_execution_runtime import RuntimeEvent
 from core.contracts.memory import MemoryKind, ProjectMemory
+from core.approval import ApprovalStore
 from core.execution_state import ExecutionStateStore
 from core.memory import ProjectMemoryStore
 from runtime.model_control import ModelControlPlane
@@ -35,6 +36,7 @@ class ExecutionHarness:
     memory_store: ProjectMemoryStore
     model_control: ModelControlPlane
     observability: ExecutionObservability
+    approval_store: ApprovalStore
 
     @classmethod
     def create(
@@ -63,6 +65,7 @@ class ExecutionHarness:
             memory_store=ProjectMemoryStore(durable_root / "memory"),
             model_control=ModelControlPlane(root),
             observability=ExecutionObservability(root),
+            approval_store=ApprovalStore(durable_root / "approvals"),
         )
 
     def register_mcp_client(self, client) -> None:
