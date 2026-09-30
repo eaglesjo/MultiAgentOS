@@ -2,7 +2,7 @@
 set -euo pipefail
 
 LABEL="com.eaglesjo.multiagentos.mcp"
-PROJECT_ROOT="$(cd "$(dirname "\${BASH_SOURCE[0]}")/../.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
 PLIST_PATH="$LAUNCH_AGENTS_DIR/$LABEL.plist"
 VENV="$PROJECT_ROOT/.venv"
