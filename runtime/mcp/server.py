@@ -76,13 +76,25 @@ class AgentExecutionRuntimeMCPServer:
         session_id = arguments.get("sessionId")
         if session_id is not None and not isinstance(session_id, str):
             raise ValueError("sessionId must be a string")
-        result = self.durable_bridge.recover(work_unit_id, session_id=session_id)
+        human_decision = arguments.get("humanDecision")
+        if human_decision is not None and not isinstance(human_decision, str):
+            raise ValueError("humanDecision must be a string")
+        notes = arguments.get("notes", "")
+        if not isinstance(notes, str):
+            raise ValueError("notes must be a string")
+        result = self.durable_bridge.recover(
+            work_unit_id,
+            session_id=session_id,
+            human_decision=human_decision,
+            notes=notes,
+        )
         return {
             "work_unit_id": result["work_unit_id"],
             "disposition": result["disposition"],
             "replayed": result["replayed"],
             "invocation_id": result.get("invocation_id"),
             "idempotency_key": result.get("idempotency_key"),
+            "human_decision": result.get("human_decision"),
         }
 
     def handle(self, message: dict[str, object]) -> dict[str, object] | None:
