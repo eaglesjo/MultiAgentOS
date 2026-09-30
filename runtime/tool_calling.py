@@ -116,6 +116,14 @@ class ToolCallingRuntime:
             round_number = start_round + offset
             if self.limit_store is not None and work_unit_id is not None and self.execution_budget is not None:
                 decision = self.limit_store.check_round(work_unit_id, budget=self.execution_budget)
+                if self.decision_store is not None:
+                    self.decision_store.append(PolicyDecision(
+                        work_unit_id=work_unit_id,
+                        category=DecisionCategory.BUDGET,
+                        disposition=DecisionDisposition.ALLOW if decision.disposition is LimitDisposition.ALLOW else DecisionDisposition.DENY,
+                        reason=decision.reason,
+                        action="round",
+                    ))
                 if decision.disposition is LimitDisposition.DENY:
                     raise ToolExecutionError(decision.reason)
                 self.limit_store.record_round(work_unit_id)
@@ -169,6 +177,15 @@ class ToolCallingRuntime:
                 invocation_id = f"inv-{uuid4().hex}"
                 if self.limit_store is not None and work_unit_id is not None and self.execution_budget is not None:
                     decision = self.limit_store.check_tool_call(work_unit_id, budget=self.execution_budget, rate_limit=self.rate_limit)
+                    category = DecisionCategory.RATE_LIMIT if self.rate_limit is not None and "rate limit" in decision.reason else DecisionCategory.BUDGET
+                    if self.decision_store is not None:
+                        self.decision_store.append(PolicyDecision(
+                            work_unit_id=work_unit_id,
+                            category=category,
+                            disposition=DecisionDisposition.ALLOW if decision.disposition is LimitDisposition.ALLOW else DecisionDisposition.DENY,
+                            reason=decision.reason,
+                            action="tool_call",
+                        ))
                     if decision.disposition is LimitDisposition.DENY:
                         raise ToolExecutionError(decision.reason)
                     self.limit_store.record_tool_call(work_unit_id, rate_limit=self.rate_limit)
