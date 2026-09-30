@@ -20,10 +20,10 @@ class ToolInvocationRecord:
     work_unit_id: str
     tool_id: str
     arguments: dict[str, Any]
-    call_id: str | None = None
     state: ToolInvocationState
     replay_policy: ReplayPolicy
     sequence: int
+    call_id: str | None = None
     result_reference: str | None = None
     error: str | None = None
     idempotency_key: str | None = None
