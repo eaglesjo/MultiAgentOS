@@ -17,3 +17,5 @@ npx --yes "@modelcontextprotocol/inspector@${INSPECTOR_VERSION}" \
   --method tools/call \
   --tool-name filesystem.read \
   --tool-arg 'path=.github/workflows/agent-execution-runtime-foundation.yml'
+
+# The command above must exit zero; Inspector reports MCP tool errors via its process status.
