@@ -1,3 +1,5 @@
+import sys
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -39,7 +41,7 @@ class CLIRunResumeTests(unittest.TestCase):
             store = AgentExecutionRuntime().state_store(root)
             work = WorkUnit("cli-resume", "resume a command")
             work.transition(WorkStatus.EXECUTING)
-            work.metadata["command"] = ["python", "-c", "print('resumed')"]
+            work.metadata["command"] = [sys.executable, "-c", "print('resumed')"]
             store.save(work)
 
             result = main(["resume", work.id, str(root)])
