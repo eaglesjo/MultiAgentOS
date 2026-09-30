@@ -28,8 +28,9 @@ class RegisteredTool:
 
 class ToolRuntime:
     """Central registry and policy boundary for normalized tool calls."""
-    def __init__(self, policy: ExecutionPolicy | None = None) -> None:
+    def __init__(self, policy: ExecutionPolicy | None = None, decision_store: PolicyDecisionStore | None = None) -> None:
         self.policy = policy or ExecutionPolicy()
+        self.decision_store = decision_store
         self._tools: dict[str, RegisteredTool] = {}
 
     def register(self, spec: ToolSpec, handler: ToolHandler) -> None:
@@ -52,12 +53,25 @@ class ToolRuntime:
             return ToolResult(request.tool_id, False, error=f"tool not registered: {request.tool_id}")
         missing = item.spec.permissions - granted_permissions
         if missing:
+            self._record_decision(request, DecisionCategory.PERMISSION, DecisionDisposition.DENY, f"missing permissions: {sorted(missing)}", action=item.spec.id)
             return ToolResult(item.spec.id, False, error=f"tool permission denied: missing={sorted(missing)}")
         capability = {ToolSideEffect.READ: None, ToolSideEffect.WRITE: "filesystem.write", ToolSideEffect.EXECUTE: "process", ToolSideEffect.NETWORK: "network"}[item.spec.side_effect]
         if capability and not self.policy.permits(capability):
+            self._record_decision(request, DecisionCategory.CAPABILITY, DecisionDisposition.DENY, f"capability disabled: {capability}", action=item.spec.id)
             return ToolResult(item.spec.id, False, error=f"tool capability is disabled: {capability}")
-        if self.policy.requires_approval(item.spec.id, capability) and not (approved or self.policy.approval_valid(approval, action=item.spec.id, capability=capability, work_unit_id=request.work_unit_id, session_id=request.session_id)):
-            return ToolResult(item.spec.id, False, error=f"explicit approval required for: {item.spec.id}")
+        if self.policy.requires_approval(item.spec.id, capability):
+            valid = approved or self.policy.approval_valid(approval, action=item.spec.id, capability=capability, work_unit_id=request.work_unit_id, session_id=request.session_id)
+            self._record_decision(request, DecisionCategory.APPROVAL, DecisionDisposition.ALLOW if valid else DecisionDisposition.DENY, "explicit approval accepted" if valid else f"explicit approval required for: {item.spec.id}", action=item.spec.id)
+            if not valid:
+                return ToolResult(item.spec.id, False, error=f"explicit approval required for: {item.spec.id}")
+        return self._execute_handler(item, request)
+
+    def _record_decision(self, request: ToolRequest, category: DecisionCategory, disposition: DecisionDisposition, reason: str, *, action: str | None = None) -> None:
+        if self.decision_store is None or request.work_unit_id is None:
+            return
+        self.decision_store.append(PolicyDecision(work_unit_id=request.work_unit_id, category=category, disposition=disposition, reason=reason, action=action, session_id=request.session_id))
+
+    def _execute_handler(self, item: RegisteredTool, request: ToolRequest) -> ToolResult:
         try:
             output = item.handler(request)
         except Exception as exc:
