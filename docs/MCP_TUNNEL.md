@@ -215,6 +215,71 @@ ChatGPT -> Secure MCP Tunnel -> tunnel-client -> Agent Execution Runtime MCP ser
 
 The final connector/runtime step remains environment-specific and must be validated with the user's actual OpenAI workspace, tunnel ID, permissions, and running `tunnel-client` process.
 
+
+### Secure MCP Tunnel with Streamable HTTP
+
+The current OpenAI `tunnel-client` supports Streamable HTTP as a customer MCP binding through `MCP_SERVER_URL`. That means MultiAgentOS does not need a public HTTPS endpoint for the tunnel path. The tunnel client can reach the local HTTP server directly while maintaining an outbound-only connection to OpenAI. citeturn0search0turn1search3
+
+For the MultiAgentOS HTTP server:
+
+```bash
+multiagentos mcp serve-http \
+  --path /absolute/path/to/project \
+  --host 127.0.0.1 \
+  --port 8000
+```
+
+Then configure the tunnel client against the local MCP endpoint:
+
+```bash
+export CONTROL_PLANE_TUNNEL_ID="tunnel_..."
+export CONTROL_PLANE_API_KEY="sk-..."
+export MCP_SERVER_URL="http://127.0.0.1:8000/mcp"
+
+tunnel-client doctor --profile <profile> --explain
+tunnel-client run --profile <profile>
+```
+
+The current tunnel-client documentation explicitly supports `MCP_SERVER_URL` for Streamable HTTP and requires a runtime API key plus tunnel ID. The runtime key needs Tunnels Read + Use; tunnel administration uses a separate admin key. citeturn1search0turn1search5
+
+For a named profile, the supported initialization path is:
+
+```bash
+tunnel-client init \
+  --sample sample_mcp_remote_no_auth \
+  --profile multiagentos-http \
+  --tunnel-id "$CONTROL_PLANE_TUNNEL_ID" \
+  --mcp-server-url "$MCP_SERVER_URL"
+
+tunnel-client doctor --profile multiagentos-http --explain
+tunnel-client run --profile multiagentos-http
+```
+
+The tunnel itself requires no inbound firewall port. The tunnel-client host needs outbound HTTPS to OpenAI and local reachability to the MCP server. citeturn0search6
+
+### Important security boundary
+
+Keep the MultiAgentOS HTTP listener loopback-only when tunnel-client runs on the same machine:
+
+```text
+127.0.0.1:8000
+     │
+     ▼
+MultiAgentOS /mcp
+     ▲
+     │
+tunnel-client
+     │
+     ▼
+OpenAI Secure MCP Tunnel
+```
+
+Do **not** expose port 8000 to the public internet merely to make ChatGPT reachable. Secure MCP Tunnel is specifically designed to keep the private MCP server private. citeturn0search0
+
+For production/private-network deployments where tunnel-client and MultiAgentOS are on different hosts, use the private network address or internal DNS name in `MCP_SERVER_URL`; no public ingress is required. citeturn0search6
+
+A non-secret environment template is provided at `examples/tunnel-client/multiagentos-streamable-http.env.example`.
+
 ## Official references
 
 - OpenAI Secure MCP Tunnel: https://developers.openai.com/api/docs/guides/secure-mcp-tunnels
