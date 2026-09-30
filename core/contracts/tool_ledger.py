@@ -4,6 +4,7 @@ from enum import StrEnum
 from typing import Any
 
 from .replay import ReplayPolicy
+from .idempotency import IdempotencyContract, IdempotencyMode
 
 
 class ToolInvocationState(StrEnum):
@@ -27,6 +28,18 @@ class ToolInvocationRecord:
     result_reference: str | None = None
     error: str | None = None
     idempotency_key: str | None = None
+
+    @property
+    @property
+    def idempotency_contract(self) -> IdempotencyContract:
+        return IdempotencyContract(
+            IdempotencyMode.KEYED if self.idempotency_key else IdempotencyMode.NONE,
+            self.idempotency_key,
+        )
+
+    @property
+    def replay_safe(self) -> bool:
+        return self.replay_policy.replayable and self.idempotency_contract.replay_safe
 
     @property
     def requires_recovery_review(self) -> bool:
