@@ -411,19 +411,27 @@ class AgentExecutionRuntime:
         if state == "not_started":
             return RecoveryPlan(work_unit_id, RecoveryDisposition.NOT_STARTED, safe_to_resume=True, reason="no durable execution evidence exists")
         if pending:
+            unresolved = self.tool_ledger_store(project_root).unresolved(work_unit_id)
+            review_required = tuple(
+                record.invocation_id
+                for record in unresolved
+                if record.requires_recovery_review
+            )
+            if unresolved and not review_required:
+                return RecoveryPlan(
+                    work_unit_id,
+                    RecoveryDisposition.RESUME,
+                    pending_tool_call_ids=tuple(record.invocation_id for record in unresolved),
+                    safe_to_resume=True,
+                    reason="unresolved tool invocations are explicitly replay-safe",
+                )
             return RecoveryPlan(
                 work_unit_id,
                 RecoveryDisposition.REVIEW_REQUIRED,
-                pending_tool_call_ids=pending,
-                reason="a tool call was recorded without a durable result; replay may duplicate side effects",
+                pending_tool_call_ids=review_required or pending,
+                reason="a tool invocation has no durable result and replay requires human review",
             )
-        if state == "failed":
-            return RecoveryPlan(
-                work_unit_id,
-                RecoveryDisposition.RESUME,
-                safe_to_resume=True,
-                reason="WorkUnit is failed and has no in-flight tool call",
-            )
+
         return RecoveryPlan(
             work_unit_id,
             RecoveryDisposition.RESUME,
