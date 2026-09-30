@@ -159,6 +159,95 @@ class RecoveryRequest(types.Request[RecoveryParams, Literal["runtime/recover"]])
     params: RecoveryParams
 
 
+def _start_crash_server(root: Path, port: int) -> subprocess.Popen[str]:
+    return subprocess.Popen(
+        [
+            sys.executable,
+            "tests/mcp_streamable_http_crash_launcher.py",
+            str(root),
+            str(port),
+            "1",
+        ],
+        cwd=str(Path.cwd()),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def test_streamable_http_write_crash_requires_and_accepts_human_recovery() -> None:
+    asyncio.run(_exercise_http_write_crash_recovery())
+
+
+async def _exercise_http_write_crash_recovery() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        target = root / "http-side-effect.txt"
+        target.write_text("before", encoding="utf-8")
+
+        crash_port = _free_port()
+        crashed = _start_crash_server(root, crash_port)
+        try:
+            _wait_for_http(crash_port, crashed)
+            try:
+                async with Client(f"http://127.0.0.1:{crash_port}/mcp") as client:
+                    await client.call_tool(
+                        "filesystem.write",
+                        {"path": target.name, "content": "after"},
+                    )
+            except Exception:
+                pass
+            crashed.wait(timeout=5)
+            assert crashed.returncode == 97
+        finally:
+            if crashed.poll() is None:
+                _stop_server(crashed)
+
+        assert target.read_text(encoding="utf-8") == "before"
+        state_files = list((root / ".multiagentos" / "state").glob("*.json"))
+        assert len(state_files) == 1
+        work_unit_id = json.loads(
+            state_files[0].read_text(encoding="utf-8")
+        )["id"]
+
+        port = _free_port()
+        process = _start_server(root, port, allow_write=True)
+        try:
+            _wait_for_http(port, process)
+            async with Client(f"http://127.0.0.1:{port}/mcp") as client:
+                rejected = await client.session.send_request(
+                    RecoveryRequest(
+                        params=RecoveryParams(work_unit_id=work_unit_id),
+                    ),
+                    RecoveryResult,
+                )
+                assert rejected.disposition == "review_required"
+                assert rejected.replayed is False
+
+                approved = await client.session.send_request(
+                    RecoveryRequest(
+                        params=RecoveryParams(
+                            work_unit_id=work_unit_id,
+                            human_decision="approve",
+                            notes="Approve the interrupted filesystem write after human review.",
+                        ),
+                    ),
+                    RecoveryResult,
+                )
+                assert approved.disposition == "completed"
+                assert approved.replayed is True
+
+                verify = await client.call_tool(
+                    "filesystem.read",
+                    {"path": target.name},
+                )
+                assert not verify.is_error
+                assert getattr(verify.content[0], "text", None) == "after"
+        finally:
+            _stop_server(process)
+
+
 def test_official_mcp_sdk_streamable_http_recovery_method() -> None:
     asyncio.run(_exercise_http_recovery_method())
 
