@@ -905,6 +905,7 @@ class AgentExecutionRuntime:
             )
         work_unit.metadata["resume_count"] = int(work_unit.metadata.get("resume_count", 0)) + 1
         work_unit.metadata["resumed"] = True
+        work_unit.metadata["resume_from_cursor"] = True
         store.save(work_unit)
         return self.run_configured_work(
             project_root,
