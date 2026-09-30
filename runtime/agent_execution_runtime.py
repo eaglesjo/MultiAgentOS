@@ -27,6 +27,7 @@ from core.handoff import ReviewPanel, ReviewPanelResult
 from core.planning import BasicPlanner
 from core.state import RuntimeEventStore, SessionStateStore, WorkStateStore
 from core.tool_ledger import ToolInvocationStore
+from core.execution_state import ExecutionStateStore
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.routing import AIRouter, RoutingStrategy
 from profiles.detector import ProfileDetector
@@ -351,6 +352,15 @@ class AgentExecutionRuntime:
 
     def tool_ledger_store(self, project_root: Path):
         return ToolInvocationStore(Path(project_root) / ".multiagentos" / "tool-ledger")
+
+    def execution_state_store(self, project_root: Path):
+        return ExecutionStateStore(Path(project_root) / ".multiagentos" / "execution-state")
+
+    def load_execution_cursor(self, project_root: Path, work_unit_id: str):
+        return self.execution_state_store(project_root).load_cursor(work_unit_id)
+
+    def load_execution_messages(self, project_root: Path, work_unit_id: str):
+        return self.execution_state_store(project_root).load_messages(work_unit_id)
 
     def load_runtime_events(self, project_root: Path, work_unit_id: str) -> tuple[dict[str, object], ...]:
         """Load the durable runtime journal for a WorkUnit."""
@@ -709,6 +719,7 @@ class AgentExecutionRuntime:
 
         event_store = self.event_store(project_root)
         ledger_store = self.tool_ledger_store(project_root)
+        execution_state_store = self.execution_state_store(project_root)
 
         def persist_runtime_event(event):
             event_store.append(event)
@@ -727,6 +738,7 @@ class AgentExecutionRuntime:
             capability_registry=capability_registry,
             event_sink=persist_runtime_event,
             ledger_store=ledger_store,
+            cursor_store=execution_state_store,
         )
         effective_executor = IDECodingExecutor(
             delegate=executor,

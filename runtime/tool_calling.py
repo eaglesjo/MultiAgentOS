@@ -10,6 +10,7 @@ from core.contracts.agent_execution_runtime import RuntimeEvent, RuntimeEventKin
 from runtime.policy import ExecutionPolicy
 from core.contracts.replay import ReplayDisposition, ReplayPolicy
 from core.contracts.tool_ledger import ToolInvocationRecord, ToolInvocationState
+from core.contracts.execution_cursor import ExecutionCursor
 
 class ToolExecutionError(RuntimeError):
     pass
@@ -72,11 +73,13 @@ class ToolCallingExecution:
 
 class ToolCallingRuntime:
     """Execute normalized model tool calls until the model returns a final response."""
-    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None) -> None:
+    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None, cursor_store: object | None = None, agent_id: str = "unknown") -> None:
         if max_rounds < 1:
             raise ValueError("max_rounds must be at least 1")
         self.models, self.adapters, self.tools, self.max_rounds, self.event_sink = models, adapters, tools, max_rounds, event_sink
         self.ledger_store = ledger_store
+        self.cursor_store = cursor_store
+        self.agent_id = agent_id
 
     def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False) -> ToolCallingExecution:
         model = self.models[model_id]
@@ -86,11 +89,48 @@ class ToolCallingRuntime:
             raise ToolExecutionError(f"model adapter does not support tool calling: {model_id}")
         current, results = request, []
         history: list[dict[str, object]] = []
+        cursor_sequence = 0
+        conversation_revision = 0
         for round_number in range(1, self.max_rounds + 1):
+            cursor_sequence += 1
+            if self.cursor_store is not None and work_unit_id is not None:
+                self.cursor_store.save_cursor(ExecutionCursor(
+                    work_unit_id=work_unit_id,
+                    event_sequence=cursor_sequence,
+                    round_number=round_number,
+                    agent_id=self.agent_id,
+                    model_id=model_id,
+                    conversation_revision=conversation_revision,
+                ))
+                conversation_revision = self.cursor_store.append_message(
+                    work_unit_id,
+                    role="request",
+                    round_number=round_number,
+                    content=request.prompt,
+                    metadata={"system": request.system, "request": request.metadata},
+                )
             if self.event_sink is not None:
                 self.event_sink(RuntimeEvent(kind=RuntimeEventKind.REQUEST, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"model_id": model_id, "round": round_number}))
             response = generate(model, current, self.tools.specs())
             calls = self._normalize_calls(response.metadata.get("tool_calls", ()))
+            if self.cursor_store is not None and work_unit_id is not None:
+                cursor_sequence += 1
+                conversation_revision = self.cursor_store.append_message(
+                    work_unit_id,
+                    role="assistant",
+                    round_number=round_number,
+                    content=response.text,
+                    metadata={"model_id": response.model_id, "response": response.metadata},
+                )
+                self.cursor_store.save_cursor(ExecutionCursor(
+                    work_unit_id=work_unit_id,
+                    event_sequence=cursor_sequence,
+                    round_number=round_number,
+                    agent_id=self.agent_id,
+                    model_id=model_id,
+                    conversation_revision=conversation_revision,
+                    next_tool_call_id=calls[0]["call_id"] if calls else None,
+                ))
             if self.event_sink is not None:
                 self.event_sink(RuntimeEvent(kind=RuntimeEventKind.MESSAGE, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"model_id": model_id, "round": round_number, "tool_call_count": len(calls)}))
             if not calls:
@@ -98,8 +138,19 @@ class ToolCallingRuntime:
                     self.event_sink(RuntimeEvent(kind=RuntimeEventKind.COMPLETED, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"model_id": model_id, "rounds": round_number}))
                 return ToolCallingExecution(response, model_id, round_number, tuple(results))
             round_results = []
-            for call in calls:
+            for index, call in enumerate(calls):
                 invocation_id = f"inv-{uuid4().hex}"
+                if self.cursor_store is not None and work_unit_id is not None:
+                    cursor_sequence += 1
+                    self.cursor_store.save_cursor(ExecutionCursor(
+                        work_unit_id=work_unit_id,
+                        event_sequence=cursor_sequence,
+                        round_number=round_number,
+                        agent_id=self.agent_id,
+                        model_id=model_id,
+                        conversation_revision=conversation_revision,
+                        next_tool_call_id=call["call_id"],
+                    ))
                 policy = self._replay_policy(call["tool_id"])
                 if self.ledger_store is not None and work_unit_id is not None:
                     self.ledger_store.append(ToolInvocationRecord(
@@ -146,6 +197,25 @@ class ToolCallingRuntime:
                     ))
                 if self.event_sink is not None:
                     self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_RESULT, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "invocation_id": invocation_id, "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error, "round": round_number}))
+                if self.cursor_store is not None and work_unit_id is not None:
+                    cursor_sequence += 1
+                    conversation_revision = self.cursor_store.append_message(
+                        work_unit_id,
+                        role="tool",
+                        round_number=round_number,
+                        content=result.output,
+                        metadata={"call_id": call["call_id"], "invocation_id": invocation_id, "tool_id": result.tool_id, "ok": result.ok, "error": result.error},
+                    )
+                    next_call_id = calls[index + 1]["call_id"] if index + 1 < len(calls) else None
+                    self.cursor_store.save_cursor(ExecutionCursor(
+                        work_unit_id=work_unit_id,
+                        event_sequence=cursor_sequence,
+                        round_number=round_number,
+                        agent_id=self.agent_id,
+                        model_id=model_id,
+                        conversation_revision=conversation_revision,
+                        next_tool_call_id=next_call_id,
+                    ))
                 round_results.append({"call_id": call["call_id"], "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error, "invocation_id": invocation_id})
             history.append({"tool_calls": calls, "tool_results": tuple(round_results)})
             metadata = dict(current.metadata)
