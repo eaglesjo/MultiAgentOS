@@ -30,18 +30,39 @@ echo "== Start MultiAgentOS Streamable HTTP =="
 python3 -m multiagentos.cli mcp serve-http "${SERVER_ARGS[@]}" >"$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
 
-python3 - "$PORT" <<'PY'
+if ! python3 - "$PORT" "$SERVER_PID" "$SERVER_LOG" <<'PY'
 import socket, sys, time
 port = int(sys.argv[1])
+pid = int(sys.argv[2])
+log_path = sys.argv[3]
 deadline = time.time() + 30
 while time.time() < deadline:
     with socket.socket() as sock:
         sock.settimeout(0.5)
         if sock.connect_ex(("127.0.0.1", port)) == 0:
             raise SystemExit(0)
+    try:
+        import os
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        print("MultiAgentOS Streamable HTTP server exited before becoming reachable.", file=sys.stderr)
+        try:
+            print(open(log_path, encoding="utf-8").read(), file=sys.stderr)
+        except OSError:
+            pass
+        raise SystemExit(1)
     time.sleep(0.25)
-raise SystemExit("MultiAgentOS Streamable HTTP server did not become reachable")
+print("MultiAgentOS Streamable HTTP server did not become reachable.", file=sys.stderr)
+try:
+    print(open(log_path, encoding="utf-8").read(), file=sys.stderr)
+except OSError:
+    pass
+raise SystemExit(1)
 PY
+then
+  echo "Server startup diagnostics are shown above." >&2
+  exit 1
+fi
 
 echo "== Start tunnel-client local forwarding proxy =="
 tunnel-client dev proxy \
