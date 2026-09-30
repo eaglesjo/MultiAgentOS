@@ -46,6 +46,29 @@ class TunnelClientMCPHealthTest(unittest.TestCase):
         errors = validate(payload)
         self.assertIn("MCP discovery evidence is limited", errors)
 
+    def test_requires_filesystem_write_when_requested(self) -> None:
+        import os
+
+        payload = self._payload()
+        os.environ["EXPECT_FILESYSTEM_WRITE"] = "1"
+        try:
+            errors = validate(payload)
+        finally:
+            os.environ.pop("EXPECT_FILESYSTEM_WRITE", None)
+        self.assertIn("expected MCP tool is missing: filesystem.write", errors)
+
+    def test_accepts_filesystem_write_when_requested(self) -> None:
+        import os
+
+        payload = self._payload()
+        payload["details"]["tools_list"]["tool_names"].append("filesystem.write")
+        os.environ["EXPECT_FILESYSTEM_WRITE"] = "1"
+        try:
+            errors = validate(payload)
+        finally:
+            os.environ.pop("EXPECT_FILESYSTEM_WRITE", None)
+        self.assertEqual(errors, [])
+
 
 if __name__ == "__main__":
     unittest.main()
