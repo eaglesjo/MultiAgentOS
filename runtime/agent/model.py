@@ -15,6 +15,7 @@ from runtime.tool_calling import ToolCallingExecution, ToolCallingRuntime, ToolR
 from core.contracts.work_unit import WorkUnit
 from core.contracts.execution_limits import ExecutionBudget, RateLimit
 from core.execution_limits import ExecutionLimitStore
+from core.policy_decision import PolicyDecisionStore
 
 
 class ModelAgentExecutor(AgentExecutor):
@@ -36,6 +37,7 @@ class ModelAgentExecutor(AgentExecutor):
         limit_store: ExecutionLimitStore | None = None,
         execution_budget: ExecutionBudget | None = None,
         rate_limit: RateLimit | None = None,
+        decision_store: PolicyDecisionStore | None = None,
     ):
         self.adapters = dict(adapters)
         self.models = {model.id: model for model in models}
@@ -51,6 +53,7 @@ class ModelAgentExecutor(AgentExecutor):
         self.limit_store = limit_store
         self.execution_budget = execution_budget
         self.rate_limit = rate_limit
+        self.decision_store = decision_store
 
     def _candidate_model_ids(self, model_id: str) -> tuple[str, ...]:
         return tuple(dict.fromkeys((model_id, *self.fallback_model_ids)))
@@ -173,6 +176,7 @@ class ModelAgentExecutor(AgentExecutor):
                     limit_store=self.limit_store,
                     execution_budget=self.execution_budget,
                     rate_limit=self.rate_limit,
+                    decision_store=self.decision_store,
                 )
                 if work_unit.metadata.get("resume_from_cursor"):
                     result = runtime.resume(

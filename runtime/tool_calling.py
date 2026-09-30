@@ -14,6 +14,8 @@ from runtime.policy import ExecutionPolicy
 from core.contracts.replay import ReplayDisposition, ReplayPolicy
 from core.contracts.tool_ledger import ToolInvocationRecord, ToolInvocationState
 from core.contracts.execution_cursor import ExecutionCursor
+from core.contracts.policy_decision import DecisionCategory, DecisionDisposition, PolicyDecision
+from core.policy_decision import PolicyDecisionStore
 
 class ToolExecutionError(RuntimeError):
     pass
@@ -28,8 +30,9 @@ class RegisteredTool:
 
 class ToolRuntime:
     """Central registry and policy boundary for normalized tool calls."""
-    def __init__(self, policy: ExecutionPolicy | None = None) -> None:
+    def __init__(self, policy: ExecutionPolicy | None = None, decision_store: PolicyDecisionStore | None = None) -> None:
         self.policy = policy or ExecutionPolicy()
+        self.decision_store = decision_store
         self._tools: dict[str, RegisteredTool] = {}
 
     def register(self, spec: ToolSpec, handler: ToolHandler) -> None:
@@ -52,12 +55,25 @@ class ToolRuntime:
             return ToolResult(request.tool_id, False, error=f"tool not registered: {request.tool_id}")
         missing = item.spec.permissions - granted_permissions
         if missing:
+            self._record_decision(request, DecisionCategory.PERMISSION, DecisionDisposition.DENY, f"missing permissions: {sorted(missing)}", action=item.spec.id)
             return ToolResult(item.spec.id, False, error=f"tool permission denied: missing={sorted(missing)}")
         capability = {ToolSideEffect.READ: None, ToolSideEffect.WRITE: "filesystem.write", ToolSideEffect.EXECUTE: "process", ToolSideEffect.NETWORK: "network"}[item.spec.side_effect]
         if capability and not self.policy.permits(capability):
+            self._record_decision(request, DecisionCategory.CAPABILITY, DecisionDisposition.DENY, f"capability disabled: {capability}", action=item.spec.id)
             return ToolResult(item.spec.id, False, error=f"tool capability is disabled: {capability}")
-        if self.policy.requires_approval(item.spec.id, capability) and not (approved or self.policy.approval_valid(approval, action=item.spec.id, capability=capability, work_unit_id=request.work_unit_id, session_id=request.session_id)):
-            return ToolResult(item.spec.id, False, error=f"explicit approval required for: {item.spec.id}")
+        if self.policy.requires_approval(item.spec.id, capability):
+            valid = approved or self.policy.approval_valid(approval, action=item.spec.id, capability=capability, work_unit_id=request.work_unit_id, session_id=request.session_id)
+            self._record_decision(request, DecisionCategory.APPROVAL, DecisionDisposition.ALLOW if valid else DecisionDisposition.DENY, "explicit approval accepted" if valid else f"explicit approval required for: {item.spec.id}", action=item.spec.id)
+            if not valid:
+                return ToolResult(item.spec.id, False, error=f"explicit approval required for: {item.spec.id}")
+        return self._execute_handler(item, request)
+
+    def _record_decision(self, request: ToolRequest, category: DecisionCategory, disposition: DecisionDisposition, reason: str, *, action: str | None = None) -> None:
+        if self.decision_store is None or request.work_unit_id is None:
+            return
+        self.decision_store.append(PolicyDecision(work_unit_id=request.work_unit_id, category=category, disposition=disposition, reason=reason, action=action, session_id=request.session_id))
+
+    def _execute_handler(self, item: RegisteredTool, request: ToolRequest) -> ToolResult:
         try:
             output = item.handler(request)
         except Exception as exc:
@@ -76,7 +92,7 @@ class ToolCallingExecution:
 
 class ToolCallingRuntime:
     """Execute normalized model tool calls until the model returns a final response."""
-    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None, cursor_store: object | None = None, agent_id: str = "unknown", limit_store: ExecutionLimitStore | None = None, execution_budget: ExecutionBudget | None = None, rate_limit: RateLimit | None = None) -> None:
+    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None, cursor_store: object | None = None, agent_id: str = "unknown", limit_store: ExecutionLimitStore | None = None, execution_budget: ExecutionBudget | None = None, rate_limit: RateLimit | None = None, decision_store: PolicyDecisionStore | None = None) -> None:
         if max_rounds < 1:
             raise ValueError("max_rounds must be at least 1")
         self.models, self.adapters, self.tools, self.max_rounds, self.event_sink = models, adapters, tools, max_rounds, event_sink
@@ -86,6 +102,7 @@ class ToolCallingRuntime:
         self.limit_store = limit_store
         self.execution_budget = execution_budget
         self.rate_limit = rate_limit
+        self.decision_store = decision_store
 
     def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False, start_round: int = 1, initial_cursor_sequence: int = 0, initial_conversation_revision: int = 0) -> ToolCallingExecution:
         model = self.models[model_id]
@@ -101,6 +118,14 @@ class ToolCallingRuntime:
             round_number = start_round + offset
             if self.limit_store is not None and work_unit_id is not None and self.execution_budget is not None:
                 decision = self.limit_store.check_round(work_unit_id, budget=self.execution_budget)
+                if self.decision_store is not None:
+                    self.decision_store.append(PolicyDecision(
+                        work_unit_id=work_unit_id,
+                        category=DecisionCategory.BUDGET,
+                        disposition=DecisionDisposition.ALLOW if decision.disposition is LimitDisposition.ALLOW else DecisionDisposition.DENY,
+                        reason=decision.reason,
+                        action="round",
+                    ))
                 if decision.disposition is LimitDisposition.DENY:
                     raise ToolExecutionError(decision.reason)
                 self.limit_store.record_round(work_unit_id)
@@ -154,6 +179,15 @@ class ToolCallingRuntime:
                 invocation_id = f"inv-{uuid4().hex}"
                 if self.limit_store is not None and work_unit_id is not None and self.execution_budget is not None:
                     decision = self.limit_store.check_tool_call(work_unit_id, budget=self.execution_budget, rate_limit=self.rate_limit)
+                    category = DecisionCategory.RATE_LIMIT if self.rate_limit is not None and "rate limit" in decision.reason else DecisionCategory.BUDGET
+                    if self.decision_store is not None:
+                        self.decision_store.append(PolicyDecision(
+                            work_unit_id=work_unit_id,
+                            category=category,
+                            disposition=DecisionDisposition.ALLOW if decision.disposition is LimitDisposition.ALLOW else DecisionDisposition.DENY,
+                            reason=decision.reason,
+                            action="tool_call",
+                        ))
                     if decision.disposition is LimitDisposition.DENY:
                         raise ToolExecutionError(decision.reason)
                     self.limit_store.record_tool_call(work_unit_id, rate_limit=self.rate_limit)

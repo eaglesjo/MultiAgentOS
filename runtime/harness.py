@@ -9,6 +9,7 @@ from typing import Callable
 from core.contracts.agent_execution_runtime import RuntimeEvent
 from core.contracts.memory import MemoryKind, ProjectMemory
 from core.approval import ApprovalStore
+from core.policy_decision import PolicyDecisionStore
 from core.execution_state import ExecutionStateStore
 from core.execution_limits import ExecutionLimitStore
 from core.contracts.execution_limits import ExecutionBudget, RateLimit
@@ -40,6 +41,7 @@ class ExecutionHarness:
     observability: ExecutionObservability
     approval_store: ApprovalStore
     execution_limit_store: ExecutionLimitStore
+    decision_store: PolicyDecisionStore
 
     @classmethod
     def create(
@@ -51,12 +53,13 @@ class ExecutionHarness:
     ) -> "ExecutionHarness":
         root = Path(project_root).resolve()
         effective_policy = policy or ExecutionPolicy()
-        tool_runtime = ToolRuntime(effective_policy)
+        durable_root = root / ".multiagentos"
+        decision_store = PolicyDecisionStore(durable_root / "decisions")
+        tool_runtime = ToolRuntime(effective_policy, decision_store=decision_store)
         BuiltinToolBindings(str(root), tool_runtime)
         GitToolBindings(str(root), tool_runtime)
         if not apply_changes:
             tool_runtime.unregister("patch.apply")
-        durable_root = root / ".multiagentos"
         return cls(
             project_root=root,
             policy=effective_policy,
@@ -70,6 +73,7 @@ class ExecutionHarness:
             observability=ExecutionObservability(root),
             approval_store=ApprovalStore(durable_root / "approvals"),
             execution_limit_store=ExecutionLimitStore(durable_root / "limits"),
+            decision_store=decision_store,
         )
 
     def register_mcp_client(self, client) -> None:
