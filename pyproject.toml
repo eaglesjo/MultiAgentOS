@@ -11,6 +11,7 @@ dependencies = []
 
 [project.optional-dependencies]
 chatgpt = ["openai>=1.0"]
+mcp-http = ["mcp>=2.2,<3", "uvicorn>=0.30"]
 
 [project.scripts]
 multiagentos = "multiagentos.cli:main"
