@@ -6,6 +6,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 
+class RecoveryDecision(StrEnum):
+    APPROVE = "approve"
+    REJECT = "reject"
+
+
 class RecoveryDisposition(StrEnum):
     NOT_STARTED = "not_started"
     RESUME = "resume"
@@ -27,3 +32,14 @@ class RecoveryPlan:
     @property
     def requires_human_review(self) -> bool:
         return self.disposition == RecoveryDisposition.REVIEW_REQUIRED
+
+
+@dataclass(frozen=True)
+class RecoveryAuthorization:
+    """Durable authorization emitted after a human resolves recovery review."""
+
+    work_unit_id: str
+    decision: RecoveryDecision
+    notes: str = ""
+    session_id: str | None = None
+    authorized: bool = False
