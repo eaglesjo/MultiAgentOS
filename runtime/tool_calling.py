@@ -158,6 +158,7 @@ class ToolCallingRuntime:
                         work_unit_id=work_unit_id,
                         tool_id=call["tool_id"],
                         arguments=call["arguments"],
+                        call_id=call["call_id"],
                         state=ToolInvocationState.REQUESTED,
                         replay_policy=policy,
                         sequence=self.ledger_store.next_sequence(work_unit_id),
