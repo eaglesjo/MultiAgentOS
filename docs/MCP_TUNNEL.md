@@ -217,6 +217,31 @@ The final connector/runtime step remains environment-specific and must be valida
 
 
 
+### Streamable HTTP tunnel binding
+
+For the current OpenAI tunnel-client, a Streamable HTTP MCP server is configured with `MCP_SERVER_URL`. MultiAgentOS can therefore remain loopback-only when tunnel-client runs on the same host:
+
+```bash
+multiagentos mcp serve-http --path /absolute/path/to/project --host 127.0.0.1 --port 8000
+export MCP_SERVER_URL=http://127.0.0.1:8000/mcp
+```
+
+The managed-runtime form is:
+
+```bash
+tunnel-client runtimes connect \
+  --alias agent-execution-runtime-http \
+  --tunnel-id tunnel_... \
+  --runtime-api-key env:CONTROL_PLANE_API_KEY \
+  --mcp-server-url "$MCP_SERVER_URL"
+
+tunnel-client runtimes status agent-execution-runtime-http --json
+```
+
+Treat the runtime as connected only when status reports the managed process running and health available. This is the boundary between local MCP compatibility tests and real Secure MCP Tunnel validation.
+
+Do not publish port 8000 solely for ChatGPT connectivity. The tunnel-client establishes the outbound tunnel; the local MCP server can remain private.
+
 ## Official references
 
 - OpenAI Secure MCP Tunnel: https://developers.openai.com/api/docs/guides/secure-mcp-tunnels
