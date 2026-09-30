@@ -30,6 +30,7 @@ fi
 
 ROOT="${MULTIAGENTOS_PROJECT_ROOT:-$PWD}"
 PORT="${MULTIAGENTOS_HTTP_PORT:-8000}"
+ALLOW_WRITE="${MULTIAGENTOS_ALLOW_WRITE:-1}"
 ALIAS="${MULTIAGENTOS_TUNNEL_ALIAS:-multiagentos-e2e-$$}"
 SERVER_URL="http://127.0.0.1:${PORT}/mcp"
 SERVER_LOG="${TMPDIR:-/tmp}/multiagentos-mcp-$$.log"
@@ -75,6 +76,6 @@ tunnel-client runtimes status "$ALIAS" --json \
   | python3 tests/tunnel_client_runtime_status.py
 
 echo "== Verify tunnel-client MCP discovery =="
-MULTIAGENTOS_TUNNEL_ALIAS="$ALIAS" bash tests/tunnel_client_mcp_acceptance.sh
+MULTIAGENTOS_TUNNEL_ALIAS="$ALIAS" EXPECT_FILESYSTEM_WRITE="$ALLOW_WRITE" bash tests/tunnel_client_mcp_acceptance.sh
 
 echo "PASS: tunnel-client managed runtime is running, healthy, ready, and has complete MCP discovery evidence."
