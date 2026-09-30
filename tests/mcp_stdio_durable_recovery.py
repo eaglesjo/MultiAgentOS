@@ -348,7 +348,13 @@ def test_mcp_stdio_side_effecting_recovery_human_approve_replays_once() -> None:
             recovered.terminate()
             recovered.wait(timeout=5)
         decisions = runtime.decision_store(root).load(work_unit_id)
-        assert any(item["category"] == "recovery" and item["disposition"] == "allow" and item["metadata"].get("human_decision") == "approve" for item in decisions)
+        recovery_allows = [
+            item
+            for item in decisions
+            if item["category"] == "recovery" and item["disposition"] == "allow"
+        ]
+        assert len(recovery_allows) == 1
+        assert recovery_allows[0]["metadata"].get("human_decision") == "approve"
 
 
 def test_mcp_stdio_side_effecting_recovery_human_reject_is_terminal_and_safe() -> None:
