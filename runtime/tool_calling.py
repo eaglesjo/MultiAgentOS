@@ -81,17 +81,18 @@ class ToolCallingRuntime:
         self.cursor_store = cursor_store
         self.agent_id = agent_id
 
-    def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False) -> ToolCallingExecution:
+    def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False, start_round: int = 1, initial_cursor_sequence: int = 0, initial_conversation_revision: int = 0) -> ToolCallingExecution:
         model = self.models[model_id]
         adapter = self.adapters[model_id]
         generate = getattr(adapter, "generate_with_tools", None)
         if not callable(generate):
             raise ToolExecutionError(f"model adapter does not support tool calling: {model_id}")
         current, results = request, []
-        history: list[dict[str, object]] = []
-        cursor_sequence = 0
-        conversation_revision = 0
-        for round_number in range(1, self.max_rounds + 1):
+        history: list[dict[str, object]] = list(request.metadata.get("tool_history", ()))
+        cursor_sequence = initial_cursor_sequence
+        conversation_revision = initial_conversation_revision
+        for offset in range(self.max_rounds):
+            round_number = start_round + offset
             cursor_sequence += 1
             if self.cursor_store is not None and work_unit_id is not None:
                 self.cursor_store.save_cursor(ExecutionCursor(
@@ -158,6 +159,7 @@ class ToolCallingRuntime:
                         work_unit_id=work_unit_id,
                         tool_id=call["tool_id"],
                         arguments=call["arguments"],
+                        call_id=call["call_id"],
                         state=ToolInvocationState.REQUESTED,
                         replay_policy=policy,
                         sequence=self.ledger_store.next_sequence(work_unit_id),
@@ -223,6 +225,165 @@ class ToolCallingRuntime:
             metadata["tool_history"] = tuple(history)
             current = ModelRequest(prompt=current.prompt, system=current.system, metadata=metadata)
         raise ToolExecutionError(f"tool calling exceeded maximum rounds: {self.max_rounds}")
+
+    def resume(self, request: ModelRequest, *, model_id: str, work_unit_id: str, session: SessionSpec | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False) -> ToolCallingExecution:
+        """Resume a persisted tool-calling round from its durable cursor."""
+        if self.cursor_store is None:
+            raise ToolExecutionError("durable cursor store is required for resume")
+        try:
+            cursor = self.cursor_store.load_cursor(work_unit_id)
+        except FileNotFoundError:
+            return self.execute(request, model_id=model_id, session=session, work_unit_id=work_unit_id, granted_permissions=granted_permissions, approved=approved)
+        messages = self.cursor_store.load_messages(work_unit_id)
+        if not messages:
+            return self.execute(
+                request,
+                model_id=model_id,
+                session=session,
+                work_unit_id=work_unit_id,
+                granted_permissions=granted_permissions,
+                approved=approved,
+                start_round=cursor.round_number,
+            )
+
+        assistant = next(
+            (
+                item for item in reversed(messages)
+                if item.get("role") == "assistant" and int(item.get("round_number", 0)) == cursor.round_number
+            ),
+            None,
+        )
+        if assistant is None:
+            return self.execute(
+                request,
+                model_id=model_id,
+                session=session,
+                work_unit_id=work_unit_id,
+                granted_permissions=granted_permissions,
+                approved=approved,
+                start_round=cursor.round_number,
+            )
+
+        response_meta = assistant.get("metadata", {}).get("response", {})
+        calls = self._normalize_calls(response_meta.get("tool_calls", ())) if isinstance(response_meta, dict) else ()
+        completed_messages = {
+            str(item.get("metadata", {}).get("call_id"))
+            for item in messages
+            if item.get("role") == "tool" and int(item.get("round_number", 0)) == cursor.round_number
+        }
+        pending = [call for call in calls if call["call_id"] not in completed_messages]
+        conversation_revision = cursor.conversation_revision
+        next_cursor_sequence = cursor.event_sequence
+        if pending:
+            round_results = []
+            for call in pending:
+                ledger_records = (
+                    self.ledger_store.unresolved(work_unit_id)
+                    if self.ledger_store is not None
+                    else ()
+                )
+                record = next((item for item in ledger_records if item.call_id == call["call_id"]), None)
+                if record is None:
+                    raise ToolExecutionError(
+                        f"missing durable invocation for pending call: {call['call_id']}"
+                    )
+                if record.state == ToolInvocationState.REQUESTED:
+                    self.ledger_store.append(ToolInvocationRecord(
+                        invocation_id=record.invocation_id,
+                        work_unit_id=work_unit_id,
+                        tool_id=record.tool_id,
+                        arguments=record.arguments,
+                        state=ToolInvocationState.STARTED,
+                        replay_policy=record.replay_policy,
+                        sequence=self.ledger_store.next_sequence(work_unit_id),
+                        call_id=record.call_id,
+                        idempotency_key=record.idempotency_key,
+                    ))
+                result = self.tools.execute(
+                    ToolRequest(
+                        call["tool_id"],
+                        call["arguments"],
+                        session_id=session.id if session else None,
+                        work_unit_id=work_unit_id,
+                        metadata={"call_id": call["call_id"], "invocation_id": record.invocation_id, "resume": True},
+                    ),
+                    granted_permissions=granted_permissions,
+                    approved=approved,
+                )
+                terminal = ToolInvocationState.COMPLETED if result.ok else ToolInvocationState.FAILED
+                self.ledger_store.append(ToolInvocationRecord(
+                    invocation_id=record.invocation_id,
+                    work_unit_id=work_unit_id,
+                    tool_id=record.tool_id,
+                    arguments=record.arguments,
+                    state=terminal,
+                    replay_policy=record.replay_policy,
+                    sequence=self.ledger_store.next_sequence(work_unit_id),
+                    call_id=record.call_id,
+                    result_reference=record.invocation_id if result.ok else None,
+                    error=result.error,
+                    idempotency_key=record.idempotency_key,
+                ))
+                round_results.append({
+                    "call_id": call["call_id"],
+                    "tool_id": result.tool_id,
+                    "ok": result.ok,
+                    "output": result.output,
+                    "error": result.error,
+                    "invocation_id": record.invocation_id,
+                })
+                conversation_revision = self.cursor_store.append_message(
+                    work_unit_id,
+                    role="tool",
+                    round_number=cursor.round_number,
+                    content=result.output,
+                    metadata=round_results[-1],
+                )
+            history = []
+            for round_number in sorted({int(item.get("round_number", 0)) for item in messages if item.get("role") == "assistant"}):
+                assistant_item = next(
+                    item for item in messages
+                    if item.get("role") == "assistant" and int(item.get("round_number", 0)) == round_number
+                )
+                meta = assistant_item.get("metadata", {}).get("response", {})
+                round_calls = self._normalize_calls(meta.get("tool_calls", ())) if isinstance(meta, dict) else ()
+                round_tool_results = [
+                    item.get("metadata", {})
+                    for item in messages
+                    if item.get("role") == "tool" and int(item.get("round_number", 0)) == round_number
+                ]
+                if round_calls:
+                    history.append({"tool_calls": round_calls, "tool_results": tuple(round_tool_results)})
+            request = ModelRequest(
+                prompt=request.prompt,
+                system=request.system,
+                metadata={
+                    **dict(request.metadata),
+                    "tool_results": tuple(round_results),
+                    "tool_history": tuple(history),
+                },
+            )
+            self.cursor_store.save_cursor(ExecutionCursor(
+                work_unit_id=work_unit_id,
+                event_sequence=cursor.event_sequence + 1,
+                round_number=cursor.round_number,
+                agent_id=cursor.agent_id,
+                model_id=cursor.model_id,
+                conversation_revision=conversation_revision,
+                next_tool_call_id=None,
+            ))
+            next_cursor_sequence = cursor.event_sequence + 1
+        return self.execute(
+            request,
+            model_id=model_id,
+            session=session,
+            work_unit_id=work_unit_id,
+            granted_permissions=granted_permissions,
+            approved=approved,
+            start_round=cursor.round_number + 1,
+            initial_cursor_sequence=next_cursor_sequence if pending else cursor.event_sequence,
+            initial_conversation_revision=conversation_revision,
+        )
 
     def events(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False) -> Iterator[RuntimeEvent]:
         sequence = 0

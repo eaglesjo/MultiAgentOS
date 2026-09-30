@@ -23,6 +23,7 @@ class ToolInvocationRecord:
     state: ToolInvocationState
     replay_policy: ReplayPolicy
     sequence: int
+    call_id: str | None = None
     result_reference: str | None = None
     error: str | None = None
     idempotency_key: str | None = None
