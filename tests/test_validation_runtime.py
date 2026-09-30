@@ -1,3 +1,5 @@
+import sys
+
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
@@ -11,8 +13,8 @@ class ValidationRuntimeTests(TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             report = ValidationRuntime().run(root, [
-                ValidationStep("test", "python -c \"print('ok')\"", kind="test"),
-                ValidationStep("lint", "python -c \"print('lint')\"", kind="lint"),
+                ValidationStep("test", f'{sys.executable} -c "print(\'ok\')"', kind="test"),
+                ValidationStep("lint", f'{sys.executable} -c "print(\'lint\')"', kind="lint"),
             ])
             self.assertTrue(report.passed)
             self.assertEqual(len(report.results), 2)
@@ -22,8 +24,8 @@ class ValidationRuntimeTests(TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             report = ValidationRuntime().run(root, [
-                ValidationStep("required", "python -c \"raise SystemExit(2)\"", required=True),
-                ValidationStep("optional", "python -c \"raise SystemExit(3)\"", required=False),
+                ValidationStep("required", f'{sys.executable} -c "raise SystemExit(2)"', required=True),
+                ValidationStep("optional", f'{sys.executable} -c "raise SystemExit(3)"', required=False),
             ], persist_evidence=False)
             self.assertFalse(report.passed)
             self.assertEqual(report.results[0].returncode, 2)
@@ -35,7 +37,7 @@ class ValidationRuntimeTests(TestCase):
             report = ValidationRuntime(
                 ExecutionPolicy(allow_process=False)
             ).run(root, [
-                ValidationStep("test", "python -c \"print('no')\"")
+                ValidationStep("test", f'{sys.executable} -c "print(\'no\')"')
             ], persist_evidence=False)
             self.assertFalse(report.passed)
             self.assertIn("disabled", report.results[0].stderr)
