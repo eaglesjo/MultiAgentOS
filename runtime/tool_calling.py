@@ -90,7 +90,7 @@ class ToolCallingExecution:
 
 class ToolCallingRuntime:
     """Execute normalized model tool calls until the model returns a final response."""
-    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None, cursor_store: object | None = None, agent_id: str = "unknown", limit_store: ExecutionLimitStore | None = None, execution_budget: ExecutionBudget | None = None, rate_limit: RateLimit | None = None) -> None:
+    def __init__(self, *, models: dict[str, ModelSpec], adapters: dict[str, ModelAdapter], tools: ToolRuntime, max_rounds: int = 8, event_sink: Callable[[RuntimeEvent], None] | None = None, ledger_store: object | None = None, cursor_store: object | None = None, agent_id: str = "unknown", limit_store: ExecutionLimitStore | None = None, execution_budget: ExecutionBudget | None = None, rate_limit: RateLimit | None = None, decision_store: PolicyDecisionStore | None = None) -> None:
         if max_rounds < 1:
             raise ValueError("max_rounds must be at least 1")
         self.models, self.adapters, self.tools, self.max_rounds, self.event_sink = models, adapters, tools, max_rounds, event_sink
@@ -100,6 +100,7 @@ class ToolCallingRuntime:
         self.limit_store = limit_store
         self.execution_budget = execution_budget
         self.rate_limit = rate_limit
+        self.decision_store = decision_store
 
     def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False, start_round: int = 1, initial_cursor_sequence: int = 0, initial_conversation_revision: int = 0) -> ToolCallingExecution:
         model = self.models[model_id]
