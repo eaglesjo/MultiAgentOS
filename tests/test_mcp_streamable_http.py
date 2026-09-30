@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 from pathlib import Path
 from typing import Literal
 
@@ -108,6 +109,55 @@ async def _exercise_http_read_and_policy() -> None:
                 assert not result.is_error
                 assert result.content
                 assert getattr(result.content[0], "text", None) == "streamable-http"
+        finally:
+            _stop_server(process)
+
+
+
+def test_streamable_http_modern_server_discover_wire_contract() -> None:
+    asyncio.run(_exercise_modern_server_discover())
+
+
+async def _exercise_modern_server_discover() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        port = _free_port()
+        process = _start_server(root, port)
+        try:
+            _wait_for_http(port, process)
+            payload = json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "server/discover",
+                    "params": {
+                        "_meta": {
+                            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+                            "io.modelcontextprotocol/clientCapabilities": {},
+                            "io.modelcontextprotocol/clientInfo": {
+                                "name": "MultiAgentOS acceptance test",
+                                "version": "0.0.0",
+                            },
+                        }
+                    },
+                }
+            ).encode("utf-8")
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{port}/mcp",
+                data=payload,
+                headers={
+                    "Accept": "application/json, text/event-stream",
+                    "Content-Type": "application/json",
+                    "MCP-Protocol-Version": "2026-07-28",
+                    "Mcp-Method": "server/discover",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=5) as response:
+                body = response.read().decode("utf-8")
+                assert response.status == 200
+                assert "serverInfo" in body or "io.modelcontextprotocol/serverInfo" in body
+                assert "Agent Execution Runtime" in body
         finally:
             _stop_server(process)
 
