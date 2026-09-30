@@ -51,6 +51,22 @@ class StreamingRuntimeTests(unittest.TestCase):
                 request=ModelRequest("x"),
             )
 
+    def test_stream_redacts_sensitive_values_before_runtime_events(self):
+        events = []
+        result = StreamingRuntime(event_sink=events.append).consume(
+            [
+                StreamEvent(
+                    StreamEventKind.TEXT_DELTA,
+                    1,
+                    text="token sk-abcdefghijklmnopqrstuvwxyz",
+                ),
+                StreamEvent(StreamEventKind.COMPLETED, 2),
+            ],
+            model_id="fake",
+            request=ModelRequest("x"),
+        )
+        self.assertIn("[REDACTED]", result.response.text)
+        self.assertNotIn("sk-abcdefghijklmnopqrstuvwxyz", str(events[0].payload))
 
 if __name__ == "__main__":
     unittest.main()
