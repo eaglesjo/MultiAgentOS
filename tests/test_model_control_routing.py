@@ -46,6 +46,7 @@ class ModelControlRoutingTests(unittest.TestCase):
             root = Path(temp)
             control = ModelControlPlane(root)
             model = ModelSpec("model-a", "provider-a", frozenset({"chat"}))
+            healthy = ModelSpec("model-b", "provider-b", frozenset({"chat"}))
             control.health_registry.store.save(ModelHealth(
                 model_id=model.id,
                 provider_id=model.provider_id,
@@ -55,7 +56,7 @@ class ModelControlRoutingTests(unittest.TestCase):
             agent = AgentContract("agent", "developer", frozenset({"chat"}))
             explanation = AIRouter().explain(
                 agent,
-                [model],
+                [model, healthy],
                 strategy=RoutingStrategy.POOL,
                 health_snapshots={model.id: control.state(model).health},
                 capability_registry=control.capability_registry,
@@ -92,10 +93,11 @@ class ModelControlRoutingTests(unittest.TestCase):
                     ),
                 ),
             ))
+            healthy = ModelSpec("model-b", "provider-b", frozenset({"chat"}))
             agent = AgentContract("agent", "developer", frozenset({"chat"}))
             explanation = AIRouter().explain(
                 agent,
-                [model],
+                [model, healthy],
                 strategy=RoutingStrategy.POOL,
                 quota_snapshots={model.id: control.state(model).quota},
                 capability_registry=control.capability_registry,
