@@ -27,7 +27,7 @@ class MCPDurableExecutionBridge:
         self.project_root = Path(project_root).resolve()
         durable_root = self.project_root / ".multiagentos"
         self.tool_runtime = tool_runtime
-        self.work_store = WorkStateStore(durable_root / "work-state")
+        self.work_store = WorkStateStore(durable_root / "state")
         self.event_store = RuntimeEventStore(durable_root / "events")
         self.ledger_store = ToolInvocationStore(durable_root / "tool-ledger")
         self.decision_store = PolicyDecisionStore(durable_root / "decisions")
