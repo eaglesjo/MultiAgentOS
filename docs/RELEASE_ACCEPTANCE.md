@@ -58,6 +58,18 @@ In VS Code with Agent Plugins enabled:
 6. From a disposable project, ask the agent to inspect runtime state and use the installed `multiagentos` CLI.
 7. Verify that recovery requests stop for human review when a durable tool call has no durable result.
 
+### Marketplace acceptance
+
+In addition to direct source installation, verify the repository marketplace manifest:
+
+```bash
+copilot plugin marketplace add eaglesjo/MultiAgentOS
+copilot plugin marketplace browse multiagentos
+copilot plugin install multiagentos@multiagentos
+```
+
+Confirm that the installed plugin exposes the `multiagentos-runtime` skill and the Copilot-specific `multiagentos` agent.
+
 ## Gate 4 — Public release
 
 Only after all local checks pass:
