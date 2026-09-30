@@ -10,6 +10,7 @@ from core.execution_state import ExecutionStateStore
 from core.recovery_audit import RecoveryAuditStore
 from core.state import RuntimeEventStore, WorkStateStore
 from core.tool_ledger import ToolInvocationStore
+from core.policy_decision import PolicyDecisionStore
 from core.contracts.work_unit import WorkStatus
 
 
@@ -26,6 +27,8 @@ class ExecutionEvidenceSummary:
     recovery_decision: str | None
     model_ids: tuple[str, ...]
     timeline: tuple[dict[str, Any], ...]
+    decision_count: int
+    decision_timeline: tuple[dict[str, Any], ...]
 
 
 class ExecutionObservability:
@@ -39,6 +42,7 @@ class ExecutionObservability:
         self.ledger = ToolInvocationStore(durable / "tool-ledger")
         self.execution_state = ExecutionStateStore(durable / "execution-state")
         self.recovery = RecoveryAuditStore(durable / "recovery")
+        self.decisions = PolicyDecisionStore(durable / "decisions")
 
     def summarize(self, work_unit_id: str, *, timeline_limit: int = 20) -> ExecutionEvidenceSummary:
         if timeline_limit < 1:
@@ -55,6 +59,7 @@ class ExecutionObservability:
         except FileNotFoundError:
             checkpoint_status = None
         recovery_records = self.recovery.load(work_unit_id)
+        decisions = self.decisions.load(work_unit_id)
         recovery_decision = (
             str(recovery_records[-1].get("disposition"))
             if recovery_records else None
@@ -90,6 +95,16 @@ class ExecutionObservability:
             else:
                 execution_state = "executing"
 
+        decision_timeline = tuple(
+            {
+                "category": item.get("category"),
+                "disposition": item.get("disposition"),
+                "reason": item.get("reason"),
+                "action": item.get("action"),
+            }
+            for item in decisions[-timeline_limit:]
+        )
+
         return ExecutionEvidenceSummary(
             work_unit_id=work_unit_id,
             work_status=work_unit.status.value,
@@ -102,6 +117,8 @@ class ExecutionObservability:
             recovery_decision=recovery_decision,
             model_ids=tuple(model_ids),
             timeline=timeline,
+            decision_count=len(decisions),
+            decision_timeline=decision_timeline,
         )
 
     def as_dict(self, work_unit_id: str, *, timeline_limit: int = 20) -> dict[str, Any]:
@@ -118,4 +135,6 @@ class ExecutionObservability:
             "recovery_decision": summary.recovery_decision,
             "model_ids": summary.model_ids,
             "timeline": summary.timeline,
+            "decision_count": summary.decision_count,
+            "decision_timeline": summary.decision_timeline,
         }
