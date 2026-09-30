@@ -126,3 +126,48 @@ OpenAI Secure MCP Tunnel currently forwards MCP JSON-RPC requests from the OpenA
 ## Terminology migration
 
 The canonical architectural role is **Agent Execution Runtime**. See [Terminology](TERMINOLOGY.md).
+
+
+## MCP durable recovery contract
+
+The Agent Execution Runtime MCP server exposes durable recovery through the `runtime/recover` JSON-RPC method.
+
+### Request
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 42,
+  "method": "runtime/recover",
+  "params": {
+    "workUnitId": "work-unit-id"
+  }
+}
+```
+
+`sessionId` may also be supplied when recovery must be associated with an existing MCP session.
+
+### Response
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 42,
+  "result": {
+    "workUnitId": "work-unit-id",
+    "disposition": "completed",
+    "replayed": true,
+    "invocationId": "invocation-id",
+    "idempotencyKey": "idempotency-key"
+  }
+}
+```
+
+Recovery is durable and idempotent:
+
+- A safe read-only invocation interrupted after the durable `STARTED` boundary may be replayed with the original invocation and idempotency identity.
+- A completed work unit is not replayed again; the response reports `replayed: false`.
+- Side-effecting invocations are not automatically replayed after a crash. They resolve to `review_required` and require an explicit human decision.
+- Recovery state and decisions remain under the project's durable `.multiagentos/` state boundary.
+
+This contract is intentionally separate from `tools/call`: normal tool invocation records durable execution evidence, while `runtime/recover` explicitly requests reconciliation of an interrupted work unit.
