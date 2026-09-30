@@ -233,7 +233,14 @@ class ToolCallingRuntime:
         try:
             cursor = self.cursor_store.load_cursor(work_unit_id)
         except FileNotFoundError:
-            return self.execute(request, model_id=model_id, session=session, work_unit_id=work_unit_id, granted_permissions=granted_permissions, approved=approved)
+            return self.execute(
+                request,
+                model_id=model_id,
+                session=session,
+                work_unit_id=work_unit_id,
+                granted_permissions=granted_permissions,
+                approved=approved,
+            )
         messages = self.cursor_store.load_messages(work_unit_id)
         if not messages:
             return self.execute(
@@ -244,12 +251,15 @@ class ToolCallingRuntime:
                 granted_permissions=granted_permissions,
                 approved=approved,
                 start_round=cursor.round_number,
+                initial_cursor_sequence=cursor.event_sequence,
+                initial_conversation_revision=cursor.conversation_revision,
             )
 
         assistant = next(
             (
                 item for item in reversed(messages)
-                if item.get("role") == "assistant" and int(item.get("round_number", 0)) == cursor.round_number
+                if item.get("role") == "assistant"
+                and int(item.get("round_number", 0)) == cursor.round_number
             ),
             None,
         )
@@ -262,27 +272,57 @@ class ToolCallingRuntime:
                 granted_permissions=granted_permissions,
                 approved=approved,
                 start_round=cursor.round_number,
+                initial_cursor_sequence=cursor.event_sequence,
+                initial_conversation_revision=cursor.conversation_revision,
             )
 
         response_meta = assistant.get("metadata", {}).get("response", {})
-        calls = self._normalize_calls(response_meta.get("tool_calls", ())) if isinstance(response_meta, dict) else ()
+        calls = (
+            self._normalize_calls(response_meta.get("tool_calls", ()))
+            if isinstance(response_meta, dict)
+            else ()
+        )
+        if not calls:
+            response = ModelResponse(
+                text=str(assistant.get("content", "")),
+                model_id=str(
+                    response_meta.get("model_id", model_id)
+                    if isinstance(response_meta, dict)
+                    else model_id
+                ),
+                metadata=dict(response_meta) if isinstance(response_meta, dict) else {},
+            )
+            if self.event_sink is not None:
+                self.event_sink(RuntimeEvent(
+                    kind=RuntimeEventKind.COMPLETED,
+                    session_id=session.id if session else None,
+                    work_unit_id=work_unit_id,
+                    payload={"model_id": response.model_id, "rounds": cursor.round_number, "resumed": True},
+                ))
+            return ToolCallingExecution(response, response.model_id, cursor.round_number, tuple())
+
         completed_messages = {
             str(item.get("metadata", {}).get("call_id"))
             for item in messages
-            if item.get("role") == "tool" and int(item.get("round_number", 0)) == cursor.round_number
+            if item.get("role") == "tool"
+            and int(item.get("round_number", 0)) == cursor.round_number
         }
         pending = [call for call in calls if call["call_id"] not in completed_messages]
         conversation_revision = cursor.conversation_revision
         next_cursor_sequence = cursor.event_sequence
+        round_results: list[dict[str, object]] = []
+
         if pending:
-            round_results = []
             for call in pending:
                 ledger_records = (
                     self.ledger_store.unresolved(work_unit_id)
                     if self.ledger_store is not None
                     else ()
                 )
-                record = next((item for item in ledger_records if item.call_id == call["call_id"]), None)
+                record = next(
+                    (item for item in ledger_records if item.call_id == call["call_id"]),
+                    None,
+                )
                 if record is None:
                     raise ToolExecutionError(
                         f"missing durable invocation for pending call: {call['call_id']}"
@@ -305,7 +345,11 @@ class ToolCallingRuntime:
                         call["arguments"],
                         session_id=session.id if session else None,
                         work_unit_id=work_unit_id,
-                        metadata={"call_id": call["call_id"], "invocation_id": record.invocation_id, "resume": True},
+                        metadata={
+                            "call_id": call["call_id"],
+                            "invocation_id": record.invocation_id,
+                            "resume": True,
+                        },
                     ),
                     granted_permissions=granted_permissions,
                     approved=approved,
@@ -324,55 +368,73 @@ class ToolCallingRuntime:
                     error=result.error,
                     idempotency_key=record.idempotency_key,
                 ))
-                round_results.append({
+                payload = {
                     "call_id": call["call_id"],
                     "tool_id": result.tool_id,
                     "ok": result.ok,
                     "output": result.output,
                     "error": result.error,
                     "invocation_id": record.invocation_id,
-                })
+                }
+                round_results.append(payload)
                 conversation_revision = self.cursor_store.append_message(
                     work_unit_id,
                     role="tool",
                     round_number=cursor.round_number,
                     content=result.output,
-                    metadata=round_results[-1],
+                    metadata=payload,
                 )
-            history = []
-            for round_number in sorted({int(item.get("round_number", 0)) for item in messages if item.get("role") == "assistant"}):
-                assistant_item = next(
-                    item for item in messages
-                    if item.get("role") == "assistant" and int(item.get("round_number", 0)) == round_number
-                )
-                meta = assistant_item.get("metadata", {}).get("response", {})
-                round_calls = self._normalize_calls(meta.get("tool_calls", ())) if isinstance(meta, dict) else ()
-                round_tool_results = [
-                    item.get("metadata", {})
-                    for item in messages
-                    if item.get("role") == "tool" and int(item.get("round_number", 0)) == round_number
-                ]
-                if round_calls:
-                    history.append({"tool_calls": round_calls, "tool_results": tuple(round_tool_results)})
-            request = ModelRequest(
-                prompt=request.prompt,
-                system=request.system,
-                metadata={
-                    **dict(request.metadata),
-                    "tool_results": tuple(round_results),
-                    "tool_history": tuple(history),
-                },
+
+        messages = self.cursor_store.load_messages(work_unit_id)
+        history: list[dict[str, object]] = []
+        for round_number in sorted(
+            {
+                int(item.get("round_number", 0))
+                for item in messages
+                if item.get("role") == "assistant"
+            }
+        ):
+            assistant_item = next(
+                item
+                for item in messages
+                if item.get("role") == "assistant"
+                and int(item.get("round_number", 0)) == round_number
             )
+            meta = assistant_item.get("metadata", {}).get("response", {})
+            round_calls = self._normalize_calls(meta.get("tool_calls", ())) if isinstance(meta, dict) else ()
+            round_tool_results = [
+                item.get("metadata", {})
+                for item in messages
+                if item.get("role") == "tool"
+                and int(item.get("round_number", 0)) == round_number
+            ]
+            if round_calls:
+                history.append({
+                    "tool_calls": round_calls,
+                    "tool_results": tuple(round_tool_results),
+                })
+
+        request = ModelRequest(
+            prompt=request.prompt,
+            system=request.system,
+            metadata={
+                **dict(request.metadata),
+                "tool_results": tuple(round_results),
+                "tool_history": tuple(history),
+            },
+        )
+        if pending:
+            next_cursor_sequence += 1
             self.cursor_store.save_cursor(ExecutionCursor(
                 work_unit_id=work_unit_id,
-                event_sequence=cursor.event_sequence + 1,
+                event_sequence=next_cursor_sequence,
                 round_number=cursor.round_number,
                 agent_id=cursor.agent_id,
                 model_id=cursor.model_id,
                 conversation_revision=conversation_revision,
                 next_tool_call_id=None,
             ))
-            next_cursor_sequence = cursor.event_sequence + 1
+
         return self.execute(
             request,
             model_id=model_id,
@@ -381,7 +443,7 @@ class ToolCallingRuntime:
             granted_permissions=granted_permissions,
             approved=approved,
             start_round=cursor.round_number + 1,
-            initial_cursor_sequence=next_cursor_sequence if pending else cursor.event_sequence,
+            initial_cursor_sequence=next_cursor_sequence,
             initial_conversation_revision=conversation_revision,
         )
 
