@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Callable, Protocol
 from uuid import uuid4
 from core.contracts.ai import ModelSpec
+from core.contracts.approval import ApprovalGrant
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
 from core.contracts.agent_execution_runtime import RuntimeEvent, RuntimeEventKind, SessionSpec, ToolRequest, ToolResult, ToolSideEffect, ToolSpec
 from runtime.policy import ExecutionPolicy
@@ -43,7 +44,7 @@ class ToolRuntime:
         """Remove a registered tool from the current scoped runtime."""
         self._tools.pop(tool_id, None)
 
-    def execute(self, request: ToolRequest, *, granted_permissions: frozenset[str] = frozenset(), approved: bool = False) -> ToolResult:
+    def execute(self, request: ToolRequest, *, granted_permissions: frozenset[str] = frozenset(), approved: bool = False, approval: ApprovalGrant | None = None) -> ToolResult:
         item = self._tools.get(request.tool_id)
         if item is None:
             return ToolResult(request.tool_id, False, error=f"tool not registered: {request.tool_id}")
@@ -53,8 +54,8 @@ class ToolRuntime:
         capability = {ToolSideEffect.READ: None, ToolSideEffect.WRITE: "filesystem.write", ToolSideEffect.EXECUTE: "process", ToolSideEffect.NETWORK: "network"}[item.spec.side_effect]
         if capability and not self.policy.permits(capability):
             return ToolResult(item.spec.id, False, error=f"tool capability is disabled: {capability}")
-        if capability and self.policy.requires_approval(capability) and not approved:
-            return ToolResult(item.spec.id, False, error=f"explicit approval required for: {capability}")
+        if self.policy.requires_approval(item.spec.id, capability) and not (approved or self.policy.approval_valid(approval, action=item.spec.id, capability=capability, work_unit_id=request.work_unit_id, session_id=request.session_id)):
+            return ToolResult(item.spec.id, False, error=f"explicit approval required for: {item.spec.id}")
         try:
             output = item.handler(request)
         except Exception as exc:
