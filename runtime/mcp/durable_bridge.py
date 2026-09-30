@@ -14,7 +14,7 @@ from core.contracts.replay import ReplayDisposition, ReplayPolicy
 from core.contracts.policy_decision import DecisionCategory, DecisionDisposition, PolicyDecision
 from core.policy_decision import PolicyDecisionStore
 from core.recovery_audit import RecoveryAuditStore
-from core.contracts.recovery import RecoveryDisposition
+from core.contracts.recovery import RecoveryDecision, RecoveryDisposition
 from core.contracts.tool_ledger import ToolInvocationRecord, ToolInvocationState
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.state import RuntimeEventStore, WorkStateStore
@@ -95,60 +95,30 @@ class MCPDurableExecutionBridge:
                 )
                 return {"work_unit_id": work_unit_id, "disposition": plan.disposition.value, "replayed": False}
 
-            if decision == "reject":
-                self.decision_store.append(
-                    PolicyDecision(
-                        work_unit_id=work_unit_id,
-                        category=DecisionCategory.RECOVERY,
-                        disposition=DecisionDisposition.DENY,
-                        reason=notes.strip() or "Human rejected MCP recovery replay",
-                        action="mcp.recover",
-                        session_id=session_id,
-                        metadata={"source": "mcp", "human_decision": "reject"},
-                    )
-                )
-                work_unit = self.work_store.load(work_unit_id)
-                if work_unit.status not in {WorkStatus.FAILED, WorkStatus.COMPLETED}:
-                    work_unit.transition(WorkStatus.FAILED)
-                    work_unit.metadata["recovery_decision"] = "reject"
-                    self.work_store.save(work_unit)
+            authorization = runtime.resolve_recovery_review(
+                self.project_root,
+                work_unit_id,
+                decision=RecoveryDecision(decision),
+                notes=notes,
+                session_id=session_id,
+            )
+            if not authorization.authorized:
                 return {
                     "work_unit_id": work_unit_id,
                     "disposition": RecoveryDisposition.FAILED.value,
                     "replayed": False,
-                    "human_decision": "reject",
+                    "human_decision": authorization.decision.value,
                 }
-
-            if decision != "approve":
-                raise ValueError("humanDecision must be 'approve' or 'reject'")
-
             unresolved = self.ledger_store.unresolved(work_unit_id)
             if not unresolved:
                 return {
                     "work_unit_id": work_unit_id,
                     "disposition": RecoveryDisposition.COMPLETED.value,
                     "replayed": False,
-                    "human_decision": "approve",
+                    "human_decision": authorization.decision.value,
                 }
             if len(unresolved) != 1:
                 raise ValueError("MCP recovery supports exactly one unresolved direct tool invocation")
-            approved_record = unresolved[0]
-            self.decision_store.append(
-                PolicyDecision(
-                    work_unit_id=work_unit_id,
-                    category=DecisionCategory.RECOVERY,
-                    disposition=DecisionDisposition.ALLOW,
-                    reason=notes.strip() or "Human explicitly approved MCP recovery replay",
-                    action=approved_record.tool_id,
-                    session_id=session_id,
-                    metadata={
-                        "source": "mcp",
-                        "human_decision": "approve",
-                        "invocation_id": approved_record.invocation_id,
-                        "idempotency_key": approved_record.idempotency_key,
-                    },
-                )
-            )
             plan_safe_override = True
         else:
             plan_safe_override = False
