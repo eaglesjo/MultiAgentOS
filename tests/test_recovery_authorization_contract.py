@@ -59,9 +59,9 @@ class RecoveryAuthorizationContractTests(unittest.TestCase):
             )
             decisions = runtime.policy_decision_store(root).load("review-approve")
             self.assertTrue(any(
-                item.category.value == "recovery"
-                and item.disposition.value == "allow"
-                and item.metadata.get("human_decision") == "approve"
+                item["category"] == "recovery"
+                and item["disposition"] == "allow"
+                and item["metadata"].get("human_decision") == "approve"
                 for item in decisions
             ))
 
@@ -89,9 +89,9 @@ class RecoveryAuthorizationContractTests(unittest.TestCase):
             )
             decisions = runtime.policy_decision_store(root).load("review-reject")
             self.assertTrue(any(
-                item.category.value == "recovery"
-                and item.disposition.value == "deny"
-                and item.metadata.get("human_decision") == "reject"
+                item["category"] == "recovery"
+                and item["disposition"] == "deny"
+                and item["metadata"].get("human_decision") == "reject"
                 for item in decisions
             ))
 
