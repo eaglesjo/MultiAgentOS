@@ -10,6 +10,7 @@ from core.contracts.agent_execution_runtime import RuntimeEvent
 from core.contracts.memory import MemoryKind, ProjectMemory
 from core.execution_state import ExecutionStateStore
 from core.memory import ProjectMemoryStore
+from runtime.model_control import ModelControlPlane
 from core.recovery_audit import RecoveryAuditStore
 from core.state import RuntimeEventStore
 from core.tool_ledger import ToolInvocationStore
@@ -31,6 +32,7 @@ class ExecutionHarness:
     execution_state_store: ExecutionStateStore
     recovery_audit_store: RecoveryAuditStore
     memory_store: ProjectMemoryStore
+    model_control: ModelControlPlane
 
     @classmethod
     def create(
@@ -57,6 +59,7 @@ class ExecutionHarness:
             execution_state_store=ExecutionStateStore(durable_root / "execution-state"),
             recovery_audit_store=RecoveryAuditStore(durable_root / "recovery"),
             memory_store=ProjectMemoryStore(durable_root / "memory"),
+            model_control=ModelControlPlane(root),
         )
 
     def register_mcp_client(self, client) -> None:
