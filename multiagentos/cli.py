@@ -307,6 +307,8 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_http.add_argument("--port", type=int, default=8000)
     mcp_http.add_argument("--allow-write", action="store_true", help="expose filesystem write and patch tools")
     mcp_http.add_argument("--allow-process", action="store_true", help="expose shell execution")
+    mcp_http.add_argument("--allowed-host", action="append", default=[], help="allowed HTTP Host value; repeat for multiple hosts")
+    mcp_http.add_argument("--allowed-origin", action="append", default=[], help="allowed browser Origin; repeat for multiple origins")
 
     github = subparsers.add_parser("github", help="use Agent Execution Runtime GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
@@ -549,6 +551,8 @@ def main(argv: list[str] | None = None) -> int:
             root,
             allow_write=args.allow_write,
             allow_process=args.allow_process,
+            allowed_hosts=tuple(args.allowed_host),
+            allowed_origins=tuple(args.allowed_origin),
         ).run(host=args.host, port=args.port)
         return 0
 
