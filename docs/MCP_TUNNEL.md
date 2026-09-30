@@ -54,6 +54,24 @@ multiagentos mcp serve --path /absolute/path/to/project --allow-write --allow-pr
 
 Use these deliberately: `--allow-write` exposes filesystem write/patch tools and `--allow-process` exposes shell execution.
 
+### Streamable HTTP transport
+
+MultiAgentOS also provides an official MCP Python SDK Streamable HTTP server:
+
+```bash
+multiagentos mcp serve-http --path /absolute/path/to/project
+```
+
+The MCP endpoint is `http://127.0.0.1:8000/mcp` by default. This path uses the official SDK low-level server and keeps the same Agent Execution Runtime durable bridge and execution policy as stdio. Streamable HTTP does **not** remove filesystem write support: use `--allow-write` to expose `filesystem.write` explicitly.
+
+```bash
+multiagentos mcp serve-http \
+  --path /absolute/path/to/project \
+  --allow-write
+```
+
+The custom `runtime/recover` request remains a low-level MCP request extension rather than a normal tool, so durable recovery stays separate from ordinary `tools/call` execution.
+
 ## 2. Key separation
 
 Use separate credentials for separate jobs:
@@ -173,8 +191,9 @@ The plugin is an operator surface over native `tunnel-client runtimes ...` comma
 MultiAgentOS currently provides:
 
 - Agent Execution Runtime stdio MCP server via `multiagentos mcp serve`
+- Agent Execution Runtime Streamable HTTP MCP server via `multiagentos mcp serve-http`
 - read-only-by-default MCP tool exposure
-- explicit write/process opt-in flags
+- explicit write/process opt-in flags on both stdio and Streamable HTTP transports
 - MCP contracts
 - MCP stdio and Streamable HTTP client support
 - MCP session management
