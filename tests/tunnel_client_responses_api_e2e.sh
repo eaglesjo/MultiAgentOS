@@ -101,6 +101,7 @@ import json
 import os
 import sys
 import urllib.request
+import urllib.error
 
 base_url = os.environ["OPENAI_BASE_URL"].rstrip("/")
 api_key = os.environ["OPENAI_API_KEY"]
@@ -141,8 +142,25 @@ request = urllib.request.Request(
     },
 )
 
-with urllib.request.urlopen(request, timeout=180) as response:
-    result = json.loads(response.read().decode())
+try:
+    with urllib.request.urlopen(request, timeout=180) as response:
+        result = json.loads(response.read().decode())
+except urllib.error.HTTPError as exc:
+    body = exc.read().decode("utf-8", errors="replace")
+    try:
+        error_payload = json.loads(body)
+    except json.JSONDecodeError:
+        error_payload = {"raw_body": body}
+    raise SystemExit(
+        "OpenAI Responses API HTTP error "
+        + str(exc.code)
+        + ": "
+        + json.dumps(error_payload, ensure_ascii=False)
+    ) from exc
+except urllib.error.URLError as exc:
+    raise SystemExit(
+        "OpenAI Responses API connection error: " + str(exc.reason)
+    ) from exc
 
 output = result.get("output", [])
 mcp_calls = [
