@@ -168,10 +168,12 @@ See [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md) for the verif
 ### Install
 
 ```bash
-python -m pip install multiagentos
+python3 -m pip install multiagentos
 ```
 
-### Initialize a project
+#**[Download files on PyPI](https://pypi.org/project/multiagentos/#files)**
+
+## Initialize a project
 
 ```bash
 cd your-project
