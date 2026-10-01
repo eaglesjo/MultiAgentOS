@@ -2,6 +2,16 @@
 
 All notable changes to MultiAgentOS are documented here.
 
+## [0.4.1] - 2026-10-01
+
+### Packaging and release metadata
+
+- Corrected the PyPI project description source to use the repository README.
+- Removed stale project identity text from the published metadata path.
+- Added canonical Homepage, Repository, Documentation, Changelog, and Download links.
+- Prepared the release workflow for a fresh PyPI and GitHub release.
+- Updated installation guidance for macOS/Linux users to use `python3`.
+
 ## [0.4.0] - 2026-09-29
 
 ### Cost-free development baseline
