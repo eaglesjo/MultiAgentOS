@@ -4,14 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "multiagentos"
-version = "0.4.0"
-description = "Local-first, GitHub-native multi-agent orchestration with an Agent Execution Runtime"
+version = "0.4.1"
+description = "Cost-free, local-first, GitHub-native multi-agent development orchestration"
+readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
 chatgpt = ["openai>=1.0"]
 mcp-http = ["mcp>=2.2,<3", "uvicorn>=0.30"]
+
+[project.urls]
+Homepage = "https://github.com/eaglesjo/MultiAgentOS"
+Repository = "https://github.com/eaglesjo/MultiAgentOS"
+Documentation = "https://github.com/eaglesjo/MultiAgentOS/tree/main/docs"
+Changelog = "https://github.com/eaglesjo/MultiAgentOS/blob/main/CHANGELOG.md"
+Download = "https://pypi.org/project/multiagentos/#files"
 
 [project.scripts]
 multiagentos = "multiagentos.cli:main"
