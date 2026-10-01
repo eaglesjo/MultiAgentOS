@@ -107,6 +107,9 @@ jobs:
     needs: [python-distributions, native]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@v6
         with:
           pattern: "*"
