@@ -21,39 +21,46 @@ Agents provide intent, plans, and results. They do not directly own filesystem, 
 
 ## Architecture
 
-```text
-                         Web Browser
-                              |
-                              v
-                         ChatGPT Web
-                              |
-                    +---------+---------+
-                    |                   |
-                    v                   v
-       ChatGPT Codex Connector       Agent Execution Runtime
-                    |                MCP / Secure Tunnel
-                    v                   |
-            GitHub Repository            v
-                                  Local Project
-                    |                   |
-                    +---------+---------+
-                              |
-                              v
-                        MultiAgentOS
-                              |
-                              v
-                         Orchestrator
-                              |
-                              v
-                    MultiAgentWorkflow
-                     /       |       \
-               Developer   Tester   Reviewer
-                              |
-                              v
-                         Verification
-                              |
-                              v
-                           Agent Execution Runtime
+The main architecture is rendered as a native GitHub Mermaid diagram so the repository overview is visual without maintaining a separate generated image. GitHub supports Mermaid directly in Markdown files. citeturn0search0turn0search1
+
+```mermaid
+flowchart TB
+    U["Web Browser"] --> C["ChatGPT Web"]
+
+    C --> GH["ChatGPT Codex Connector"]
+    GH --> G["GitHub Repository"]
+
+    C --> MCP["Agent Execution Runtime<br/>MCP / Secure Tunnel"]
+    MCP --> L["Local Project"]
+
+    G --> O["MultiAgentOS"]
+    L --> O
+
+    O --> ORCH["Orchestrator"]
+    ORCH --> WF["MultiAgentWorkflow"]
+
+    WF --> DEV["Developer"]
+    WF --> TEST["Tester"]
+    WF --> REVIEW["Reviewer"]
+
+    DEV --> VERIFY["Verification"]
+    TEST --> VERIFY
+    REVIEW --> VERIFY
+
+    VERIFY --> RUNTIME["Agent Execution Runtime"]
+    RUNTIME --> L
+
+    classDef entry fill:#f6f8fa,stroke:#57606a,color:#24292f;
+    classDef boundary fill:#ddf4ff,stroke:#0969da,color:#0550ae;
+    classDef orchestration fill:#fff8c5,stroke:#9a6700,color:#7d4e00;
+    classDef agents fill:#fbefff,stroke:#8250df,color:#6639ba;
+    classDef execution fill:#dafbe1,stroke:#1a7f37,color:#116329;
+
+    class U,C entry;
+    class GH,MCP,G,L boundary;
+    class O,ORCH,WF orchestration;
+    class DEV,TEST,REVIEW,VERIFY agents;
+    class RUNTIME execution;
 ```
 
 ### Responsibility boundaries
@@ -70,28 +77,31 @@ Agents provide intent, plans, and results. They do not directly own filesystem, 
 
 ## Multi-agent workflow
 
-```text
-Request
-  |
-  v
-Orchestrator
-  |
-  v
-MultiAgentWorkflow
-  |
-  +--> Developer
-  |
-  +--> Tester
-  |
-  +--> Reviewer
-  |
-  +--> Rework when required
-  |
-  v
-Verification
-  |
-  v
-Completed / Failed
+```mermaid
+flowchart LR
+    REQUEST["Request"] --> ORCH["Orchestrator"]
+    ORCH --> WF["MultiAgentWorkflow"]
+
+    WF --> DEV["Developer"]
+    WF --> TEST["Tester"]
+    WF --> REVIEW["Reviewer"]
+
+    REVIEW --> DECISION{"Review passed?"}
+    DECISION -->|No| REWORK["Rework"]
+    REWORK --> DEV
+    DECISION -->|Yes| VERIFY["Verification"]
+
+    VERIFY --> RESULT["Completed / Failed"]
+
+    classDef flow fill:#f6f8fa,stroke:#57606a,color:#24292f;
+    classDef agent fill:#fbefff,stroke:#8250df,color:#6639ba;
+    classDef decision fill:#fff8c5,stroke:#9a6700,color:#7d4e00;
+    classDef result fill:#dafbe1,stroke:#1a7f37,color:#116329;
+
+    class REQUEST,ORCH,WF,REWORK flow;
+    class DEV,TEST,REVIEW agent;
+    class DECISION decision;
+    class VERIFY,RESULT result;
 ```
 
 `Orchestrator.run_workflow()` is the stable higher-level orchestration entry point. `MultiAgentWorkflow` owns the concrete stage, handoff, review, and rework semantics. `MultiAgentRuntime` remains an application/runtime adapter and delegates execution to the orchestration boundary.
@@ -102,31 +112,18 @@ Agent Execution Runtime remains the execution boundary for permissions, filesyst
 
 ### Remote GitHub path
 
-```text
-ChatGPT Web
-    |
-    v
-ChatGPT Codex Connector
-    |
-    v
-GitHub Repository
+```mermaid
+flowchart LR
+    C["ChatGPT Web"] --> X["ChatGPT Codex Connector"] --> G["GitHub Repository"]
 ```
 
 This path addresses the remote repository and its durable GitHub state.
 
 ### Local project path
 
-```text
-ChatGPT Web
-    |
-    v
-Agent Execution Runtime MCP / Secure Tunnel
-    |
-    v
-Agent Execution Runtime
-    |
-    v
-Local Project
+```mermaid
+flowchart LR
+    C["ChatGPT Web"] --> T["Agent Execution Runtime<br/>MCP / Secure Tunnel"] --> R["Agent Execution Runtime"] --> P["Local Project"]
 ```
 
 Agent Execution Runtime has **one MCP Server**. Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure, not another MCP server.
@@ -135,7 +132,7 @@ The local Agent Execution Runtime MCP server can be used independently without O
 
 ## Terminology
 
-**Agent Execution Runtime** is the descriptive architectural name for the local execution and permission boundary
+**Agent Execution Runtime** is the descriptive architectural name for the local execution and permission boundary.
 
 ## Cost-Free baseline
 
@@ -171,7 +168,7 @@ See [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md) for the verif
 python3 -m pip install multiagentos
 ```
 
-#**[Download files on PyPI](https://pypi.org/project/multiagentos/#files)**
+**[Download files on PyPI](https://pypi.org/project/multiagentos/#files)**
 
 ## Initialize a project
 
