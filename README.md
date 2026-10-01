@@ -10,27 +10,33 @@ The cost-free baseline does **not require a separate paid AI API key**. MultiAge
 
 MultiAgentOS separates **AI collaboration** from **execution authority**.
 
-- **ChatGPT Web** — single user-facing entry point
+- **ChatGPT Web** — user-facing entry point
+- **ChatGPT Mobile App** — supported user-facing entry point for ChatGPT conversations
 - **ChatGPT Codex Connector** — remote GitHub repository access
 - **Agent Execution Runtime MCP / Secure Tunnel** — local project access
 - **Orchestrator** — top-level multi-agent coordination
 - **MultiAgentWorkflow** — concrete Developer → Tester → Reviewer execution
 - **Agent Execution Runtime** — permission and execution authority
 
+The same MultiAgentOS architecture can therefore be used from a ChatGPT conversation on the web or from the ChatGPT mobile app, subject to the capabilities available to the connected ChatGPT client.
+
 Agents provide intent, plans, and results. They do not directly own filesystem, process, patch, or Git execution authority.
 
 ## Architecture
 
-The main architecture is rendered as a native GitHub Mermaid diagram so the repository overview is visual without maintaining a separate generated image. GitHub supports Mermaid directly in Markdown files. citeturn0search0turn0search1
+The main architecture is rendered as a native GitHub Mermaid diagram so the repository overview is visual without maintaining a separate generated image. GitHub supports Mermaid directly in Markdown files.
 
 ```mermaid
 flowchart TB
     U["Web Browser"] --> C["ChatGPT Web"]
+    M["ChatGPT Mobile App"] --> C2["ChatGPT Conversation"]
 
     C --> GH["ChatGPT Codex Connector"]
+    C2 --> GH
     GH --> G["GitHub Repository"]
 
     C --> MCP["Agent Execution Runtime<br/>MCP / Secure Tunnel"]
+    C2 --> MCP
     MCP --> L["Local Project"]
 
     G --> O["MultiAgentOS"]
@@ -56,18 +62,28 @@ flowchart TB
     classDef agents fill:#fbefff,stroke:#8250df,color:#6639ba;
     classDef execution fill:#dafbe1,stroke:#1a7f37,color:#116329;
 
-    class U,C entry;
+    class U,C,M,C2 entry;
     class GH,MCP,G,L boundary;
     class O,ORCH,WF orchestration;
     class DEV,TEST,REVIEW,VERIFY agents;
     class RUNTIME execution;
 ```
 
+### Supported ChatGPT clients
+
+| Client | Role | Status |
+| --- | --- | --- |
+| **ChatGPT Web** | Browser conversation and connected development workflow | Supported |
+| **ChatGPT Mobile App** | Mobile conversation and connected development workflow | Supported |
+| **ChatGPT Desktop** | Desktop ChatGPT client | Not part of the current local MCP release scope |
+
+The mobile app support described here refers to using MultiAgentOS through a ChatGPT conversation from the mobile client. Client-specific MCP, connector, or local-runtime availability can vary by ChatGPT product configuration.
+
 ### Responsibility boundaries
 
 | Component | Responsibility |
 | --- | --- |
-| **ChatGPT Web** | User-facing entry point |
+| **ChatGPT Web / Mobile App** | User-facing entry point |
 | **ChatGPT Codex Connector** | Remote GitHub repository access |
 | **Agent Execution Runtime MCP / Secure Tunnel** | Local project connection |
 | **MultiAgentOS** | Agent contracts, routing, state, and orchestration |
@@ -114,7 +130,7 @@ Agent Execution Runtime remains the execution boundary for permissions, filesyst
 
 ```mermaid
 flowchart LR
-    C["ChatGPT Web"] --> X["ChatGPT Codex Connector"] --> G["GitHub Repository"]
+    C["ChatGPT Web / Mobile App"] --> X["ChatGPT Codex Connector"] --> G["GitHub Repository"]
 ```
 
 This path addresses the remote repository and its durable GitHub state.
@@ -123,7 +139,7 @@ This path addresses the remote repository and its durable GitHub state.
 
 ```mermaid
 flowchart LR
-    C["ChatGPT Web"] --> T["Agent Execution Runtime<br/>MCP / Secure Tunnel"] --> R["Agent Execution Runtime"] --> P["Local Project"]
+    C["ChatGPT Web / Mobile App"] --> T["Agent Execution Runtime<br/>MCP / Secure Tunnel"] --> R["Agent Execution Runtime"] --> P["Local Project"]
 ```
 
 Agent Execution Runtime has **one MCP Server**. Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure, not another MCP server.
