@@ -27,7 +27,7 @@ Verify that `multiagentos-runtime` and the Copilot-specific `multiagentos` agent
 
 ## Release policy
 
-The plugin version follows the MultiAgentOS release version. The current codebase is **0.4.0** and remains unreleased until maintainer local acceptance passes.
+The plugin version follows the MultiAgentOS release version. The current codebase is **0.4.1** and is prepared for the next tagged release.
 
 The public release gate includes:
 
