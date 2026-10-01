@@ -10,8 +10,7 @@ The cost-free baseline does **not require a separate paid AI API key**. MultiAge
 
 MultiAgentOS separates **AI collaboration** from **execution authority**.
 
-- **ChatGPT Web** — user-facing entry point
-- **ChatGPT Mobile App** — supported user-facing entry point for ChatGPT conversations
+- **ChatGPT Web / Mobile App** — user-facing entry points for ChatGPT conversations
 - **ChatGPT Codex Connector** — remote GitHub repository access
 - **Agent Execution Runtime MCP / Secure Tunnel** — local project access
 - **Orchestrator** — top-level multi-agent coordination
@@ -78,6 +77,21 @@ flowchart TB
 | **ChatGPT Desktop** | Desktop ChatGPT client | Not part of the current local MCP release scope |
 
 The mobile app support described here refers to using MultiAgentOS through a ChatGPT conversation from the mobile client. Client-specific MCP, connector, or local-runtime availability can vary by ChatGPT product configuration.
+
+### Connect ChatGPT to your GitHub repository
+
+MultiAgentOS uses ChatGPT's GitHub connection for the remote repository path. GitHub must be connected to the ChatGPT account, and the specific repository must be authorized for access. urlOpenAI: Connecting GitHub to ChatGPThttps://help.openai.com/en/articles/11145903-connecting-github-to-chatgpt
+
+1. Open **ChatGPT Settings** and open **Apps / Plugins** (the exact menu name depends on the ChatGPT client).
+2. Select **GitHub** and start the connection flow.
+3. Sign in to GitHub when prompted and authorize the ChatGPT app.
+4. In GitHub's repository access settings, select the repositories that ChatGPT is allowed to access.
+5. Return to ChatGPT and open a supported conversation.
+6. Search for or select the authorized repository when using the GitHub connection.
+
+> **Repository access is separate from local MCP access.** Connecting GitHub gives ChatGPT access to the authorized remote repository. The Agent Execution Runtime MCP / Secure Tunnel is the separate path used for local project execution.
+
+If a newly authorized repository does not appear immediately, allow a few minutes for it to become available. GitHub organization policies may also require administrator approval. urlOpenAI GitHub connection troubleshootinghttps://help.openai.com/ko-kr/articles/11145903-connecting-github-to-chatgpt
 
 ### Responsibility boundaries
 
