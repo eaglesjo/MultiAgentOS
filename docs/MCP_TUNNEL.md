@@ -351,32 +351,3 @@ filesystem.read   # verify the write
 ```
 
 Record the corresponding request/response observation on the MultiAgentOS side. The repository intentionally does not automate or store ChatGPT connector credentials, so a hosted tool-call pass cannot be claimed from CI alone.
-
-### Hosted Responses API tool-call acceptance
-
-The hosted OpenAI-product boundary can also be exercised without the ChatGPT UI through the Responses API. OpenAI's current MCP interface accepts `tunnel_id` directly in an MCP tool definition, so this provides a deterministic repository acceptance path for the hosted tunnel while keeping ChatGPT connector testing as a separate product/UI check.
-
-Run:
-
-```bash
-REQUIRE_TUNNEL_E2E=1 \
-CONTROL_PLANE_TUNNEL_ID=tunnel_... \
-CONTROL_PLANE_API_KEY=... \
-OPENAI_API_KEY=... \
-OPENAI_MCP_TEST_MODEL=<model-with-MCP-support> \
-bash tests/tunnel_client_responses_api_e2e.sh
-```
-
-The gate requires `MULTIAGENTOS_ALLOW_WRITE=1` and asks the Responses API to perform this exact sequence:
-
-```text
-filesystem.read
-filesystem.write
-filesystem.read
-```
-
-It then validates the returned `mcp_call` items, the exact write arguments, and the final read-back content. This is a hosted OpenAI-product tool-call test through the real Secure MCP Tunnel control plane; it is stronger than local `tunnel-client dev proxy` forwarding and `/health/mcp` discovery.
-
-The test uses `require_approval: "never"` only for this explicitly controlled acceptance fixture. Do not copy that setting into general-purpose production MCP configuration without an independent approval/security decision.
-
-ChatGPT's **Connection: Tunnel** path remains a separate UI/workspace acceptance check. A successful Responses API gate proves the hosted tunnel/control-plane/tool-call path, but it does not by itself prove that a particular ChatGPT workspace can discover and invoke the tunnel.
