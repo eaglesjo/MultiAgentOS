@@ -55,12 +55,21 @@ Agent Execution Runtime's standalone MCP server does not require OpenAI, ChatGPT
 
 ## 4. Choose your connection path
 
+### Verified ChatGPT client matrix
+
+| Client | GitHub | Local MCP | Use in this setup |
+| --- | --- | --- | --- |
+| **ChatGPT Web** | Yes | Yes | Full development workflow |
+| **ChatGPT Mobile** | Yes | No | GitHub-only workflow |
+
+This matrix records the capability verified in the current MultiAgentOS development environment. Client capabilities can vary by ChatGPT product configuration.
+
 | Goal | Path | Agent Execution Runtime required |
 | --- | --- | --- |
 | ChatGPT works on a GitHub repository | ChatGPT -> GitHub app -> authorized repository | No |
 | Local Agent Execution Runtime works with GitHub | Agent Execution Runtime -> `gh` -> GitHub | Yes |
 | Any MCP client uses Agent Execution Runtime locally | MCP Client -> Agent Execution Runtime MCP Server | Yes |
-| ChatGPT/Codex reaches the local project | ChatGPT/Codex -> Secure MCP Tunnel -> `tunnel-client` -> Agent Execution Runtime MCP Server | Yes |
+| ChatGPT Web reaches the local project | ChatGPT Web -> local Agent Execution Runtime MCP | Yes |
 | Codex manages tunnel runtime | Codex -> tunnel-mcp -> `tunnel-client` | When using the tunnel path |
 
 The architecture has one actual Agent Execution Runtime MCP server. Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure.
@@ -134,9 +143,30 @@ multiagentos mcp serve \
 
 This path is free/local and can be used by an MCP client without OpenAI.
 
-## 8. ChatGPT/Codex + local Agent Execution Runtime
+## 8. ChatGPT Web + local Agent Execution Runtime
 
-Use OpenAI Secure MCP Tunnel when the MCP server must remain on the developer's private/local machine.
+For the verified local workflow, ChatGPT Web connects to the local MultiAgentOS MCP server directly:
+
+```text
+ChatGPT Web
+      |
+      v
+127.0.0.1:8000/mcp
+      |
+      v
+Agent Execution Runtime MCP Server
+      |
+      v
+Local Project
+```
+
+No Secure MCP Tunnel or OpenAI API key is required for this local path.
+
+ChatGPT Mobile does not have local MCP access in the verified setup. Use the GitHub connection from mobile when working against the remote repository.
+
+## 8.1 Optional remote ChatGPT/Codex + local Agent Execution Runtime
+
+Use OpenAI Secure MCP Tunnel only when a remote client needs to reach the developer's private/local MCP server and cannot use the direct local path.
 
 The connection is:
 
