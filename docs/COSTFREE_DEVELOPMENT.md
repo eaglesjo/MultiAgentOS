@@ -186,7 +186,7 @@ The current MultiAgentOS local runtime uses:
 
 The tunnel/runtime layer is therefore independent of the AI model provider.
 
-### External AI client boundary
+### Hosted remote MCP client boundary
 
 OpenAI's current documentation states that **full MCP support, including modify/write actions, is available for ChatGPT Business and Enterprise/Edu**, while Pro users can connect custom MCPs with read/fetch permissions in developer mode. The documentation also states that ChatGPT connects to remote MCP servers and that a private/developer-machine server can use Secure MCP Tunnel. citeturn0search10
 
@@ -194,7 +194,7 @@ Therefore:
 
 > A healthy `agent-execution-runtime-local` tunnel does not by itself prove that the current ChatGPT account can perform local filesystem writes.
 
-For the current Free account, ChatGPT Web write-capable custom MCP validation is **not an executable acceptance test** under the documented plan boundary. This is a ChatGPT product/plan limitation, not a Agent Execution Runtime runtime failure. The tunnel and local MCP implementation remain valid integration targets.
+For the current Free account, hosted remote custom-MCP write validation through the Secure MCP Tunnel is **not an executable acceptance test** under the documented plan boundary. This does not affect the verified direct local MCP path from ChatGPT Web. It is a ChatGPT product/plan boundary for the optional hosted tunnel path, not a MultiAgentOS local-runtime failure.
 
 ### Optional remote verification state
 
@@ -273,6 +273,6 @@ as interchangeable AI-side choices while keeping the project workspace and Agent
 - Agent Execution Runtime readback: `after`
 - Secure MCP Tunnel: **READY**
 - Paid AI API key required for these verified runtime capabilities: **No**
-- ChatGPT Web full MCP/write verification: **plan-gated; not required for the core COSTFREE-001 runtime acceptance**
+- ChatGPT Web hosted remote MCP/write verification: **plan-gated; not required for the core COSTFREE-001 runtime acceptance**
 
 Keep AI-client invocations minimal: once a capability is verified, reuse the evidence rather than spending additional client quota on redundant smoke tests.
