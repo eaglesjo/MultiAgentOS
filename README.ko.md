@@ -10,8 +10,9 @@ Cost-Free 기본 경로에서는 **별도의 유료 AI API Key가 필요하지 �
 
 MultiAgentOS는 **AI 협업**과 **실행 권한**을 분리합니다.
 
-- **로컬 MCP Client** — 기본 사용자 연결 경로
-- **ChatGPT Web / Mobile** — 선택적 외부 AI 진입점
+- **ChatGPT Web** — 현재 검증된 전체 개발 진입점(GitHub + 로컬 MCP)
+- **ChatGPT Mobile** — 현재 검증된 GitHub 전용 개발 진입점
+- **로컬 MCP Client** — 독립적인 로컬 연결 경로
 - **ChatGPT Codex Connector** — 원격 GitHub Repository 연결
 - **Agent Execution Runtime MCP** — 로컬 프로젝트 연결
 - **Orchestrator** — 전체 멀티 에이전트 협업 조정
@@ -27,15 +28,20 @@ Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, G
                               |
                               v
                          ChatGPT Web
+                         /          \
+                        v            v
+       ChatGPT Codex Connector   Agent Execution Runtime MCP
+                    |                  |
+                    v                  v
+            GitHub Repository      Local Project
+
+                         ChatGPT Mobile
                               |
-                    +---------+---------+
-                    |                   |
-                    v                   v
-       ChatGPT Codex Connector       Agent Execution Runtime
-                    |                MCP / Secure Tunnel
-                    v                   |
-            GitHub Repository            v
-                                  Local Project
+                              v
+                    ChatGPT Codex Connector
+                              |
+                              v
+                       GitHub Repository
                     |                   |
                     +---------+---------+
                               |
@@ -57,13 +63,28 @@ Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, G
                            Agent Execution Runtime
 ```
 
+### ChatGPT 클라이언트 검증 범위
+
+현재 MultiAgentOS 개발 환경에서 실제 확인한 연결 범위는 다음과 같습니다.
+
+| 클라이언트 | GitHub Repository | 로컬 MCP / 로컬 프로젝트 | 상태 |
+| --- | --- | --- | --- |
+| **ChatGPT Web** | 가능 | 가능 | **검증 완료** |
+| **ChatGPT Mobile** | 가능 | 불가 | **검증 완료** |
+| **ChatGPT Desktop** | 미검증 | 미검증 | 현재 릴리스 범위 밖 |
+
+> **중요:** 현재 검증 환경에서는 ChatGPT Web이 GitHub와 로컬 MultiAgentOS MCP를 모두 사용할 수 있습니다. 반면 ChatGPT Mobile에서는 GitHub 연결은 가능하지만 로컬 MCP 접근은 사용할 수 없습니다. 이 표는 현재 검증된 클라이언트/연결 조합을 기록한 것이며 모든 ChatGPT 계정이나 제품 구성에 대한 보편적 보장을 의미하지 않습니다.
+
 ### 책임 경계
 
 | 구성 요소 | 책임 |
 | --- | --- |
-| **ChatGPT Web** | 사용자 진입점 |
+| **ChatGPT Web** | GitHub + 로컬 MCP를 사용할 수 있는 현재의 전체 개발 진입점 |
+| **ChatGPT Mobile** | GitHub만 사용하는 현재의 모바일 개발 진입점 |
 | **ChatGPT Codex Connector** | 원격 GitHub Repository 접근 |
-| **Agent Execution Runtime MCP / Secure Tunnel** | 로컬 프로젝트 연결 |
+| **Agent Execution Runtime MCP** | 로컬 프로젝트 연결 |
+| **Secure MCP Tunnel** | 로컬 MCP에 직접 접근할 수 없는 외부 클라이언트를 위한 선택적 원격 연결 |
+
 | **MultiAgentOS** | Agent 계약, 라우팅, 상태, 오케스트레이션 |
 | **Orchestrator** | 전체 협업 조정 |
 | **MultiAgentWorkflow** | 단계, handoff, review, rework 의미론 |
@@ -101,7 +122,7 @@ Agent Execution Runtime은 permission, filesystem, patch, process, Git, verifica
 
 ## 연결 모델
 
-### 원격 GitHub 경로
+### ChatGPT Web — GitHub 경로
 
 ```text
 ChatGPT Web
@@ -113,10 +134,10 @@ ChatGPT Codex Connector
 GitHub Repository
 ```
 
-### 로컬 프로젝트 경로
+### ChatGPT Web — 로컬 프로젝트 경로
 
 ```text
-Local AI Client
+ChatGPT Web
     |
     v
 127.0.0.1:8000/mcp
@@ -128,7 +149,7 @@ MultiAgentOS MCP
 Local Project
 ```
 
-로컬 Agent Execution Runtime MCP Server가 기본 경로입니다. OpenAI, ChatGPT, Secure MCP Tunnel 또는 유료 AI API Key 없이 독립적으로 사용할 수 있습니다.
+로컬 Agent Execution Runtime MCP Server가 기본 경로입니다. 현재 검증 환경에서는 ChatGPT Web이 이 로컬 MCP를 직접 사용할 수 있으며, ChatGPT Mobile에서는 사용할 수 없습니다. 로컬 MCP Client도 독립적으로 사용할 수 있습니다. Secure MCP Tunnel은 기본 경로에 필요하지 않습니다.
 
 Secure MCP Tunnel은 외부에서 로컬 MCP에 접근해야 할 때만 사용하는 선택적 연결 계층입니다.
 
