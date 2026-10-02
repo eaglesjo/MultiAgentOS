@@ -4,7 +4,7 @@ The Agent Execution Runtime is installed locally and keeps the actual MCP capabi
 
 ## Connection model
 
-The Agent Execution Runtime exposes one MCP server:
+The Agent Execution Runtime exposes one MCP server. In the verified current setup, ChatGPT Web can use that local MCP server directly; ChatGPT Mobile uses the GitHub path only.
 
 ```text
                          +--> GitHub Connector / GitHub
@@ -30,7 +30,7 @@ The GitHub path and the local Agent Execution Runtime path solve different probl
 | ChatGPT -> GitHub | Repository inspection, issues, PRs and durable GitHub state | No |
 | Local Agent Execution Runtime -> GitHub | Local Agent Execution Runtime GitHub operations through `gh` | Yes |
 | MCP Client -> Agent Execution Runtime | Free/local MCP access | Yes |
-| ChatGPT/Codex -> Secure MCP Tunnel -> Agent Execution Runtime | Remote access to the developer's private/local project | Yes |
+| ChatGPT Web -> local Agent Execution Runtime MCP | Verified direct local project access | Yes |
 | Codex -> tunnel-mcp -> tunnel-client | Tunnel runtime operations | Yes, when targeting Agent Execution Runtime |
 
 Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure. They are not another MCP server.
@@ -130,9 +130,28 @@ multiagentos mcp serve \
 
 No OpenAI account or tunnel is required for this path.
 
-## 4. Connect ChatGPT to the local Agent Execution Runtime project
+## 4. Connect ChatGPT Web to the local Agent Execution Runtime project
 
-When ChatGPT needs access to the local/private project, use Secure MCP Tunnel:
+The verified direct local path is:
+
+```text
+ChatGPT Web
+      |
+      v
+127.0.0.1:8000/mcp
+      |
+      v
+Agent Execution Runtime MCP Server
+      |
+      v
+Local Project
+```
+
+ChatGPT Mobile does not expose local MCP access in the verified setup. It can continue to use the GitHub connection.
+
+## 4.1 Optional remote ChatGPT/Codex connection
+
+When a remote ChatGPT/Codex client needs access to the local/private project and the direct local path is unavailable, use Secure MCP Tunnel:
 
 ```text
 ChatGPT / Codex
