@@ -39,11 +39,11 @@ class MCPServiceTests(unittest.TestCase):
             with patch("multiagentos.mcp_service.PLIST_PATH", root / "service.plist"):
                 with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", root / "LaunchAgents"):
                     with patch.object(sys, "platform", "darwin"):
-                            message = install_mcp_service(
-                                root,
-                                allow_write=True,
-                                allow_process=False,
-                            )
+                        message = install_mcp_service(
+                            root,
+                            allow_write=True,
+                            allow_process=False,
+                        )
 
             self.assertIn("installed and started", message)
             plist = plistlib.loads((root / "service.plist").read_bytes())
@@ -62,16 +62,16 @@ class MCPServiceTests(unittest.TestCase):
             with patch.object(sys, "platform", "win32"):
                 with patch.object(sys, "executable", r"C:\Python314\python.exe"):
                     with patch("multiagentos.mcp_service.Path.is_file", return_value=True):
-                    with patch.dict(
+                        with patch.dict(
                         "os.environ",
-                        {"USERDOMAIN": "HJKOO-PC", "USERNAME": "eaglesjo"},
-                        clear=False,
-                    ):
-                        message = install_mcp_service(
-                            root,
-                            allow_write=True,
-                            allow_process=False,
-                        )
+                            {"USERDOMAIN": "HJKOO-PC", "USERNAME": "eaglesjo"},
+                            clear=False,
+                        ):
+                            message = install_mcp_service(
+                                root,
+                                allow_write=True,
+                                allow_process=False,
+                            )
 
         self.assertIn("Task Scheduler will start it at user logon", message)
         create_call = schtasks.call_args_list[0]
@@ -93,7 +93,7 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn("<StartWhenAvailable>true</StartWhenAvailable>", xml)
         self.assertIn("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>", xml)
         self.assertIn("<WorkingDirectory>", xml)
-        self.assertIn(r"C:\\Python314\\pythonw.exe", xml)
+        self.assertIn(r"C:\Python314\pythonw.exe", xml)
         self.assertIn("--allow-write", xml)
 
         run_call = schtasks.call_args_list[1]
