@@ -150,7 +150,8 @@ def _windows_task_xml(
         ET.SubElement(action, f"{{{ns}}}Arguments").text = arguments
     ET.SubElement(action, f"{{{ns}}}WorkingDirectory").text = str(project_root)
 
-    return ET.tostring(task, encoding="unicode", xml_declaration=True)
+    xml = ET.tostring(task, encoding="unicode", xml_declaration=True)
+    return xml.replace("encoding='utf-8'", "encoding='UTF-16'")
 
 
 def _wait_for_endpoint(host: str, port: int, *, timeout: float = 10.0) -> bool:
