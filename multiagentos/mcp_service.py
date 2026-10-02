@@ -260,7 +260,7 @@ def _install_windows(
     try:
         with tempfile.NamedTemporaryFile(
             mode="w",
-            encoding="utf-8",
+            encoding="utf-16",
             suffix=".xml",
             prefix="multiagentos-task-",
             dir=logs,
