@@ -139,7 +139,41 @@ OK
 
 **Result: PASS (10/10)**
 
-## ChatGPT Web and Secure MCP Tunnel
+## ChatGPT Web, ChatGPT Mobile, and Secure MCP Tunnel
+
+### Verified client capability
+
+The current development environment has verified two distinct ChatGPT client boundaries:
+
+| Client | GitHub | Local MCP | Result |
+| --- | --- | --- | --- |
+| ChatGPT Web | Yes | Yes | **Verified** |
+| ChatGPT Mobile | Yes | No | **Verified** |
+
+This is a client-capability observation for the current setup. It should not be generalized to every ChatGPT account, plan, or future client configuration.
+
+ChatGPT Web therefore provides the complete user-facing path in the verified setup:
+
+```text
+ChatGPT Web
+   +--> GitHub Connector --> GitHub Repository
+   |
+   +--> Local MCP --> 127.0.0.1:8000/mcp --> Local Project
+```
+
+ChatGPT Mobile currently uses the GitHub path only:
+
+```text
+ChatGPT Mobile
+   |
+   v
+GitHub Connector
+   |
+   v
+GitHub Repository
+```
+
+### Secure MCP Tunnel
 
 Secure MCP Tunnel is an optional integration for supported external clients that need to reach a private local MCP server. It is not part of the cost-free local MCP acceptance path.
 
@@ -169,8 +203,8 @@ For the current Free account, ChatGPT Web write-capable custom MCP validation is
 | Agent Execution Runtime local MCP | **PASS** |
 | Secure MCP Tunnel | **READY** |
 | Remote MCP architecture | **SUPPORTED** |
-| ChatGPT Web full MCP/write on current Free account | **BLOCKED BY PLAN** |
-| ChatGPT Web write verification | **DEFERRED** |
+| ChatGPT Web local MCP in the verified setup | **PASS** |
+| ChatGPT Web remote hosted-tunnel write verification | **OPTIONAL / NOT REQUIRED FOR LOCAL BASELINE** |
 
 When a workspace with full MCP/developer-mode write access is available, the remaining validation is:
 
@@ -208,12 +242,12 @@ OpenAI's documented setup path is to create a custom app in Developer Mode, conf
 - End-to-end COSTFREE-001 filesystem WRITE/READ path.
 - End-to-end COSTFREE-001 PATCH path.
 - Local MCP/runtime tests: 10/10 PASS.
-- Secure MCP Tunnel runtime is ready for remote MCP integration.
+- Secure MCP Tunnel remains available as an optional remote integration path.
 
 ### Deferred / plan-gated
 
-- ChatGPT Web custom MCP discovery against `agent-execution-runtime-local`.
-- ChatGPT Web local filesystem WRITE through the Agent Execution Runtime.
+- ChatGPT Web remote hosted Secure MCP Tunnel tool calls.
+- ChatGPT Mobile local MCP access (not available in the verified setup).
 
 ## Design rule
 
