@@ -10,14 +10,15 @@ The cost-free baseline does **not require a separate paid AI API key**. MultiAge
 
 MultiAgentOS separates **AI collaboration** from **execution authority**.
 
-- **ChatGPT Web / Mobile App** — user-facing entry points for ChatGPT conversations
+- **ChatGPT Web** — verified entry point for GitHub + local MCP development in the current setup
+- **ChatGPT Mobile App** — verified GitHub-only development entry point in the current setup
 - **ChatGPT Codex Connector** — remote GitHub repository access
 - **Agent Execution Runtime MCP** — local project access
 - **Orchestrator** — top-level multi-agent coordination
 - **MultiAgentWorkflow** — concrete Developer → Tester → Reviewer execution
 - **Agent Execution Runtime** — permission and execution authority
 
-The same MultiAgentOS architecture can therefore be used from a ChatGPT conversation on the web or from the ChatGPT mobile app, subject to the capabilities available to the connected ChatGPT client.
+The same MultiAgentOS architecture can be used from ChatGPT Web for both GitHub and local MCP work. In the verified setup, the ChatGPT mobile app is limited to the GitHub path; local MCP is not available there.
 
 Agents provide intent, plans, and results. They do not directly own filesystem, process, patch, or Git execution authority.
 
@@ -35,7 +36,6 @@ flowchart TB
     GH --> G["GitHub Repository"]
 
     C --> MCP["Agent Execution Runtime<br/>Local MCP"]
-    C2 --> MCP
     MCP --> L["Local Project"]
 
     G --> O["MultiAgentOS"]
@@ -68,15 +68,19 @@ flowchart TB
     class RUNTIME execution;
 ```
 
-### Supported ChatGPT clients
+### Verified ChatGPT client capability
 
-| Client | Role | Status |
-| --- | --- | --- |
-| **ChatGPT Web** | Browser conversation and connected development workflow | Supported |
-| **ChatGPT Mobile App** | Mobile conversation and connected development workflow | Supported |
-| **ChatGPT Desktop** | Desktop ChatGPT client | Not part of the current local MCP release scope |
+The following matrix records the capability observed in the current MultiAgentOS development environment. It is intentionally a runtime/client compatibility record, not a promise that every ChatGPT account or product configuration exposes the same integrations.
 
-The mobile app support described here refers to using MultiAgentOS through a ChatGPT conversation from the mobile client. Client-specific MCP, connector, or local-runtime availability can vary by ChatGPT product configuration.
+| Client | GitHub repository access | Local MCP / local project access | Verified status |
+| --- | --- | --- | --- |
+| **ChatGPT Web** | Yes | Yes | **Verified** |
+| **ChatGPT Mobile App** | Yes | No | **Verified** |
+| **ChatGPT Desktop** | Not evaluated | Not evaluated | Out of current release scope |
+
+**Important:** ChatGPT Web is currently the full development entry point for this setup: it can work with both the remote GitHub repository and the local MultiAgentOS MCP service. The ChatGPT mobile app can use the GitHub connection, but local MCP access is not available in the verified setup.
+
+This distinction is a client-capability boundary. It does not change the MultiAgentOS local MCP architecture or the cost-free baseline.
 
 ### Connect the ChatGPT Codex Connector to your GitHub repository
 
@@ -97,9 +101,11 @@ If a newly authorized repository does not appear immediately, allow a few minute
 
 | Component | Responsibility |
 | --- | --- |
-| **ChatGPT Web / Mobile App** | User-facing entry point |
+| **ChatGPT Web** | Full verified user-facing development entry point: GitHub + local MCP |
+| **ChatGPT Mobile App** | Verified GitHub-only user-facing entry point |
 | **ChatGPT Codex Connector** | Remote GitHub repository access |
-| **Agent Execution Runtime MCP / Secure Tunnel** | Local project connection |
+| **Agent Execution Runtime MCP** | Local project connection |
+| **Secure MCP Tunnel** | Optional remote transport for clients that cannot directly reach the local MCP server |
 | **MultiAgentOS** | Agent contracts, routing, state, and orchestration |
 | **Orchestrator** | Overall collaboration coordination |
 | **MultiAgentWorkflow** | Stage, handoff, review, and rework semantics |
@@ -144,7 +150,8 @@ Agent Execution Runtime remains the execution boundary for permissions, filesyst
 
 ```mermaid
 flowchart LR
-    C["ChatGPT Web / Mobile App"] --> X["ChatGPT Codex Connector"] --> G["GitHub Repository"]
+    C["ChatGPT Web"] --> X["ChatGPT Codex Connector"] --> G["GitHub Repository"]
+    M["ChatGPT Mobile App"] --> X
 ```
 
 This path addresses the remote repository and its durable GitHub state.
@@ -152,7 +159,7 @@ This path addresses the remote repository and its durable GitHub state.
 ### Local project path
 
 ```text
-Local AI client
+ChatGPT Web / Local AI client
       |
       v
 127.0.0.1:8000/mcp
@@ -164,7 +171,7 @@ MultiAgentOS MCP
 Local Project
 ```
 
-The local Agent Execution Runtime MCP server is the default development path. It runs on loopback and can be used independently without OpenAI, ChatGPT, Secure MCP Tunnel, or a paid AI API key.
+The local Agent Execution Runtime MCP server is the default development path. In the verified setup, ChatGPT Web can reach this local MCP service while the ChatGPT mobile app cannot. Local MCP clients can also use it directly. The service runs on loopback and does not require a paid AI API key or Secure MCP Tunnel.
 
 Secure MCP Tunnel is an optional remote-connection layer for clients that need to reach a private local MCP server from outside the machine. It is not required for the cost-free local MCP baseline.
 
