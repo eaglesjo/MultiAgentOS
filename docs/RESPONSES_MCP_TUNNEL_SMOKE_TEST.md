@@ -39,7 +39,7 @@ python3 scripts/verify_responses_mcp_tunnel.py
 Optional model override:
 
 ```bash
-export MULTIAGENTOS_OPENAI_MODEL='gpt-5'
+export MULTIAGENTOS_OPENAI_MODEL='gpt-6-astra'
 python3 scripts/verify_responses_mcp_tunnel.py
 ```
 
