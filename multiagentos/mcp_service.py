@@ -103,7 +103,21 @@ def install_mcp_service(
     PLIST_PATH.write_bytes(plistlib.dumps(plist))
 
     _launchctl("bootout", _target(), check=False)
-    _launchctl("bootstrap", f"gui/{os.getuid()}", str(PLIST_PATH))
+    # A plist in ~/Library/LaunchAgents is user-owned. Use launchctl's
+    # domain target for a stable per-user service across login/reboot.
+    domain = f"gui/{os.getuid()}"
+    bootstrap = _launchctl("bootstrap", domain, str(PLIST_PATH), check=False)
+    if bootstrap.returncode != 0:
+        # launchctl may report an existing service even after bootout returned
+        # successfully. Treat "already bootstrapped" as recoverable by loading
+        # the plist through the domain target once more.
+        if "service already loaded" not in bootstrap.stderr.lower():
+            raise subprocess.CalledProcessError(
+                bootstrap.returncode,
+                bootstrap.args,
+                output=bootstrap.stdout,
+                stderr=bootstrap.stderr,
+            )
     _launchctl("kickstart", "-k", _target())
     _launchctl("print", _target())
 
