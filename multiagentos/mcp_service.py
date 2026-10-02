@@ -283,11 +283,10 @@ def _install_windows(
             Path(xml_path).unlink(missing_ok=True)
 
     if result.returncode != 0:
-        raise subprocess.CalledProcessError(
-            result.returncode,
-            result.args,
-            output=result.stdout,
-            stderr=result.stderr,
+        detail = (result.stderr or result.stdout or "no diagnostic output").strip()
+        raise RuntimeError(
+            "Windows Task Scheduler could not register the MultiAgentOS local MCP task "
+            f"(exit code {result.returncode}): {detail}"
         )
 
     run = _schtasks("/Run", "/TN", WINDOWS_TASK_NAME, check=False)
