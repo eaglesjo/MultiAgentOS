@@ -60,7 +60,7 @@ class MCPServiceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             with patch.object(sys, "platform", "win32"):
-                with patch.object(sys, "executable", r"C:\\Python314\\python.exe"):
+                with patch.object(sys, "executable", r"C:\Python314\python.exe"):
                     with patch("multiagentos.mcp_service.Path.is_file", return_value=True):
                     with patch.dict(
                         "os.environ",
@@ -83,7 +83,7 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn("/F", create_call.args)
 
         xml = _windows_task_xml(
-            [r"C:\\Python314\\pythonw.exe", "-m", "multiagentos.cli", "mcp", "serve-http",
+            [r"C:\Python314\pythonw.exe", "-m", "multiagentos.cli", "mcp", "serve-http",
              "--path", str(root), "--host", "127.0.0.1", "--port", "8000", "--allow-write"],
             project_root=root,
         )
