@@ -9,6 +9,7 @@ from multiagentos.cli import build_parser
 from multiagentos.mcp_service import (
     LABEL,
     WINDOWS_TASK_NAME,
+    _windows_task_xml,
     install_mcp_service,
     mcp_service_status,
     uninstall_mcp_service,
@@ -52,38 +53,53 @@ class MCPServiceTests(unittest.TestCase):
             self.assertIn("--allow-write", plist["ProgramArguments"])
             self.assertNotIn("--allow-process", plist["ProgramArguments"])
 
+    @patch("multiagentos.mcp_service._wait_for_endpoint", return_value=True)
     @patch("multiagentos.mcp_service._schtasks")
-    def test_install_creates_and_runs_windows_task_with_python(self, schtasks):
+    def test_install_creates_and_runs_windows_task_with_python(self, schtasks, wait_for_endpoint):
         schtasks.return_value.returncode = 0
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             with patch.object(sys, "platform", "win32"):
-                with patch.object(sys, "executable", r"C:\Python314\python.exe"):
-                    message = install_mcp_service(
-                        root,
-                        allow_write=True,
-                        allow_process=False,
-                    )
+                with patch.object(sys, "executable", r"C:Python314python.exe"):
+                    with patch.dict(
+                        "os.environ",
+                        {"USERDOMAIN": "HJKOO-PC", "USERNAME": "eaglesjo"},
+                        clear=False,
+                    ):
+                        message = install_mcp_service(
+                            root,
+                            allow_write=True,
+                            allow_process=False,
+                        )
 
         self.assertIn("Task Scheduler will start it at user logon", message)
         create_call = schtasks.call_args_list[0]
         self.assertEqual(create_call.args[0], "/Create")
         self.assertIn(WINDOWS_TASK_NAME, create_call.args)
-        self.assertIn("/SC", create_call.args)
-        self.assertIn("ONLOGON", create_call.args)
-        self.assertIn("/RL", create_call.args)
-        self.assertIn("LIMITED", create_call.args)
-        task_command = create_call.args[create_call.args.index("/TR") + 1]
-        self.assertEqual(
-            task_command,
-            r'C:\Python314\python.exe -m multiagentos.cli mcp serve-http '
-            f'--path "{root}" --host 127.0.0.1 --port 8000 --allow-write',
+        self.assertIn("/XML", create_call.args)
+        xml_path = create_call.args[create_call.args.index("/XML") + 1]
+        self.assertFalse(Path(xml_path).exists())
+        self.assertIn("/F", create_call.args)
+
+        xml = _windows_task_xml(
+            [r"C:Python314python.exe", "-m", "multiagentos.cli", "mcp", "serve-http",
+             "--path", str(root), "--host", "127.0.0.1", "--port", "8000", "--allow-write"],
+            project_root=root,
         )
-        self.assertNotIn("windows-mcp-service.cmd", task_command)
+        self.assertIn("<LogonType>InteractiveToken</LogonType>", xml)
+        self.assertIn("<RunLevel>LeastPrivilege</RunLevel>", xml)
+        self.assertIn("<AllowStartOnDemand>true</AllowStartOnDemand>", xml)
+        self.assertIn("<StartWhenAvailable>true</StartWhenAvailable>", xml)
+        self.assertIn("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>", xml)
+        self.assertIn("<WorkingDirectory>", xml)
+        self.assertIn(r"C:Python314python.exe", xml)
+        self.assertIn("--allow-write", xml)
 
         run_call = schtasks.call_args_list[1]
         self.assertEqual(run_call.args[0], "/Run")
         self.assertIn(WINDOWS_TASK_NAME, run_call.args)
+
+        wait_for_endpoint.assert_called_once_with("127.0.0.1", 8000)
 
     @patch("multiagentos.mcp_service._schtasks")
     def test_windows_status_and_uninstall(self, schtasks):
