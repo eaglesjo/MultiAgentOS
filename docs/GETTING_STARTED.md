@@ -2,6 +2,10 @@
 
 This guide takes a developer from a clean machine to a usable Agent Execution Runtime installation and then through the available GitHub and local-project connection paths.
 
+## 0. Client capability matrix
+
+See [ChatGPT Client Capability Matrix](CHATGPT_CLIENT_CAPABILITIES.md) for the verified distinction between ChatGPT Web (GitHub + local MCP) and ChatGPT Mobile (GitHub only).
+
 ## 1. What you install
 
 MultiAgentOS installs the local Agent Execution Runtime runtime and CLI.
