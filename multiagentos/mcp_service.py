@@ -99,8 +99,8 @@ def _windows_launcher_script(
     return (
         "@echo off\r\n"
         f'cd /d "{project_root}"\r\n'
-        f'if errorlevel 1 exit /b %errorlevel%\r\n'
-        f'{command} >> "{logs / "mcp-task.log"}" 2>&1\r\n'
+        'if errorlevel 1 exit /b %errorlevel%\r\n'
+        f'{command} > "{logs / "mcp-task.log"}" 2>&1\r\n'
         "exit /b %errorlevel%\r\n"
     )
 
@@ -212,7 +212,7 @@ def _install_windows(
         newline="",
     )
 
-    task_command = f'cmd.exe /d /c ""{launcher}""'
+    task_command = f'cmd.exe /d /c call "{launcher}"'
     result = _schtasks(
         "/Create",
         "/TN",
