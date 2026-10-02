@@ -39,11 +39,11 @@ class MCPServiceTests(unittest.TestCase):
             with patch("multiagentos.mcp_service.PLIST_PATH", root / "service.plist"):
                 with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", root / "LaunchAgents"):
                     with patch.object(sys, "platform", "darwin"):
-                        message = install_mcp_service(
-                            root,
-                            allow_write=True,
-                            allow_process=False,
-                        )
+                            message = install_mcp_service(
+                                root,
+                                allow_write=True,
+                                allow_process=False,
+                            )
 
             self.assertIn("installed and started", message)
             plist = plistlib.loads((root / "service.plist").read_bytes())
@@ -55,12 +55,13 @@ class MCPServiceTests(unittest.TestCase):
 
     @patch("multiagentos.mcp_service._wait_for_endpoint", return_value=True)
     @patch("multiagentos.mcp_service._schtasks")
-    def test_install_creates_and_runs_windows_task_with_python(self, schtasks, wait_for_endpoint):
+    def test_install_creates_and_runs_windows_task_without_visible_console(self, schtasks, wait_for_endpoint):
         schtasks.return_value.returncode = 0
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             with patch.object(sys, "platform", "win32"):
-                with patch.object(sys, "executable", r"C:Python314python.exe"):
+                with patch.object(sys, "executable", r"C:\\Python314\\python.exe"):
+                    with patch("multiagentos.mcp_service.Path.is_file", return_value=True):
                     with patch.dict(
                         "os.environ",
                         {"USERDOMAIN": "HJKOO-PC", "USERNAME": "eaglesjo"},
@@ -82,7 +83,7 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn("/F", create_call.args)
 
         xml = _windows_task_xml(
-            [r"C:Python314python.exe", "-m", "multiagentos.cli", "mcp", "serve-http",
+            [r"C:\\Python314\\pythonw.exe", "-m", "multiagentos.cli", "mcp", "serve-http",
              "--path", str(root), "--host", "127.0.0.1", "--port", "8000", "--allow-write"],
             project_root=root,
         )
@@ -92,7 +93,7 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn("<StartWhenAvailable>true</StartWhenAvailable>", xml)
         self.assertIn("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>", xml)
         self.assertIn("<WorkingDirectory>", xml)
-        self.assertIn(r"C:Python314python.exe", xml)
+        self.assertIn(r"C:\\Python314\\pythonw.exe", xml)
         self.assertIn("--allow-write", xml)
 
         run_call = schtasks.call_args_list[1]
