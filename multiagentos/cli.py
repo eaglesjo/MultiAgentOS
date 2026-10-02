@@ -308,6 +308,23 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_http.add_argument("--allow-write", action="store_true", help="expose filesystem write and patch tools")
     mcp_http.add_argument("--allow-process", action="store_true", help="expose shell execution")
 
+    mcp_install = mcp_sub.add_parser(
+        "install", help="install the local Streamable HTTP MCP server as a macOS launchd service"
+    )
+    mcp_install.add_argument("--path", default=".")
+    mcp_install.add_argument("--host", default="127.0.0.1")
+    mcp_install.add_argument("--port", type=int, default=8000)
+    mcp_install.add_argument("--allow-write", action="store_true", help="enable filesystem write and patch tools")
+    mcp_install.add_argument("--allow-process", action="store_true", help="enable shell execution")
+
+    mcp_uninstall = mcp_sub.add_parser(
+        "uninstall", help="remove the local Streamable HTTP MCP launchd service"
+    )
+
+    mcp_status = mcp_sub.add_parser(
+        "status", help="show the local Streamable HTTP MCP launchd service status"
+    )
+
     github = subparsers.add_parser("github", help="use Agent Execution Runtime GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
     probe_parser = github_sub.add_parser(
@@ -550,6 +567,28 @@ def main(argv: list[str] | None = None) -> int:
             allow_write=args.allow_write,
             allow_process=args.allow_process,
         ).run(host=args.host, port=args.port)
+        return 0
+
+    if args.command == "mcp" and args.mcp_command == "install":
+        from multiagentos.mcp_service import install_mcp_service
+        root = Path(args.path).expanduser().resolve()
+        print(install_mcp_service(
+            root,
+            host=args.host,
+            port=args.port,
+            allow_write=args.allow_write,
+            allow_process=args.allow_process,
+        ))
+        return 0
+
+    if args.command == "mcp" and args.mcp_command == "uninstall":
+        from multiagentos.mcp_service import uninstall_mcp_service
+        print(uninstall_mcp_service())
+        return 0
+
+    if args.command == "mcp" and args.mcp_command == "status":
+        from multiagentos.mcp_service import mcp_service_status
+        print(mcp_service_status())
         return 0
 
     if args.command == "github" and args.github_command == "probe":
