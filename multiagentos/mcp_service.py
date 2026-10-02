@@ -11,7 +11,6 @@ from pathlib import Path
 
 LABEL = "com.eaglesjo.multiagentos.mcp"
 WINDOWS_TASK_NAME = "MultiAgentOS Local MCP"
-WINDOWS_LAUNCHER_NAME = "windows-mcp-service.cmd"
 LAUNCH_AGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
 PLIST_PATH = LAUNCH_AGENTS_DIR / f"{LABEL}.plist"
 
@@ -84,32 +83,6 @@ def _program_arguments(
 def _windows_quote_argument(value: str) -> str:
     escaped = value.replace('"', '\\"')
     return f'"{escaped}"'
-
-
-def _windows_launcher_path(project_root: Path) -> Path:
-    return project_root / ".multiagentos" / WINDOWS_LAUNCHER_NAME
-
-
-def _windows_launcher_script(
-    project_root: Path,
-    program_arguments: list[str],
-) -> str:
-    logs = project_root / ".multiagentos" / "logs"
-    command = _windows_task_command(program_arguments)
-    return (
-        "@echo off\r\n"
-        f'cd /d "{project_root}"\r\n'
-        'if errorlevel 1 exit /b %errorlevel%\r\n'
-        f'{command} > "{logs / "mcp-task.log"}" 2>&1\r\n'
-        "exit /b %errorlevel%\r\n"
-    )
-
-
-def _windows_task_command(program_arguments: list[str]) -> str:
-    return " ".join(
-        _windows_quote_argument(arg) if " " in arg else arg
-        for arg in program_arguments
-    )
 
 
 def install_mcp_service(
@@ -200,19 +173,10 @@ def _install_windows(
     host: str,
     port: int,
 ) -> str:
-    launcher_dir = project_root / ".multiagentos"
-    logs = launcher_dir / "logs"
-    launcher_dir.mkdir(parents=True, exist_ok=True)
+    logs = project_root / ".multiagentos" / "logs"
     logs.mkdir(parents=True, exist_ok=True)
 
-    launcher = _windows_launcher_path(project_root)
-    launcher.write_text(
-        _windows_launcher_script(project_root, program_arguments),
-        encoding="utf-8",
-        newline="",
-    )
-
-    task_command = f'cmd.exe /d /c call "{launcher}"'
+    task_command = _windows_task_command(program_arguments)
     result = _schtasks(
         "/Create",
         "/TN",
@@ -246,10 +210,8 @@ def _install_windows(
     return (
         "MultiAgentOS local MCP service installed and started. "
         f"Endpoint: http://{host}:{port}/mcp. "
-        "Task Scheduler will start it at user logon. "
-        f"Launcher: {launcher}"
+        "Task Scheduler will start it at user logon."
     )
-
 
 def uninstall_mcp_service() -> str:
     """Stop and remove the managed local MCP service."""
