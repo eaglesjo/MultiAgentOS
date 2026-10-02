@@ -8,7 +8,6 @@ from unittest.mock import patch
 from multiagentos.cli import build_parser
 from multiagentos.mcp_service import (
     LABEL,
-    WINDOWS_LAUNCHER_NAME,
     WINDOWS_TASK_NAME,
     install_mcp_service,
     mcp_service_status,
@@ -67,11 +66,6 @@ class MCPServiceTests(unittest.TestCase):
                     )
 
         self.assertIn("Task Scheduler will start it at user logon", message)
-        launcher = root / ".multiagentos" / WINDOWS_LAUNCHER_NAME
-        self.assertTrue(launcher.is_file())
-        launcher_text = launcher.read_text(encoding="utf-8")
-        self.assertIn(f'cd /d "{root}"', launcher_text)
-        self.assertIn("mcp-task.log", launcher_text)
         create_call = schtasks.call_args_list[0]
         self.assertEqual(create_call.args[0], "/Create")
         self.assertIn(WINDOWS_TASK_NAME, create_call.args)
@@ -82,9 +76,10 @@ class MCPServiceTests(unittest.TestCase):
         task_command = create_call.args[create_call.args.index("/TR") + 1]
         self.assertEqual(
             task_command,
-            f'cmd.exe /d /c ""{root / ".multiagentos" / WINDOWS_LAUNCHER_NAME}""',
+            r'C:\Python314\python.exe -m multiagentos.cli mcp serve-http '
+            f'--path "{root}" --host 127.0.0.1 --port 8000 --allow-write',
         )
-        self.assertNotIn("multiagentos.exe", task_command.lower())
+        self.assertNotIn("windows-mcp-service.cmd", task_command)
 
         run_call = schtasks.call_args_list[1]
         self.assertEqual(run_call.args[0], "/Run")
