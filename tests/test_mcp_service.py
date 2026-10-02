@@ -53,17 +53,17 @@ class MCPServiceTests(unittest.TestCase):
             self.assertNotIn("--allow-process", plist["ProgramArguments"])
 
     @patch("multiagentos.mcp_service._schtasks")
-    @patch("multiagentos.mcp_service.shutil.which", return_value=r"C:\Python314\Scripts\multiagentos.exe")
-    def test_install_creates_and_runs_windows_task(self, which, schtasks):
+    def test_install_creates_and_runs_windows_task_with_python(self, schtasks):
         schtasks.return_value.returncode = 0
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             with patch.object(sys, "platform", "win32"):
-                message = install_mcp_service(
-                    root,
-                    allow_write=True,
-                    allow_process=False,
-                )
+                with patch.object(sys, "executable", r"C:\Python314\python.exe"):
+                    message = install_mcp_service(
+                        root,
+                        allow_write=True,
+                        allow_process=False,
+                    )
 
         self.assertIn("Task Scheduler will start it at user logon", message)
         create_call = schtasks.call_args_list[0]
@@ -73,7 +73,12 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn("ONLOGON", create_call.args)
         self.assertIn("/RL", create_call.args)
         self.assertIn("LIMITED", create_call.args)
-        self.assertIn("--allow-write", create_call.args[create_call.args.index("/TR") + 1])
+        task_command = create_call.args[create_call.args.index("/TR") + 1]
+        self.assertEqual(
+            task_command,
+            r'C:\Python314\python.exe -m multiagentos.cli mcp serve-http --path "' + str(root) + r'" --host 127.0.0.1 --port 8000 --allow-write',
+        )
+        self.assertNotIn("multiagentos.exe", task_command.lower())
 
         run_call = schtasks.call_args_list[1]
         self.assertEqual(run_call.args[0], "/Run")
