@@ -34,7 +34,7 @@ Current verification:
 - `shell.run`: PASS
 - local MCP/runtime tests: 10/10 PASS
 - Secure MCP Tunnel: READY
-- ChatGPT Web write-capable custom MCP: plan-gated on the current Free account
+- ChatGPT Web hosted remote MCP/write through Secure MCP Tunnel: plan-gated on the current Free account; direct local MCP is verified
 
 ## 3. Install Agent Execution Runtime
 
