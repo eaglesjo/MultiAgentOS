@@ -10,7 +10,8 @@ Cost-Free 基线**不要求单独的付费 AI API Key**。MultiAgentOS 将可用
 
 MultiAgentOS 将**AI 协作**与**执行权限**分离。
 
-- **ChatGPT Web** — 唯一的用户入口
+- **ChatGPT Web** — 当前验证环境中同时支持 GitHub + 本地 MCP 的开发入口
+- **ChatGPT Mobile** — 当前验证环境中仅支持 GitHub 的开发入口
 - **ChatGPT Codex Connector** — 远程 GitHub Repository 访问
 - **Agent Execution Runtime MCP / Secure Tunnel** — 本地项目连接
 - **Orchestrator** — 多智能体协作的顶层协调
@@ -18,6 +19,17 @@ MultiAgentOS 将**AI 协作**与**执行权限**分离。
 - **Agent Execution Runtime** — 权限与执行的最终边界
 
 Agent 提供意图、计划和结果，但不直接拥有 filesystem、process、patch、Git 的执行权限。
+
+## ChatGPT 客户端验证范围
+
+当前 MultiAgentOS 开发环境实际验证的连接范围如下：
+
+| 客户端 | GitHub Repository | 本地 MCP | 状态 |
+| --- | --- | --- | --- |
+| ChatGPT Web | 可以 | 可以 | 已验证 |
+| ChatGPT Mobile | 可以 | 不可以 | 已验证 |
+
+> 当前验证环境中，ChatGPT Web 可以同时使用 GitHub 和本地 MCP；ChatGPT Mobile 仅可使用 GitHub 连接。本表记录已验证的组合。
 
 ## 架构
 
