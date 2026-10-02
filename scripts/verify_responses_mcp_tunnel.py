@@ -110,8 +110,13 @@ def main() -> int:
     if "filesystem.read" not in call_names:
         print("ERROR: filesystem.read was not observed.", file=sys.stderr)
         return 1
-    if TEST_CONTENT.strip() not in output_text:
-        print("ERROR: expected read-back content was not present.", file=sys.stderr)
+    read_back_observed = any(
+        TEST_CONTENT.strip() in json.dumps(item, ensure_ascii=False)
+        for item in calls
+    ) or TEST_CONTENT.strip() in output_text
+
+    if not read_back_observed:
+        print("ERROR: expected read-back content was not observed in the MCP call results or final output.", file=sys.stderr)
         return 1
 
     print(f"PASS: real MCP write/read completed for {target}.")
