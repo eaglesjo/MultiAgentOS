@@ -2,7 +2,7 @@
 
 MultiAgentOS can run its Streamable HTTP MCP server as a per-user macOS `launchd` service.
 
-This is the recommended local runtime shape when the MCP server is used continuously by `tunnel-client`, OpenAI Secure MCP Tunnel, or another MCP client.
+This is the recommended local runtime shape when the MCP server is used continuously by a local MCP client. Secure MCP Tunnel is optional and is not required for the local cost-free baseline.
 
 ## Architecture
 
@@ -16,10 +16,7 @@ launchd
 MultiAgentOS MCP :8000
       |
       v
-tunnel-client
-      |
-      v
-OpenAI Secure MCP Tunnel
+Local MCP client
 ```
 
 The MultiAgentOS MCP server remains a local process. OpenAI hosts the remote tunnel; `tunnel-client` is the local connector.
@@ -34,16 +31,22 @@ bash scripts/macos/install_mcp_launchd.sh
 
 The installer creates a project virtual environment when needed, installs the `mcp-http` extra, registers a per-user launchd service, and starts it immediately.
 
-For the tunnel E2E configuration, where filesystem writes must be exposed:
+For the local read/write workflow:
 
 ```bash
-bash scripts/macos/install_mcp_launchd.sh --allow-write
+multiagentos mcp install --path /absolute/path/to/project --allow-write
 ```
 
 Process execution remains disabled unless explicitly requested:
 
 ```bash
-bash scripts/macos/install_mcp_launchd.sh --allow-write --allow-process
+multiagentos mcp install --path /absolute/path/to/project --allow-write --allow-process
+```
+
+The legacy repository installer remains available for source checkouts:
+
+```bash
+bash scripts/macos/install_mcp_launchd.sh --allow-write
 ```
 
 ## Lifecycle
@@ -84,10 +87,12 @@ Removing the launchd service does not remove `.multiagentos` durable state.
 
 This service solves the local MCP server lifecycle.
 
-It intentionally does not create an OpenAI tunnel, create or rotate Runtime API keys, store tunnel secrets in the repository, replace `tunnel-client`, or make ChatGPT connector configuration changes.
+It intentionally does not create an OpenAI tunnel, create or rotate API keys, store secrets in the repository, or make ChatGPT connector configuration changes.
 
 The target local flow is:
 
 ```text
-launchd -> MultiAgentOS MCP -> tunnel-client -> OpenAI Secure MCP Tunnel
+launchd -> MultiAgentOS MCP -> local MCP client
 ```
+
+Secure MCP Tunnel remains an optional remote-connection layer documented separately.

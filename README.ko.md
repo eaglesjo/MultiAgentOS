@@ -10,9 +10,10 @@ Cost-Free 기본 경로에서는 **별도의 유료 AI API Key가 필요하지 �
 
 MultiAgentOS는 **AI 협업**과 **실행 권한**을 분리합니다.
 
-- **ChatGPT Web** — 유일한 사용자 진입점
+- **로컬 MCP Client** — 기본 사용자 연결 경로
+- **ChatGPT Web / Mobile** — 선택적 외부 AI 진입점
 - **ChatGPT Codex Connector** — 원격 GitHub Repository 연결
-- **Agent Execution Runtime MCP / Secure Tunnel** — 로컬 프로젝트 연결
+- **Agent Execution Runtime MCP** — 로컬 프로젝트 연결
 - **Orchestrator** — 전체 멀티 에이전트 협업 조정
 - **MultiAgentWorkflow** — Developer → Tester → Reviewer 실행
 - **Agent Execution Runtime** — 권한 및 실행의 최종 경계
@@ -115,21 +116,21 @@ GitHub Repository
 ### 로컬 프로젝트 경로
 
 ```text
-ChatGPT Web
+Local AI Client
     |
     v
-Agent Execution Runtime MCP / Secure Tunnel
+127.0.0.1:8000/mcp
     |
     v
-Agent Execution Runtime
+MultiAgentOS MCP
     |
     v
 Local Project
 ```
 
-Agent Execution Runtime은 **하나의 MCP Server**만 사용합니다. Secure MCP Tunnel과 `tunnel-client`는 transport/connection infrastructure이며 별도의 MCP Server가 아닙니다.
+로컬 Agent Execution Runtime MCP Server가 기본 경로입니다. OpenAI, ChatGPT, Secure MCP Tunnel 또는 유료 AI API Key 없이 독립적으로 사용할 수 있습니다.
 
-로컬 Agent Execution Runtime MCP Server는 OpenAI, ChatGPT, tunnel 또는 유료 AI API Key 없이도 독립적으로 사용할 수 있습니다.
+Secure MCP Tunnel은 외부에서 로컬 MCP에 접근해야 할 때만 사용하는 선택적 연결 계층입니다.
 
 ## 용어 체계
 
@@ -165,9 +166,13 @@ Agent Execution Runtime은 **하나의 MCP Server**만 사용합니다. Secure M
 
 ### 설치
 
+로컬 Streamable HTTP MCP를 사용하려면:
+
 ```bash
-python -m pip install multiagentos
+python3 -m pip install "multiagentos[mcp-http]"
 ```
+
+별도의 OpenAI API Key는 필요하지 않습니다.
 
 ### 프로젝트 초기화
 
@@ -189,19 +194,23 @@ multiagentos run --path . --objective "run tests" -- python -m unittest discover
 multiagentos chat --path . --objective "inspect the current project"
 ```
 
-### Agent Execution Runtime MCP Server 실행
+### 로컬 MCP Server 실행
 
 ```bash
-multiagentos mcp serve --path .
+multiagentos mcp serve-http --path . --allow-write
 ```
 
-filesystem 쓰기와 process 실행이 필요한 경우:
+macOS에서 한 번 설정하고 로그인/재부팅 후 자동 실행하려면:
 
 ```bash
-multiagentos mcp serve \
-  --path . \
-  --allow-write \
-  --allow-process
+multiagentos mcp install --path . --allow-write
+```
+
+상태 확인/제거:
+
+```bash
+multiagentos mcp status
+multiagentos mcp uninstall
 ```
 
 ## 설정

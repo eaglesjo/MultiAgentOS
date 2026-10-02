@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.2] - 2026-10-02
+
+### Local MCP service
+
+- Made local Streamable HTTP MCP the primary cost-free quick-start path.
+- Added `multiagentos mcp install`, `status`, and `uninstall` for macOS per-user `launchd` lifecycle management.
+- The managed service listens on loopback and restarts automatically after login/reboot.
+- Removed the Responses API / Secure MCP Tunnel smoke test from the core release path.
+- Kept Secure MCP Tunnel as an optional remote integration rather than a baseline requirement.
+
+
 All notable changes to MultiAgentOS are documented here.
 
 ## [0.4.1] - 2026-10-01

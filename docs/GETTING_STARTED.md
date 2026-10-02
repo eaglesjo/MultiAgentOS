@@ -37,7 +37,7 @@ Current verification:
 From a MultiAgentOS checkout:
 
 ```bash
-python -m pip install .
+python3 -m pip install ".[mcp-http]"
 multiagentos --help
 ```
 

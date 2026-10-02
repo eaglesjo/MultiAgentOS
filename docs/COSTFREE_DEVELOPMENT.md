@@ -4,10 +4,13 @@
 
 MultiAgentOS is designed so that a project can be developed without requiring a paid AI API key.
 
-The baseline architecture separates the development workspace from the AI provider:
+The baseline architecture keeps the MCP runtime local:
 
 ```
-AI client/provider
+Local AI client
+      |
+      v
+127.0.0.1:8000/mcp
       |
       v
 MultiAgentOS / Agent Execution Runtime
@@ -138,7 +141,7 @@ OK
 
 ## ChatGPT Web and Secure MCP Tunnel
 
-OpenAI documents that a private/local MCP server can be connected to supported OpenAI products through Secure MCP Tunnel without exposing the local server directly to the public Internet. citeturn0search10
+Secure MCP Tunnel is an optional integration for supported external clients that need to reach a private local MCP server. It is not part of the cost-free local MCP acceptance path.
 
 The current MultiAgentOS local runtime uses:
 
@@ -149,7 +152,7 @@ The current MultiAgentOS local runtime uses:
 
 The tunnel/runtime layer is therefore independent of the AI model provider.
 
-### Current ChatGPT Web plan boundary
+### External AI client boundary
 
 OpenAI's current documentation states that **full MCP support, including modify/write actions, is available for ChatGPT Business and Enterprise/Edu**, while Pro users can connect custom MCPs with read/fetch permissions in developer mode. The documentation also states that ChatGPT connects to remote MCP servers and that a private/developer-machine server can use Secure MCP Tunnel. citeturn0search10
 
@@ -159,7 +162,7 @@ Therefore:
 
 For the current Free account, ChatGPT Web write-capable custom MCP validation is **not an executable acceptance test** under the documented plan boundary. This is a ChatGPT product/plan limitation, not a Agent Execution Runtime runtime failure. The tunnel and local MCP implementation remain valid integration targets.
 
-### ChatGPT Web verification state
+### Optional remote verification state
 
 | Layer | State |
 |---|---|

@@ -12,7 +12,7 @@ MultiAgentOS separates **AI collaboration** from **execution authority**.
 
 - **ChatGPT Web / Mobile App** — user-facing entry points for ChatGPT conversations
 - **ChatGPT Codex Connector** — remote GitHub repository access
-- **Agent Execution Runtime MCP / Secure Tunnel** — local project access
+- **Agent Execution Runtime MCP** — local project access
 - **Orchestrator** — top-level multi-agent coordination
 - **MultiAgentWorkflow** — concrete Developer → Tester → Reviewer execution
 - **Agent Execution Runtime** — permission and execution authority
@@ -34,7 +34,7 @@ flowchart TB
     C2 --> GH
     GH --> G["GitHub Repository"]
 
-    C --> MCP["Agent Execution Runtime<br/>MCP / Secure Tunnel"]
+    C --> MCP["Agent Execution Runtime<br/>Local MCP"]
     C2 --> MCP
     MCP --> L["Local Project"]
 
@@ -151,14 +151,22 @@ This path addresses the remote repository and its durable GitHub state.
 
 ### Local project path
 
-```mermaid
-flowchart LR
-    C["ChatGPT Web / Mobile App"] --> T["Agent Execution Runtime<br/>MCP / Secure Tunnel"] --> R["Agent Execution Runtime"] --> P["Local Project"]
+```text
+Local AI client
+      |
+      v
+127.0.0.1:8000/mcp
+      |
+      v
+MultiAgentOS MCP
+      |
+      v
+Local Project
 ```
 
-Agent Execution Runtime has **one MCP Server**. Secure MCP Tunnel and `tunnel-client` are transport/connection infrastructure, not another MCP server.
+The local Agent Execution Runtime MCP server is the default development path. It runs on loopback and can be used independently without OpenAI, ChatGPT, Secure MCP Tunnel, or a paid AI API key.
 
-The local Agent Execution Runtime MCP server can be used independently without OpenAI, ChatGPT, a tunnel, or a paid AI API key.
+Secure MCP Tunnel is an optional remote-connection layer for clients that need to reach a private local MCP server from outside the machine. It is not required for the cost-free local MCP baseline.
 
 ## Terminology
 
@@ -194,9 +202,13 @@ See [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md) for the verif
 
 ### Install
 
+For the local Streamable HTTP MCP server:
+
 ```bash
-python3 -m pip install multiagentos
+python3 -m pip install "multiagentos[mcp-http]"
 ```
+
+This installs the MCP HTTP dependencies and the `multiagentos` CLI. No OpenAI API key is required.
 
 **[Download files on PyPI](https://pypi.org/project/multiagentos/#files)**
 
@@ -220,20 +232,36 @@ multiagentos run --path . --objective "run tests" -- python -m unittest discover
 multiagentos chat --path . --objective "inspect the current project"
 ```
 
-### Expose the Agent Execution Runtime MCP server
+### Run the local MCP server
+
+For the local read-only baseline:
 
 ```bash
-multiagentos mcp serve --path .
+multiagentos mcp serve-http --path .
 ```
 
-For explicit filesystem writes and process execution:
+For the local read/write workflow:
 
 ```bash
-multiagentos mcp serve \
+multiagentos mcp serve-http \
   --path . \
-  --allow-write \
-  --allow-process
+  --allow-write
 ```
+
+Install it once as a macOS user service so it starts at login and is restarted by `launchd` after reboot:
+
+```bash
+multiagentos mcp install --path . --allow-write
+```
+
+Check or remove the service with:
+
+```bash
+multiagentos mcp status
+multiagentos mcp uninstall
+```
+
+The managed service listens only on `127.0.0.1:8000` and keeps its logs under `.multiagentos/logs/`.
 
 ## Configuration
 
@@ -264,9 +292,9 @@ GitHub Actions validates the repository through CI.
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
 - [Agent Execution Runtime Connection Guide](docs/AGENT_EXECUTION_RUNTIME_CONNECTIONS.md)
-- [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
+- [Secure MCP Tunnel Setup (optional)](docs/MCP_TUNNEL.md)
 - [macOS MCP Service](docs/MACOS_MCP_SERVICE.md)
-- [macOS tunnel-client Service](docs/MACOS_TUNNEL_SERVICE.md)
+- [macOS tunnel-client Service (optional)](docs/MACOS_TUNNEL_SERVICE.md)
 - [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
 - [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 - [Agent Plugin Marketplace](docs/PLUGIN_MARKETPLACE.md)

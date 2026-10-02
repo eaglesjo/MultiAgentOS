@@ -43,8 +43,11 @@ Native macOS package test:
 3. Open a new terminal.
 4. Run `multiagentos --help`.
 5. Run `multiagentos status <test-project>`.
-6. Run the MCP stdio smoke test against a disposable project.
-7. Verify a failed WorkUnit with an unresolved `tool_call` returns human-review-required rather than replaying the tool.
+6. Install the local Streamable HTTP MCP service with `multiagentos mcp install --path <test-project> --allow-write`.
+7. Verify `multiagentos mcp status` reports the service as loaded.
+8. Verify the service exposes `http://127.0.0.1:8000/mcp` and restarts after login/reboot.
+9. Run the MCP stdio smoke test against a disposable project.
+10. Verify a failed WorkUnit with an unresolved `tool_call` returns human-review-required rather than replaying the tool.
 
 ## Gate 3 — Development-tool plugin
 
