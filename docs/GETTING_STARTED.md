@@ -168,6 +168,32 @@ No Secure MCP Tunnel or OpenAI API key is required for this local path.
 
 ChatGPT Mobile does not have local MCP access in the verified setup. Use the GitHub connection from mobile when working against the remote repository.
 
+## 8.0 Managed local MCP service
+
+For a persistent local MCP server, use the OS-native service manager:
+
+### macOS
+
+```bash
+multiagentos mcp install --path /absolute/path/to/project --allow-write
+multiagentos mcp status
+```
+
+macOS uses per-user `launchd` and starts the service at login and keeps it alive.
+
+### Windows
+
+```powershell
+multiagentos mcp install --path C:\Users\<you>\Documents\your-project --allow-write
+multiagentos mcp status
+```
+
+Windows uses a per-user Task Scheduler task and starts the service at user logon.
+
+For Windows-specific details, see [Windows MCP Service](WINDOWS_MCP_SERVICE.md). For macOS-specific details, see [macOS MCP Service](MACOS_MCP_SERVICE.md).
+
+The endpoint is `http://127.0.0.1:8000/mcp` on both platforms. The managed service is local-only and does not require Secure MCP Tunnel or a paid AI API key.
+
 ## 8.1 Optional remote ChatGPT/Codex + local Agent Execution Runtime
 
 Use OpenAI Secure MCP Tunnel only when a remote client needs to reach the developer's private/local MCP server and cannot use the direct local path.

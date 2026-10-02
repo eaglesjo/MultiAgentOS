@@ -309,7 +309,7 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_http.add_argument("--allow-process", action="store_true", help="expose shell execution")
 
     mcp_install = mcp_sub.add_parser(
-        "install", help="install the local Streamable HTTP MCP server as a macOS launchd service"
+        "install", help="install the local Streamable HTTP MCP server as an OS-managed service"
     )
     mcp_install.add_argument("--path", default=".")
     mcp_install.add_argument("--host", default="127.0.0.1")
@@ -318,11 +318,11 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_install.add_argument("--allow-process", action="store_true", help="enable shell execution")
 
     mcp_uninstall = mcp_sub.add_parser(
-        "uninstall", help="remove the local Streamable HTTP MCP launchd service"
+        "uninstall", help="remove the local Streamable HTTP MCP OS-managed service"
     )
 
     mcp_status = mcp_sub.add_parser(
-        "status", help="show the local Streamable HTTP MCP launchd service status"
+        "status", help="show the local Streamable HTTP MCP OS-managed service status"
     )
 
     github = subparsers.add_parser("github", help="use Agent Execution Runtime GitHub runtime")

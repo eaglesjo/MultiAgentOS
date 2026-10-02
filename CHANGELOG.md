@@ -6,8 +6,9 @@
 
 - Made local Streamable HTTP MCP the primary cost-free quick-start path.
 - Documented the verified ChatGPT client boundary: ChatGPT Web can use GitHub and local MCP, while ChatGPT Mobile is verified for GitHub access only.
-- Added `multiagentos mcp install`, `status`, and `uninstall` for macOS per-user `launchd` lifecycle management.
-- The managed service listens on loopback and restarts automatically after login/reboot.
+- Added `multiagentos mcp install`, `status`, and `uninstall` for OS-native local MCP lifecycle management.
+- macOS uses per-user `launchd`; Windows uses per-user Task Scheduler.
+- The managed service listens on loopback and starts automatically at user login.
 - Removed the Responses API / Secure MCP Tunnel smoke test from the core release path.
 - Kept Secure MCP Tunnel as an optional remote integration rather than a baseline requirement.
 

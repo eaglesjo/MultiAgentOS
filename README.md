@@ -175,6 +175,29 @@ The local Agent Execution Runtime MCP server is the default development path. In
 
 Secure MCP Tunnel is an optional remote-connection layer for clients that need to reach a private local MCP server from outside the machine. It is not required for the cost-free local MCP baseline.
 
+### Persistent local MCP service
+
+MultiAgentOS provides OS-native lifecycle management for the local MCP server:
+
+- macOS: per-user `launchd` service
+- Windows: per-user Task Scheduler task
+
+Use:
+
+```bash
+multiagentos mcp install --path /absolute/path/to/project --allow-write
+multiagentos mcp status
+```
+
+On Windows, the equivalent command is:
+
+```powershell
+multiagentos mcp install --path C:\\Users\\<you>\\Documents\\your-project --allow-write
+multiagentos mcp status
+```
+
+Both platforms keep the MCP server on `127.0.0.1:8000`. See [Windows MCP Service](docs/WINDOWS_MCP_SERVICE.md) and [macOS MCP Service](docs/MACOS_MCP_SERVICE.md) for lifecycle details.
+
 ## Terminology
 
 **Agent Execution Runtime** is the descriptive architectural name for the local execution and permission boundary.
