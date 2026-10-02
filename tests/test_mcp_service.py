@@ -63,7 +63,7 @@ class MCPServiceTests(unittest.TestCase):
                 with patch.object(sys, "executable", r"C:\Python314\python.exe"):
                     with patch("multiagentos.mcp_service.Path.is_file", return_value=True):
                         with patch.dict(
-                        "os.environ",
+                            "os.environ",
                             {"USERDOMAIN": "HJKOO-PC", "USERNAME": "eaglesjo"},
                             clear=False,
                         ):
