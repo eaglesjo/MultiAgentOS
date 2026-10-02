@@ -66,12 +66,15 @@ def _program_arguments(
     allow_write: bool,
     allow_process: bool,
 ) -> list[str]:
-    executable = shutil.which("multiagentos")
-    program_arguments = (
-        [executable, "mcp", "serve-http"]
-        if executable
-        else [sys.executable, "-m", "multiagentos.cli", "mcp", "serve-http"]
-    )
+    if sys.platform == "win32":
+        program_arguments = [sys.executable, "-m", "multiagentos.cli", "mcp", "serve-http"]
+    else:
+        executable = shutil.which("multiagentos")
+        program_arguments = (
+            [executable, "mcp", "serve-http"]
+            if executable
+            else [sys.executable, "-m", "multiagentos.cli", "mcp", "serve-http"]
+        )
     program_arguments.extend(
         ["--path", str(project_root), "--host", host, "--port", str(port)]
     )
@@ -83,14 +86,15 @@ def _program_arguments(
 
 
 def _windows_quote_argument(value: str) -> str:
-    # schtasks /TR receives one command-line string. Quote every argument so
-    # project paths containing spaces remain intact.
-    escaped = value.replace('"', '\"')
+    escaped = value.replace('"', '\\"')
     return f'"{escaped}"'
 
 
 def _windows_task_command(program_arguments: list[str]) -> str:
-    return " ".join(_windows_quote_argument(arg) for arg in program_arguments)
+    return " ".join(
+        _windows_quote_argument(arg) if " " in arg else arg
+        for arg in program_arguments
+    )
 
 
 def install_mcp_service(
