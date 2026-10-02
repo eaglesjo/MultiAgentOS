@@ -88,6 +88,7 @@ def main() -> int:
                 "type": "mcp",
                 "server_label": "multiagentos",
                 "tunnel_id": args.tunnel_id,
+                "allowed_tools": ["filesystem.read", "filesystem.write"],
                 "require_approval": "never",
             }
         ],
