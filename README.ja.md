@@ -10,7 +10,8 @@ Cost-Freeの基本パスでは、**別途の有料AI API Keyを必要としま�
 
 MultiAgentOSは**AI協調**と**実行権限**を分離します。
 
-- **ChatGPT Web** — 唯一のユーザーエントリーポイント
+- **ChatGPT Web** — 現在の検証環境でGitHub + ローカルMCPを利用できる開発エントリーポイント
+- **ChatGPT Mobile** — 現在の検証環境でGitHubのみ利用できる開発エントリーポイント
 - **ChatGPT Codex Connector** — リモートGitHub Repositoryへのアクセス
 - **Agent Execution Runtime MCP / Secure Tunnel** — ローカルプロジェクトへの接続
 - **Orchestrator** — マルチエージェント協調の全体調整
@@ -18,6 +19,17 @@ MultiAgentOSは**AI協調**と**実行権限**を分離します。
 - **Agent Execution Runtime** — 権限と実行の最終境界
 
 Agentは意図・計画・結果を提供しますが、filesystem、process、patch、Gitの実行権限を直接所有しません。
+
+## ChatGPTクライアントの検証範囲
+
+現在のMultiAgentOS開発環境で実際に確認した接続範囲は次のとおりです。
+
+| クライアント | GitHub Repository | ローカルMCP | 状態 |
+| --- | --- | --- | --- |
+| ChatGPT Web | 利用可能 | 利用可能 | 検証済み |
+| ChatGPT Mobile | 利用可能 | 利用不可 | 検証済み |
+
+> 現在の検証環境ではChatGPT WebがGitHubとローカルMCPの両方を利用できます。ChatGPT MobileではGitHub接続のみ利用できます。この表は検証済みの組み合わせを記録するものです。
 
 ## アーキテクチャ
 
