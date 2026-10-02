@@ -18,7 +18,7 @@ from pathlib import Path
 
 
 API_URL = "https://api.openai.com/v1/responses"
-DEFAULT_MODEL = "gpt-5"
+DEFAULT_MODEL = "gpt-6-astra"
 DEFAULT_KEY_ENV = "MULTIAGENTOS_OPENAI_API_KEY"
 DEFAULT_TEST_FILE = "MCP_TUNNEL_TEST.md"
 TEST_CONTENT = "MultiAgentOS Responses API MCP tunnel smoke test.\\n"
