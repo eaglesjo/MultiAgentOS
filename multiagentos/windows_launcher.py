@@ -20,6 +20,9 @@ def main() -> int:
         sys.stdout = log
         sys.stderr = log
         try:
+            # pythonw.exe invokes this module directly, so forward the
+            # original server options into the normal CLI command.
+            sys.argv[1:1] = ["mcp", "serve-http"]
             from multiagentos.cli import main as cli_main
 
             return int(cli_main())
