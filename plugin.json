@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "multiagentos",
   "description": "MultiAgentOS Agent Execution Runtime skills and local runtime integration for AI development tools.",
-  "version": "0.4.0",
+  "version": "0.4.2",
   "author": {"name": "eaglesjo"},
   "repository": "https://github.com/eaglesjo/MultiAgentOS",
   "license": "MIT",
