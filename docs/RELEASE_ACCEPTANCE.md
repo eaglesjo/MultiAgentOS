@@ -14,6 +14,16 @@ Required before local acceptance:
 
 ## Gate 2 — Maintainer local installation
 
+### Verified ChatGPT client boundary
+
+| Client | GitHub | Local MCP | Result |
+| --- | --- | --- | --- |
+| ChatGPT Web | Yes | Yes | **Verified** |
+| ChatGPT Mobile | Yes | No | **Verified** |
+
+This records the capability observed in the current validation environment; it is not a universal guarantee across all ChatGPT plans or client configurations.
+
+
 On the maintainer's macOS machine:
 
 ```bash
