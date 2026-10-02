@@ -83,7 +83,7 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn("/F", create_call.args)
 
         xml = _windows_task_xml(
-            [r"C:\Python314\pythonw.exe", "-m", "multiagentos.cli", "mcp", "serve-http",
+            [r"C:\Python314\pythonw.exe", "-m", "multiagentos.windows_launcher",
              "--path", str(root), "--host", "127.0.0.1", "--port", "8000", "--allow-write"],
             project_root=root,
         )
