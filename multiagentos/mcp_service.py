@@ -11,6 +11,7 @@ from pathlib import Path
 
 LABEL = "com.eaglesjo.multiagentos.mcp"
 WINDOWS_TASK_NAME = "MultiAgentOS Local MCP"
+WINDOWS_LAUNCHER_NAME = "windows-mcp-service.cmd"
 LAUNCH_AGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
 PLIST_PATH = LAUNCH_AGENTS_DIR / f"{LABEL}.plist"
 
@@ -18,11 +19,6 @@ PLIST_PATH = LAUNCH_AGENTS_DIR / f"{LABEL}.plist"
 def _require_supported_platform() -> None:
     if sys.platform not in {"darwin", "win32"}:
         raise RuntimeError("The local MCP managed service is supported on macOS and Windows only.")
-
-
-def _require_macos() -> None:
-    if sys.platform != "darwin":
-        raise RuntimeError("The local MCP launchd service is supported on macOS only.")
 
 
 def _launchctl(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -88,6 +84,25 @@ def _program_arguments(
 def _windows_quote_argument(value: str) -> str:
     escaped = value.replace('"', '\\"')
     return f'"{escaped}"'
+
+
+def _windows_launcher_path(project_root: Path) -> Path:
+    return project_root / ".multiagentos" / WINDOWS_LAUNCHER_NAME
+
+
+def _windows_launcher_script(
+    project_root: Path,
+    program_arguments: list[str],
+) -> str:
+    logs = project_root / ".multiagentos" / "logs"
+    command = _windows_task_command(program_arguments)
+    return (
+        "@echo off\r\n"
+        f'cd /d "{project_root}"\r\n'
+        f'if errorlevel 1 exit /b %errorlevel%\r\n'
+        f'{command} >> "{logs / "mcp-task.log"}" 2>&1\r\n'
+        "exit /b %errorlevel%\r\n"
+    )
 
 
 def _windows_task_command(program_arguments: list[str]) -> str:
@@ -185,7 +200,19 @@ def _install_windows(
     host: str,
     port: int,
 ) -> str:
-    task_command = _windows_task_command(program_arguments)
+    launcher_dir = project_root / ".multiagentos"
+    logs = launcher_dir / "logs"
+    launcher_dir.mkdir(parents=True, exist_ok=True)
+    logs.mkdir(parents=True, exist_ok=True)
+
+    launcher = _windows_launcher_path(project_root)
+    launcher.write_text(
+        _windows_launcher_script(project_root, program_arguments),
+        encoding="utf-8",
+        newline="",
+    )
+
+    task_command = f'cmd.exe /d /c ""{launcher}""'
     result = _schtasks(
         "/Create",
         "/TN",
@@ -219,7 +246,8 @@ def _install_windows(
     return (
         "MultiAgentOS local MCP service installed and started. "
         f"Endpoint: http://{host}:{port}/mcp. "
-        "Task Scheduler will start it at user logon."
+        "Task Scheduler will start it at user logon. "
+        f"Launcher: {launcher}"
     )
 
 
@@ -252,7 +280,15 @@ def mcp_service_status() -> str:
             return result.stdout.strip()
         return f"MultiAgentOS local MCP service is not installed: {LABEL}"
 
-    result = _schtasks("/Query", "/TN", WINDOWS_TASK_NAME, "/FO", "LIST", "/V", check=False)
+    result = _schtasks(
+        "/Query",
+        "/TN",
+        WINDOWS_TASK_NAME,
+        "/FO",
+        "LIST",
+        "/V",
+        check=False,
+    )
     if result.returncode == 0:
         return result.stdout.strip()
     return f"MultiAgentOS local MCP service is not installed: {WINDOWS_TASK_NAME}"
@@ -261,6 +297,7 @@ def mcp_service_status() -> str:
 __all__ = [
     "LABEL",
     "WINDOWS_TASK_NAME",
+    "WINDOWS_LAUNCHER_NAME",
     "PLIST_PATH",
     "install_mcp_service",
     "uninstall_mcp_service",
