@@ -298,6 +298,7 @@ GitHub Actions validates the repository through CI.
 
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
+- [ChatGPT Client Capability Matrix](docs/CHATGPT_CLIENT_CAPABILITIES.md)
 - [Agent Execution Runtime Connection Guide](docs/AGENT_EXECUTION_RUNTIME_CONNECTIONS.md)
 - [Secure MCP Tunnel Setup (optional)](docs/MCP_TUNNEL.md)
 - [macOS MCP Service](docs/MACOS_MCP_SERVICE.md)
