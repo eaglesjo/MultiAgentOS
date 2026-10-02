@@ -81,8 +81,15 @@ def _program_arguments(
 
 
 def _windows_quote_argument(value: str) -> str:
-    escaped = value.replace('"', '\\"')
+    escaped = value.replace('"', '\"')
     return f'"{escaped}"'
+
+
+def _windows_task_command(program_arguments: list[str]) -> str:
+    return " ".join(
+        _windows_quote_argument(arg) if i == 0 or " " in arg else arg
+        for i, arg in enumerate(program_arguments)
+    )
 
 
 def install_mcp_service(
@@ -212,6 +219,7 @@ def _install_windows(
         f"Endpoint: http://{host}:{port}/mcp. "
         "Task Scheduler will start it at user logon."
     )
+
 
 def uninstall_mcp_service() -> str:
     """Stop and remove the managed local MCP service."""
