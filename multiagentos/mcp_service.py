@@ -158,7 +158,7 @@ def _windows_task_xml(
     return xml.replace("encoding='utf-8'", "encoding='UTF-16'")
 
 
-def _wait_for_endpoint(host: str, port: int, *, timeout: float = 10.0) -> bool:
+def _wait_for_endpoint(host: str, port: int, *, timeout: float = 30.0) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
@@ -306,7 +306,7 @@ def _install_windows(
     if not _wait_for_endpoint(host, port):
         raise RuntimeError(
             "Windows Task Scheduler registered the MultiAgentOS local MCP task, "
-            f"but http://{host}:{port}/mcp did not start within 10 seconds."
+            f"but http://{host}:{port}/mcp did not start within 30 seconds."
         )
 
     return (
