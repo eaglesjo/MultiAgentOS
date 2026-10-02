@@ -259,7 +259,6 @@ def mcp_service_status() -> str:
 __all__ = [
     "LABEL",
     "WINDOWS_TASK_NAME",
-    "WINDOWS_LAUNCHER_NAME",
     "PLIST_PATH",
     "install_mcp_service",
     "uninstall_mcp_service",
