@@ -34,6 +34,8 @@ The installer creates a per-user Task Scheduler task named:
 MultiAgentOS Local MCP
 ```
 
+On Windows, Task Scheduler registration may require an Administrator PowerShell depending on the local task-creation policy. The task itself runs as the signed-in user.
+
 It starts the server immediately and configures the task to start at the user's next logon.
 
 Process execution remains disabled unless explicitly requested:
@@ -94,7 +96,7 @@ Secure MCP Tunnel remains an optional remote-connection layer for clients that c
 | Managed install | launchd | Task Scheduler |
 | Start immediately | Yes | Yes |
 | Start at user logon | Yes | Yes |
-| Restart after process exit | launchd KeepAlive | Task Scheduler task lifecycle |
+| Restart after process exit | launchd KeepAlive | Not enabled by default |
 | Status | `multiagentos mcp status` | `multiagentos mcp status` |
 | Uninstall | `multiagentos mcp uninstall` | `multiagentos mcp uninstall` |
 
