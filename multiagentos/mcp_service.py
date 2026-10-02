@@ -2,17 +2,23 @@
 
 from __future__ import annotations
 
+import getpass
 import os
 import plistlib
 import shutil
+import socket
 import subprocess
 import sys
+import tempfile
+import time
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 LABEL = "com.eaglesjo.multiagentos.mcp"
 WINDOWS_TASK_NAME = "MultiAgentOS Local MCP"
 LAUNCH_AGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
 PLIST_PATH = LAUNCH_AGENTS_DIR / f"{LABEL}.plist"
+WINDOWS_TASK_NS = "http://schemas.microsoft.com/windows/2004/02/mit/task"
 
 
 def _require_supported_platform() -> None:
@@ -81,7 +87,7 @@ def _program_arguments(
 
 
 def _windows_quote_argument(value: str) -> str:
-    escaped = value.replace('"', '\"')
+    escaped = value.replace('"', '\\"')
     return f'"{escaped}"'
 
 
@@ -90,6 +96,72 @@ def _windows_task_command(program_arguments: list[str]) -> str:
         _windows_quote_argument(arg) if i == 0 or " " in arg else arg
         for i, arg in enumerate(program_arguments)
     )
+
+
+def _windows_task_user() -> str:
+    domain = os.environ.get("USERDOMAIN")
+    username = os.environ.get("USERNAME") or getpass.getuser()
+    return f"{domain}\\{username}" if domain else username
+
+
+def _windows_task_xml(
+    program_arguments: list[str],
+    *,
+    project_root: Path,
+) -> str:
+    command = program_arguments[0]
+    arguments = _windows_task_command(program_arguments[1:])
+    user = _windows_task_user()
+    ns = WINDOWS_TASK_NS
+    ET.register_namespace("", ns)
+
+    task = ET.Element(f"{{{ns}}}Task", {"version": "1.2"})
+    registration = ET.SubElement(task, f"{{{ns}}}RegistrationInfo")
+    ET.SubElement(registration, f"{{{ns}}}Author").text = user
+    ET.SubElement(registration, f"{{{ns}}}Description").text = (
+        "MultiAgentOS local MCP service"
+    )
+
+    principals = ET.SubElement(task, f"{{{ns}}}Principals")
+    principal = ET.SubElement(principals, f"{{{ns}}}Principal", {"id": "Author"})
+    ET.SubElement(principal, f"{{{ns}}}UserId").text = user
+    ET.SubElement(principal, f"{{{ns}}}LogonType").text = "InteractiveToken"
+    ET.SubElement(principal, f"{{{ns}}}RunLevel").text = "LeastPrivilege"
+
+    settings = ET.SubElement(task, f"{{{ns}}}Settings")
+    ET.SubElement(settings, f"{{{ns}}}Enabled").text = "true"
+    ET.SubElement(settings, f"{{{ns}}}AllowStartOnDemand").text = "true"
+    ET.SubElement(settings, f"{{{ns}}}AllowHardTerminate").text = "true"
+    ET.SubElement(settings, f"{{{ns}}}StartWhenAvailable").text = "true"
+    ET.SubElement(settings, f"{{{ns}}}DisallowStartIfOnBatteries").text = "false"
+    ET.SubElement(settings, f"{{{ns}}}StopIfGoingOnBatteries").text = "false"
+    ET.SubElement(settings, f"{{{ns}}}RunOnlyIfIdle").text = "false"
+    ET.SubElement(settings, f"{{{ns}}}ExecutionTimeLimit").text = "PT0S"
+
+    triggers = ET.SubElement(task, f"{{{ns}}}Triggers")
+    logon = ET.SubElement(triggers, f"{{{ns}}}LogonTrigger")
+    ET.SubElement(logon, f"{{{ns}}}Enabled").text = "true"
+    ET.SubElement(logon, f"{{{ns}}}UserId").text = user
+
+    actions = ET.SubElement(task, f"{{{ns}}}Actions", {"Context": "Author"})
+    action = ET.SubElement(actions, f"{{{ns}}}Exec")
+    ET.SubElement(action, f"{{{ns}}}Command").text = command
+    if arguments:
+        ET.SubElement(action, f"{{{ns}}}Arguments").text = arguments
+    ET.SubElement(action, f"{{{ns}}}WorkingDirectory").text = str(project_root)
+
+    return ET.tostring(task, encoding="unicode", xml_declaration=True)
+
+
+def _wait_for_endpoint(host: str, port: int, *, timeout: float = 10.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=0.5):
+                return True
+        except OSError:
+            time.sleep(0.25)
+    return False
 
 
 def install_mcp_service(
@@ -183,20 +255,33 @@ def _install_windows(
     logs = project_root / ".multiagentos" / "logs"
     logs.mkdir(parents=True, exist_ok=True)
 
-    task_command = _windows_task_command(program_arguments)
-    result = _schtasks(
-        "/Create",
-        "/TN",
-        WINDOWS_TASK_NAME,
-        "/TR",
-        task_command,
-        "/SC",
-        "ONLOGON",
-        "/RL",
-        "LIMITED",
-        "/F",
-        check=False,
-    )
+    xml = _windows_task_xml(program_arguments, project_root=project_root)
+    xml_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            suffix=".xml",
+            prefix="multiagentos-task-",
+            dir=logs,
+            delete=False,
+        ) as handle:
+            handle.write(xml)
+            xml_path = handle.name
+
+        result = _schtasks(
+            "/Create",
+            "/XML",
+            xml_path,
+            "/TN",
+            WINDOWS_TASK_NAME,
+            "/F",
+            check=False,
+        )
+    finally:
+        if xml_path:
+            Path(xml_path).unlink(missing_ok=True)
+
     if result.returncode != 0:
         raise subprocess.CalledProcessError(
             result.returncode,
@@ -212,6 +297,12 @@ def _install_windows(
             run.args,
             output=run.stdout,
             stderr=run.stderr,
+        )
+
+    if not _wait_for_endpoint(host, port):
+        raise RuntimeError(
+            "Windows Task Scheduler registered the MultiAgentOS local MCP task, "
+            f"but http://{host}:{port}/mcp did not start within 10 seconds."
         )
 
     return (
