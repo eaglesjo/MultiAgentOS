@@ -68,7 +68,11 @@ def _program_arguments(
     allow_process: bool,
 ) -> list[str]:
     if sys.platform == "win32":
-        program_arguments = [sys.executable, "-m", "multiagentos.cli", "mcp", "serve-http"]
+        # Use the windowless Python launcher so the login-started MCP task does not
+        # open a visible console window for the long-running server process.
+        pythonw = Path(sys.executable).with_name("pythonw.exe")
+        interpreter = str(pythonw) if pythonw.is_file() else sys.executable
+        program_arguments = [interpreter, "-m", "multiagentos.cli", "mcp", "serve-http"]
     else:
         executable = shutil.which("multiagentos")
         program_arguments = (
