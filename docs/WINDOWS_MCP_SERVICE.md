@@ -38,7 +38,7 @@ On Windows, Task Scheduler registration may require an Administrator PowerShell 
 
 It starts the server immediately and configures the task to start at the user's next logon.
 
-The Windows task invokes the configured Python interpreter directly with `python -m multiagentos.cli mcp serve-http` and sets the project directory as the Task Scheduler working directory. The installer waits for the local MCP endpoint to become reachable before reporting success.
+The Windows task invokes the windowless `pythonw.exe` interpreter when it is available, with `-m multiagentos.cli mcp serve-http`, so the login-started MCP server does not open a visible console window. It sets the project directory as the Task Scheduler working directory. The installer waits for the local MCP endpoint to become reachable before reporting success.
 
 Process execution remains disabled unless explicitly requested:
 
