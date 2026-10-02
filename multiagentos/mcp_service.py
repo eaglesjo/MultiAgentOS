@@ -68,11 +68,11 @@ def _program_arguments(
     allow_process: bool,
 ) -> list[str]:
     if sys.platform == "win32":
-        # Use the windowless Python launcher so the login-started MCP task does not
-        # open a visible console window for the long-running server process.
+        # pythonw.exe has no stdout/stderr streams. Use a small module launcher
+        # that redirects both streams to the project log before importing Uvicorn.
         pythonw = Path(sys.executable).with_name("pythonw.exe")
         interpreter = str(pythonw) if pythonw.is_file() else sys.executable
-        program_arguments = [interpreter, "-m", "multiagentos.cli", "mcp", "serve-http"]
+        program_arguments = [interpreter, "-m", "multiagentos.windows_launcher"]
     else:
         executable = shutil.which("multiagentos")
         program_arguments = (
