@@ -111,18 +111,15 @@ The runtime remains the authority for permissions and execution.
 
 MultiAgentOS treats the remote repository and the local working tree as complementary development surfaces.
 
-```text
-                    AI Client
-                   /         \
-                  /           \
-                 ▼             ▼
-        GitHub Repository   Local MCP
-                                │
-                                ▼
-                    Agent Execution Runtime
-                                │
-                                ▼
-                         Local Project
+```mermaid
+flowchart TB
+    CLIENT["AI Client"]
+
+    CLIENT --> GH["GitHub Repository"]
+    CLIENT --> MCP["Local MCP"]
+
+    MCP --> RUNTIME["Agent Execution Runtime"]
+    RUNTIME --> PROJECT["Local Project"]
 ```
 
 The GitHub path provides durable repository state.
