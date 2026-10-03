@@ -46,14 +46,13 @@ class GovernanceMigrationTests(unittest.TestCase):
         self.assertTrue(parent.contains(ScopeLock(allowed_files=("src/a.py",))))
         self.assertFalse(parent.contains(ScopeLock(allowed_files=("src/c.py",))))
         self.assertFalse(parent.contains(ScopeLock()))
-        self.assertFalse(
+        with self.assertRaises(ValueError):
             parent.contains(
                 ScopeLock(
                     allowed_files=("src/a.py",),
                     excluded_files=("src/a.py",),
                 )
             )
-        )
 
     def test_evidence_is_bound_to_work_unit(self):
         work = WorkUnit("wu-1", "verify")
