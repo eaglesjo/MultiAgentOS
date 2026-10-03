@@ -177,25 +177,22 @@ Secure MCP Tunnel is an optional remote-connection layer for clients that need t
 
 ### Secure MCP Tunnel project boundary
 
-For projects that need remote access to a private local MCP server, MultiAgentOS uses **one Secure MCP Tunnel per independently operated project by default**. This is an architectural operating rule, not a requirement of the tunnel protocol: the current tunnel-client can support multiple MCP channels through one tunnel, but separate tunnels keep project lifecycle, health, failure isolation, and ChatGPT Connector configuration independent.
+For projects that need remote access to a private local MCP server, MultiAgentOS uses **one Secure MCP Tunnel and one dedicated Runtime API Key per independently operated project by default**.
 
-The current development layout is:
+The operating rule is:
 
 ```text
-MultiAgentOS
-  MCP: 127.0.0.1:8000
-  Health: 127.0.0.1:18080
-  Tunnel: MultiAgentOS-specific
-
-PetTarotReading
-  MCP: 127.0.0.1:8001
-  Health: 127.0.0.1:18081
-  Tunnel: PetTarotReading-specific
+1 project
+   ├── 1 local MCP service
+   ├── 1 Secure MCP Tunnel
+   └── 1 dedicated Runtime API Key
 ```
 
-This means **project-per-Tunnel is our default deployment convention**, not a platform limitation. A single tunnel may technically expose multiple logical MCP channels when a shared lifecycle is intentional.
+This is an architectural security and lifecycle convention, not a requirement of the tunnel protocol. The current tunnel-client can technically support multiple MCP channels through one tunnel, but separate Tunnel + Runtime Key pairs keep project lifecycle, health, failure isolation, credential scope, and ChatGPT Connector configuration independent.
 
-Tunnel authentication is also separate from the cost-free baseline: the baseline does not require a paid AI API key, while a Secure MCP Tunnel runtime may use a restricted runtime credential to authenticate the tunnel-client with the control plane. Admin credentials are for tunnel management operations and are not used as the long-running runtime credential.
+A new project therefore gets a new Tunnel and a new Runtime API Key. Tunnel and runtime credentials should not be shared across independently operated projects by default.
+
+Tunnel authentication is also separate from the cost-free baseline: the baseline does not require a paid AI API key, while a Secure MCP Tunnel runtime may use its project's restricted Runtime API Key to authenticate the tunnel-client with the control plane. Admin credentials are for tunnel management operations and are not used as the long-running runtime credential.
 
 ### Persistent local MCP service
 
