@@ -34,9 +34,18 @@ class MCPServiceTests(unittest.TestCase):
         self.assertEqual(status.mcp_command, "status")
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS launchd test")
+    @patch("multiagentos.mcp_service._wait_for_endpoint", return_value=True)
     @patch("multiagentos.mcp_service._launchctl")
     @patch("multiagentos.mcp_service.shutil.which", return_value="/usr/local/bin/multiagentos")
-    def test_install_writes_keepalive_launch_agent(self, which, launchctl):
+    def test_install_writes_keepalive_launch_agent(self, which, launchctl, endpoint):
+        def launchctl_side_effect(*args, **kwargs):
+            from subprocess import CompletedProcess
+            if args[0] == "bootstrap":
+                return CompletedProcess(args, 0, "", "")
+            if args[0] == "kickstart":
+                return CompletedProcess(args, 0, "", "")
+            return CompletedProcess(args, 1, "", "")
+        launchctl.side_effect = launchctl_side_effect
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", root / "LaunchAgents"):
@@ -131,3 +140,82 @@ class MCPServiceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS launchd test")
+    @patch("multiagentos.mcp_service._wait_for_endpoint", return_value=False)
+    @patch("multiagentos.mcp_service._launchctl")
+    @patch("multiagentos.mcp_service.shutil.which", return_value="/usr/local/bin/multiagentos")
+    def test_install_endpoint_timeout_rolls_back_new_service(self, which, launchctl, endpoint):
+        from subprocess import CompletedProcess
+
+        def launchctl_side_effect(*args, **kwargs):
+            if args[0] == "bootstrap":
+                return CompletedProcess(args, 0, "", "")
+            if args[0] == "kickstart":
+                return CompletedProcess(args, 0, "", "")
+            return CompletedProcess(args, 1, "", "")
+
+        launchctl.side_effect = launchctl_side_effect
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", root / "LaunchAgents"):
+                with patch.object(sys, "platform", "darwin"):
+                    with self.assertRaisesRegex(RuntimeError, "did not start within 30 seconds"):
+                        install_mcp_service(root)
+            self.assertFalse(list((root / "LaunchAgents").glob("*.plist")))
+
+        bootouts = [call for call in launchctl.call_args_list if call.args[0] == "bootout"]
+        self.assertGreaterEqual(len(bootouts), 2)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS launchd test")
+    @patch("multiagentos.mcp_service._wait_for_endpoint", return_value=True)
+    @patch("multiagentos.mcp_service._launchctl")
+    @patch("multiagentos.mcp_service.shutil.which", return_value="/usr/local/bin/multiagentos")
+    def test_install_waits_for_unload_before_bootstrap(self, which, launchctl, endpoint):
+        from subprocess import CompletedProcess
+
+        calls = []
+
+        def launchctl_side_effect(*args, **kwargs):
+            calls.append(args)
+            if args[0] == "bootstrap":
+                return CompletedProcess(args, 0, "", "")
+            if args[0] == "kickstart":
+                return CompletedProcess(args, 0, "", "")
+            return CompletedProcess(args, 1, "", "")
+
+        launchctl.side_effect = launchctl_side_effect
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", root / "LaunchAgents"):
+                with patch.object(sys, "platform", "darwin"):
+                    install_mcp_service(root)
+
+        bootstrap_index = next(i for i, args in enumerate(calls) if args[0] == "bootstrap")
+        print_indices = [i for i, args in enumerate(calls[:bootstrap_index]) if args[0] == "print"]
+        self.assertTrue(print_indices)
+        self.assertLess(print_indices[-1], bootstrap_index)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS launchd test")
+    @patch("multiagentos.mcp_service._launchctl")
+    def test_uninstall_waits_for_service_to_unload_before_removing_plist(self, launchctl):
+        from subprocess import CompletedProcess
+
+        calls = []
+        launchctl.side_effect = lambda *args, **kwargs: (
+            calls.append(args) or CompletedProcess(args, 1, "", "")
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            launch_dir = root / "LaunchAgents"
+            launch_dir.mkdir()
+            plist = launch_dir / f"{_service_label(root)}.plist"
+            plist.write_bytes(b"old")
+            with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", launch_dir):
+                with patch.object(sys, "platform", "darwin"):
+                    uninstall_mcp_service(root)
+            self.assertFalse(plist.exists())
+
+        self.assertEqual(calls[0][0], "bootout")
+        self.assertEqual(calls[1][0], "print")
