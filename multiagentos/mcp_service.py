@@ -181,6 +181,37 @@ def _windows_task_xml(
     return xml.replace("encoding='utf-8'", "encoding='UTF-16'")
 
 
+def _wait_for_windows_task_stopped(
+    task_name: str,
+    *,
+    timeout: float = 5.0,
+) -> None:
+    deadline = time.monotonic() + timeout
+
+    while time.monotonic() < deadline:
+        result = _schtasks(
+            "/Query",
+            "/TN",
+            task_name,
+            "/FO",
+            "LIST",
+            "/V",
+            check=False,
+        )
+        if result.returncode != 0:
+            return
+
+        output = f"{result.stdout}\n{result.stderr}".lower()
+        if "status:" in output and "running" not in output:
+            return
+
+        time.sleep(0.1)
+
+    raise RuntimeError(
+        "Windows Task Scheduler task did not stop within the timeout: "
+        f"{task_name}"
+    )
+
 def _wait_for_endpoint(host: str, port: int, *, timeout: float = 30.0) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -286,6 +317,7 @@ def _install_windows(
 
     task_name = _windows_task_name(project_root)
     _schtasks("/End", "/TN", task_name, check=False)
+    _wait_for_windows_task_stopped(task_name)
     _schtasks("/Delete", "/TN", task_name, "/F", check=False)
 
     xml = _windows_task_xml(program_arguments, project_root=project_root)
@@ -356,6 +388,7 @@ def uninstall_mcp_service(project_root: Path = Path(".")) -> str:
 
     task_name = _windows_task_name(project_root)
     _schtasks("/End", "/TN", task_name, check=False)
+    _wait_for_windows_task_stopped(task_name)
     result = _schtasks("/Delete", "/TN", task_name, "/F", check=False)
     if result.returncode not in {0, 1}:
         raise subprocess.CalledProcessError(result.returncode, result.args, output=result.stdout, stderr=result.stderr)
