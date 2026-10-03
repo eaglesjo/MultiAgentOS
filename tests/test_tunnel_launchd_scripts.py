@@ -38,7 +38,11 @@ class TunnelLaunchdScriptTests(unittest.TestCase):
 
     def test_install_has_project_specific_keychain_and_health_address(self):
         install = (SCRIPTS / "install_tunnel_client_launchd.sh").read_text()
-        self.assertIn("multiagentos.tunnel.project.$PROJECT_ID.runtime-key", install)
+        self.assertIn(
+            'keychain = f"multiagentos.tunnel.project.{project_id}.runtime-key"',
+            install,
+        )
+        self.assertIn('KEYCHAIN_SERVICE=""', install)
         self.assertIn("HEALTH_LISTEN_ADDR", install)
         self.assertIn("MAOS_HEALTH_LISTEN_ADDR", install)
 
