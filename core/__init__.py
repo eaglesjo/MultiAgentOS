@@ -10,6 +10,8 @@ from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifi
 from core.contracts.human_review import HumanReviewDecision
 from core.contracts.resume import WorkflowResumeContext
 from core.contracts.handoff import ReviewContext
+from core.contracts.scope import ScopeLock
+from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.model_runtime import ModelAdapter, ModelRequest, ModelResponse
 from core.contracts.profile import DetectionResult, ProfileSpec
 from core.contracts.runtime import ExecutionRequest, RuntimeExecutor
@@ -26,7 +28,7 @@ __all__ = [
     "AgentExecutor", "ResultVerifier", "ResultReviewer", "ReviewDecision", "HumanReviewDecision", "WorkflowResumeContext", "WorkflowCheckpoint", "ReviewContext",
     "ModelAdapter", "ModelRequest", "ModelResponse",
     "ExecutionRequest", "RuntimeExecutor",
-    "DetectionResult", "ProfileSpec",
+    "DetectionResult", "ProfileSpec", "ScopeLock", "EvidenceKind", "EvidenceRecord",
     "Delegation", "DelegationEngine",
     "ExecutionInterrupted", "LifecycleCoordinator", "LifecycleError",
     "OrchestrationResult", "Orchestrator", "BasicPlanner", "WorkStateStore",
