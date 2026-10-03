@@ -77,7 +77,20 @@ class MCPServiceTests(unittest.TestCase):
     @patch("multiagentos.mcp_service._wait_for_endpoint", return_value=True)
     @patch("multiagentos.mcp_service._schtasks")
     def test_install_creates_and_runs_windows_task_without_visible_console(self, schtasks, wait_for_endpoint):
-        schtasks.return_value.returncode = 0
+        def schtasks_result(*args, **kwargs):
+            result = type(
+                "Result",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": "Status: Ready\\n" if args and args[0] == "/Query" else "",
+                    "stderr": "",
+                    "args": ["schtasks.exe", *args],
+                },
+            )()
+            return result
+
+        schtasks.side_effect = schtasks_result
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             with patch.object(sys, "platform", "win32"):
@@ -181,7 +194,20 @@ class MCPServiceTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "win32", "Windows Task Scheduler test")
     @patch("multiagentos.mcp_service._schtasks")
     def test_uninstall_windows_only_targets_project_task(self, schtasks):
-        schtasks.return_value.returncode = 0
+        def schtasks_result(*args, **kwargs):
+            result = type(
+                "Result",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": "Status: Ready\\n" if args and args[0] == "/Query" else "",
+                    "stderr": "",
+                    "args": ["schtasks.exe", *args],
+                },
+            )()
+            return result
+
+        schtasks.side_effect = schtasks_result
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             with patch.object(sys, "platform", "win32"):
