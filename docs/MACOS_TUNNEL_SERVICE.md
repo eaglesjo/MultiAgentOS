@@ -1,224 +1,90 @@
-# macOS tunnel-client Service
+# macOS project-scoped tunnel-client Service
 
-MultiAgentOS can run the OpenAI `tunnel-client` as a **project-scoped** per-user
-macOS `launchd` service alongside the local MCP service.
-
-The service identity is derived deterministically from the canonical project
-path:
-
-```
-project-id = SHA-256(canonical_project_root)[:12]
-
-multiagentos.tunnel.project.<project-id>
-```
-
-This is the same project identity used by the project-scoped MCP service:
-
-```
-multiagentos.mcp.project.<project-id>
-```
-
-A project therefore owns both local services independently. Installing,
-restarting, or removing one project's tunnel service must not affect another
-project's tunnel or MCP service.
-
-The current supported tunnel-client release path documents `tunnel-client run`
-as the daemon process and recommends `MCP_STARTUP_WAIT_TIMEOUT` when the local
-HTTP MCP listener may start after the client. MultiAgentOS uses that startup
-guard and lets launchd own process restart/relaunch.
+MultiAgentOS can run OpenAI's `tunnel-client` as a per-user macOS `launchd`
+service for each local project. The service identity is derived from the
+canonical project path, so multiple projects can coexist without sharing a
+launchd label, wrapper, log directory, or Keychain entry.
 
 ## Architecture
 
 ```
-macOS user login
-      |
-      +--> launchd
-      |      |
-      |      +--> Project A MCP
-      |      |      multiagentos.mcp.project.<A-ID>
-      |      |
-      |      +--> Project A tunnel-client
-      |             multiagentos.tunnel.project.<A-ID>
-      |
-      +--> Project B MCP
-      |      multiagentos.mcp.project.<B-ID>
-      |
-      +--> Project B tunnel-client
-             multiagentos.tunnel.project.<B-ID>
+Project A MCP :8002  <-- Tunnel A --> OpenAI Secure MCP Tunnel
+Project B MCP :8003  <-- Tunnel B --> OpenAI Secure MCP Tunnel
+Project C MCP :8004  <-- Tunnel C --> OpenAI Secure MCP Tunnel
 ```
 
-The OpenAI tunnel service remains OpenAI-hosted. MultiAgentOS only manages the
-local MCP server and local `tunnel-client` process.
+Each tunnel must point at the exact MCP endpoint belonging to its project.
+The MCP target is never inferred from a global/default port.
 
-## Project-scoped identity
-
-The installer accepts the project root explicitly:
-
-```bash
-bash scripts/macos/install_tunnel_client_launchd.sh \
-  --path /absolute/path/to/project
-```
-
-The installer canonicalizes that path and derives the project ID automatically.
-No manual service ID is required.
-
-Inspect the same MCP project identity with:
-
-```bash
-python3 -c '
-from pathlib import Path
-from multiagentos.mcp_service import _service_id, _service_label
-p = Path("/absolute/path/to/project").resolve()
-print("Project Root :", p)
-print("Project ID   :", _service_id(p))
-print("MCP Label    :", _service_label(p))
-print("Tunnel Label :", f"multiagentos.tunnel.project.{_service_id(p)}")
-'
-```
-
-Each project gets its own:
-
-- launchd label
-- LaunchAgent plist
-- wrapper script
-- log files
-- Keychain service name
-
-## Security model
-
-The Runtime API key is stored in the **macOS Keychain** under a
-project-scoped service name:
-
-```
-multiagentos.tunnel.project.<project-id>.runtime-key
-```
-
-The key is not written to:
-
-- the Git repository
-- the launchd plist
-- the generated wrapper command line
-- MultiAgentOS project configuration
-
-The wrapper retrieves the key from Keychain at process startup and exposes it
-only to `tunnel-client` through `CONTROL_PLANE_API_KEY`.
-
-The Runtime API key should remain a restricted key with Tunnels Read + Use.
-Do not use an admin key for this service.
+Each project also needs a unique local health address because the
+`tunnel-client` health listener is local to the machine.
 
 ## Install
 
-The MultiAgentOS MCP launchd service should already be installed for the same
-project:
+The project MCP service should already be running.
 
-```bash
-multiagentos mcp install \
-  --path /absolute/path/to/project \
-  --port 8000
-```
-
-Export the tunnel values in the installation shell:
+For PetTarotReading:
 
 ```bash
 export CONTROL_PLANE_TUNNEL_ID="tunnel_..."
 export CONTROL_PLANE_API_KEY="..."
-export MCP_SERVER_URL="http://127.0.0.1:8000/mcp"
-```
 
-Then install the project-scoped tunnel service:
-
-```bash
 bash scripts/macos/install_tunnel_client_launchd.sh \
-  --path /absolute/path/to/project
+  --path /Volumes/DevFiles/DevProjects/AppProjests/PetTarotReading \
+  --mcp-server-url http://127.0.0.1:8003/mcp \
+  --health-listen-addr 127.0.0.1:18081
 ```
 
-If `tunnel-client` is not on PATH:
+For another project, use that project's MCP endpoint and a different health
+port.
 
-```bash
-TUNNEL_CLIENT_BIN="/absolute/path/to/tunnel-client" \
-  bash scripts/macos/install_tunnel_client_launchd.sh \
-  --path /absolute/path/to/project
-```
+The Runtime API key is stored in the macOS Keychain and is not written to the
+launchd plist or generated wrapper.
 
-### Multiple projects
+## Project identity
 
-Each simultaneously running tunnel-client needs its own local health
-listener. For example:
-
-Project A:
-
-```bash
-MCP_SERVER_URL="http://127.0.0.1:8000/mcp" \
-HEALTH_LISTEN_ADDR="127.0.0.1:18080" \
-bash scripts/macos/install_tunnel_client_launchd.sh \
-  --path /absolute/path/to/project-a
-```
-
-Project B:
-
-```bash
-MCP_SERVER_URL="http://127.0.0.1:8001/mcp" \
-HEALTH_LISTEN_ADDR="127.0.0.1:18081" \
-bash scripts/macos/install_tunnel_client_launchd.sh \
-  --path /absolute/path/to/project-b
-```
-
-Do not reuse the same local health address for simultaneously running
-tunnel-client services.
-
-## Startup ordering
-
-Both MCP and tunnel services use `RunAtLoad` and `KeepAlive`.
-
-The tunnel client also uses:
+For a project root, MultiAgentOS derives:
 
 ```
-MCP_STARTUP_WAIT_TIMEOUT=60s
+SHA256(canonical_project_path)[:12]
 ```
 
-This is specifically intended for an HTTP MCP listener that may come up after
-the tunnel client. During this window, the client waits for the MCP listener
-before its first poll/discovery attempt.
+and uses it for:
+
+```
+multiagentos.tunnel.project.<project-id>
+```
+
+The generated wrapper and logs live under:
+
+```
+<project>/.multiagentos/
+```
+
+The Keychain service is also project-scoped.
+
+## Startup lifecycle
+
+The installer first boots out the previous service for the selected project,
+waits for launchd to report that it is unloaded, then bootstraps and kickstarts
+the new service. This avoids a stale launchd registration causing
+`bootstrap failed: 5` during reinstall.
 
 ## Verify
 
-Calculate the expected project-scoped label:
+For a project whose label is `multiagentos.tunnel.project.<project-id>`:
 
 ```bash
-python3 -c '
-from pathlib import Path
-from multiagentos.mcp_service import _service_id
-p = Path("/absolute/path/to/project").resolve()
-print(f"multiagentos.tunnel.project.{_service_id(p)}")
-'
+launchctl print gui/$(id -u)/multiagentos.tunnel.project.<project-id>
+curl -fsS http://127.0.0.1:18081/readyz
 ```
 
-Then inspect it:
-
-```bash
-launchctl print \
-  "gui/$(id -u)/multiagentos.tunnel.project.<project-id>"
-```
-
-Check tunnel-client readiness using the project's configured health address:
-
-```bash
-curl -fsS http://127.0.0.1:18080/readyz
-```
-
-Check detailed health:
-
-```bash
-curl -fsS 'http://127.0.0.1:18080/health?details=true'
-```
-
-The tunnel-client documentation treats `/readyz` as the primary local
-readiness signal; `control_plane_poll_health` is a separate component and
-should be inspected independently.
+The tunnel-client also exposes local health/readiness surfaces. Use
+`/readyz` as the readiness gate before testing the OpenAI-side connection.
 
 ## Logs
 
-Logs remain inside the project that owns the service:
+Each project keeps:
 
 ```
 <project>/.multiagentos/logs/tunnel-client-launchd.log
@@ -226,82 +92,18 @@ Logs remain inside the project that owns the service:
 <project>/.multiagentos/logs/tunnel-client.log
 ```
 
-## Stop / remove
-
-Remove only the selected project's service:
+## Remove
 
 ```bash
-PROJECT_ID="$(
-  python3 -c '
-from pathlib import Path
-import hashlib
-p = Path("/absolute/path/to/project").expanduser().resolve()
-print(hashlib.sha256(str(p).encode("utf-8")).hexdigest()[:12])
-'
-)"
-
-LABEL="multiagentos.tunnel.project.$PROJECT_ID"
-
-launchctl bootout "gui/$(id -u)/$LABEL" || true
-rm -f "$HOME/Library/LaunchAgents/$LABEL.plist"
-rm -f "/absolute/path/to/project/.multiagentos/tunnel-client-launchd.sh"
+bash scripts/macos/uninstall_tunnel_client_launchd.sh \
+  --path /Volumes/DevFiles/DevProjects/AppProjests/PetTarotReading
 ```
 
-Remove the selected project's Runtime API key from Keychain when it is no
-longer needed:
+Add `--delete-keychain` when the project's stored Runtime API key should also
+be removed.
 
-```bash
-security delete-generic-password \
-  -a "$USER" \
-  -s "multiagentos.tunnel.project.<project-id>.runtime-key"
-```
+## Operational rule
 
-These operations do not target another project's service.
-
-## Legacy global service
-
-Older installations may still have the legacy global service:
-
-```
-com.eaglesjo.multiagentos.tunnel-client
-```
-
-The project-scoped installer does **not** automatically remove that service.
-This avoids unexpectedly stopping an existing deployment during migration.
-
-For a migration, first verify the project-scoped service is healthy, then
-remove the legacy service explicitly if it is no longer needed.
-
-## Important runtime rule
-
-Do not run both:
-
-1. a `tunnel-client runtimes connect` managed runtime for the same deployment,
-2. and a launchd `tunnel-client run` service,
-
-at the same time unless you intentionally want multiple HTTP runtime replicas.
-
-The native `runtimes connect` flow is the official managed runtime lifecycle
-surface. The launchd integration here is specifically for macOS login/reboot
-process ownership.
-
-## Operational target
-
-After a reboot or user login:
-
-```
-launchd
-  |
-  +--> Project MCP
-  |      :8000
-  |
-  +--> Project tunnel-client
-         :18080/readyz
-         |
-         v
-     OpenAI Secure MCP Tunnel
-```
-
-For another project, use another MCP port and another local tunnel health
-port. This allows multiple project-scoped MCP + tunnel pairs to coexist on the
-same macOS user session.
+Do not run two tunnel clients for the same tunnel/project unless you
+intentionally want multiple replicas. Separate projects should use separate
+project-scoped services and point each service at its own private MCP endpoint.
