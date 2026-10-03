@@ -94,17 +94,11 @@ flowchart TB
 
 ### ローカルプロジェクト path
 
-```text
-ChatGPT Web
-    |
-    v
-Agent Execution Runtime MCP / Secure Tunnel
-    |
-    v
-Agent Execution Runtime
-    |
-    v
-Local Project
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> MCP["Agent Execution Runtime MCP / Secure Tunnel"]
+    MCP --> RUNTIME["Agent Execution Runtime"]
+    RUNTIME --> PROJECT["Local Project"]
 ```
 
 Agent Execution Runtimeには**1つのMCP Server**だけがあります。Secure MCP Tunnelと`tunnel-client`はtransport/connection infrastructureであり、別のMCP Serverではありません。
