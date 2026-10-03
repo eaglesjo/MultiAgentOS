@@ -8,6 +8,7 @@ from multiagentos import windows_launcher
 
 
 class WindowsLauncherTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "win32", "Windows launcher test")
     def test_main_forwards_mcp_serve_http_arguments(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
