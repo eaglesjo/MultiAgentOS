@@ -4,6 +4,7 @@ from agents.catalog import build_agent_catalog
 from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.scope import ScopeLock
 from core.contracts.work_unit import WorkStatus, WorkUnit
+from core.contracts.planning import PlanStep, WorkPlan
 from runtime.governance import smallest_sufficient_path, validate_evidence, validate_scope
 
 
@@ -60,6 +61,17 @@ class GovernanceMigrationTests(unittest.TestCase):
             work.resume_from_hold()
         work.resume_from_hold(authorized=True)
         self.assertEqual(work.status, WorkStatus.EXECUTING)
+
+    def test_plan_steps_carry_scope_lock(self):
+        step = PlanStep(
+            "edit",
+            "bounded edit",
+            "editor",
+            scope_lock=ScopeLock(allowed_files=("src/a.py",)),
+        )
+        WorkPlan("wu-plan", "edit", (step,)).validate()
+        self.assertTrue(step.scope_lock.allows("src/a.py"))
+        self.assertFalse(step.scope_lock.allows("src/b.py"))
 
     def test_smallest_sufficient_routes(self):
         self.assertEqual(
