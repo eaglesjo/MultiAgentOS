@@ -72,6 +72,11 @@ class MultiAgentRuntime:
         step_list = list(steps)
         plan = self.planner.plan(work_unit, step_list)
         plan.validate()
+        for step in plan.steps:
+            if not work_unit.scope_lock.contains(step.scope_lock):
+                raise ValueError(
+                    f"Plan step scope escapes WorkUnit scope: {step.id}"
+                )
         self._validate_agents(plan, agents, executors)
 
         completed: set[str] = set()
