@@ -219,11 +219,11 @@ The final connector/runtime step remains environment-specific and must be valida
 
 ### Streamable HTTP tunnel binding
 
-For the current OpenAI tunnel-client, a Streamable HTTP MCP server is configured with `MCP_SERVER_URL`. MultiAgentOS can therefore remain loopback-only when tunnel-client runs on the same host:
+For the current OpenAI tunnel-client, a Streamable HTTP MCP server is configured with `MCP_SERVER_URL`. **The tunnel target must be the exact MCP endpoint for the project being exposed. Do not rely on a default port.** For example, when PetTarotReading is the managed project on port `8003`, use `http://127.0.0.1:8003/mcp`. Port `8000` is only an example in generic documentation and must not be assumed to be a gateway. MultiAgentOS can therefore remain loopback-only when tunnel-client runs on the same host:
 
 ```bash
 multiagentos mcp serve-http --path /absolute/path/to/project --host 127.0.0.1 --port 8000
-export MCP_SERVER_URL=http://127.0.0.1:8000/mcp
+export MCP_SERVER_URL=http://127.0.0.1:8003/mcp
 ```
 
 The managed-runtime form is:
