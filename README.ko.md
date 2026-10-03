@@ -72,28 +72,17 @@ flowchart TB
 
 ## 멀티 에이전트 워크플로
 
-```text
-Request
-  |
-  v
-Orchestrator
-  |
-  v
-MultiAgentWorkflow
-  |
-  +--> Developer
-  |
-  +--> Tester
-  |
-  +--> Reviewer
-  |
-  +--> 필요한 경우 Rework
-  |
-  v
-Verification
-  |
-  v
-Completed / Failed
+```mermaid
+flowchart TB
+    REQUEST["Request"] --> ORCH["Orchestrator"]
+    ORCH --> WORKFLOW["MultiAgentWorkflow"]
+    WORKFLOW --> DEV["Developer"]
+    WORKFLOW --> TEST["Tester"]
+    WORKFLOW --> REVIEW["Reviewer"]
+    REVIEW --> REWORK{"Rework required?"}
+    REWORK -->|Yes| DEV
+    REWORK -->|No| VERIFY["Verification"]
+    VERIFY --> RESULT["Completed / Failed"]
 ```
 
 `Orchestrator.run_workflow()`가 안정적인 상위 오케스트레이션 진입점입니다. `MultiAgentWorkflow`가 구체적인 stage, handoff, review, rework 의미론을 담당하며, `MultiAgentRuntime`은 애플리케이션/runtime adapter로서 이 오케스트레이션 경계를 사용합니다.
