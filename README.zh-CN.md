@@ -86,14 +86,10 @@ Agent Execution Runtime 是 permission、filesystem、patch、process、Git 和 
 
 ### 远程 GitHub 路径
 
-```text
-ChatGPT Web
-    |
-    v
-ChatGPT Codex Connector
-    |
-    v
-GitHub Repository
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> CONNECTOR["ChatGPT Codex Connector"]
+    CONNECTOR --> GH["GitHub Repository"]
 ```
 
 ### 本地项目路径
