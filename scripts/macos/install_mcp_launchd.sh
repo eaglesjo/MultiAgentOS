@@ -48,45 +48,24 @@ fi
 echo "== Install/update MultiAgentOS MCP HTTP dependencies =="
 "$PYTHON" -m pip install -e "$PROJECT_ROOT[mcp-http]"
 
-export MAOS_PROJECT_ROOT="$PROJECT_ROOT"
-export MAOS_PYTHON="$PYTHON"
-export MAOS_PLIST="$PLIST_PATH"
-export MAOS_ALLOW_WRITE="$ALLOW_WRITE"
-export MAOS_ALLOW_PROCESS="$ALLOW_PROCESS"
+echo "== Register MultiAgentOS MCP launchd service =="
 
-"$PYTHON" - <<'PY'
-import os
-import plistlib
-from pathlib import Path
+ARGS=(
+  mcp install
+  --path "$PROJECT_ROOT"
+  --host "$HOST"
+  --port "$PORT"
+)
+if [[ "$ALLOW_WRITE" == "1" ]]; then
+  ARGS+=(--allow-write)
+fi
+if [[ "$ALLOW_PROCESS" == "1" ]]; then
+  ARGS+=(--allow-process)
+fi
 
-root = Path(os.environ["MAOS_PROJECT_ROOT"])
-python = os.environ["MAOS_PYTHON"]
-plist_path = Path(os.environ["MAOS_PLIST"])
+"$PYTHON" -m multiagentos.cli "${ARGS[@]}"
 
-args = [
-    python, "-m", "multiagentos.cli", "mcp", "serve-http",
-    "--path", str(root), "--host", "127.0.0.1", "--port", "8000",
-]
-if os.environ["MAOS_ALLOW_WRITE"] == "1":
-    args.append("--allow-write")
-if os.environ["MAOS_ALLOW_PROCESS"] == "1":
-    args.append("--allow-process")
-
-plist = {
-    "Label": "com.eaglesjo.multiagentos.mcp",
-    "ProgramArguments": args,
-    "WorkingDirectory": str(root),
-    "RunAtLoad": True,
-    "KeepAlive": True,
-    "ThrottleInterval": 5,
-    "ProcessType": "Background",
-    "StandardOutPath": str(root / ".multiagentos" / "logs" / "mcp-launchd.log"),
-    "StandardErrorPath": str(root / ".multiagentos" / "logs" / "mcp-launchd.error.log"),
-    "EnvironmentVariables": {"PYTHONUNBUFFERED": "1"},
-}
-plist_path.write_bytes(plistlib.dumps(plist))
-print(plist_path)
-PY
+"$PYTHON" -m multiagentos.cli mcp status --path "$PROJECT_ROOT"
 
 echo "== Stop previous service if present =="
 launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
