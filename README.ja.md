@@ -86,14 +86,10 @@ Agent Execution Runtimeはpermission、filesystem、patch、process、Git、veri
 
 ### リモートGitHub path
 
-```text
-ChatGPT Web
-    |
-    v
-ChatGPT Codex Connector
-    |
-    v
-GitHub Repository
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> CONNECTOR["ChatGPT Codex Connector"]
+    CONNECTOR --> GH["GitHub Repository"]
 ```
 
 ### ローカルプロジェクト path
