@@ -31,6 +31,7 @@ class MCPServiceTests(unittest.TestCase):
         status = build_parser().parse_args(["mcp", "status"])
         self.assertEqual(status.mcp_command, "status")
 
+    @unittest.skipUnless(sys.platform == "darwin", "macOS launchd test")
     @patch("multiagentos.mcp_service._launchctl")
     @patch("multiagentos.mcp_service.shutil.which", return_value="/usr/local/bin/multiagentos")
     def test_install_writes_keepalive_launch_agent(self, which, launchctl):
@@ -53,6 +54,7 @@ class MCPServiceTests(unittest.TestCase):
             self.assertIn("--allow-write", plist["ProgramArguments"])
             self.assertNotIn("--allow-process", plist["ProgramArguments"])
 
+    @unittest.skipUnless(sys.platform == "win32", "Windows Task Scheduler test")
     @patch("multiagentos.mcp_service._wait_for_endpoint", return_value=True)
     @patch("multiagentos.mcp_service._schtasks")
     def test_install_creates_and_runs_windows_task_without_visible_console(self, schtasks, wait_for_endpoint):
@@ -102,6 +104,7 @@ class MCPServiceTests(unittest.TestCase):
 
         wait_for_endpoint.assert_called_once_with("127.0.0.1", 8000)
 
+    @unittest.skipUnless(sys.platform == "win32", "Windows Task Scheduler test")
     @patch("multiagentos.mcp_service._schtasks")
     def test_windows_status_and_uninstall(self, schtasks):
         schtasks.return_value.returncode = 0
