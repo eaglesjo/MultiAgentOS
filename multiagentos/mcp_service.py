@@ -233,7 +233,7 @@ def _install_macos(
     LAUNCH_AGENTS_DIR.mkdir(parents=True, exist_ok=True)
 
     plist = {
-        "Label": LABEL,
+        "Label": _service_label(project_root),
         "ProgramArguments": program_arguments,
         "WorkingDirectory": str(project_root),
         "RunAtLoad": True,
@@ -260,7 +260,7 @@ def _install_macos(
                 output=bootstrap.stdout,
                 stderr=bootstrap.stderr,
             )
-    _launchctl("kickstart", "-k", _target())
+    _launchctl("kickstart", "-k", _target(project_root))
     _launchctl("print", _target(project_root))
 
     return (
@@ -279,6 +279,9 @@ def _install_windows(
 ) -> str:
     logs = project_root / ".multiagentos" / "logs"
     logs.mkdir(parents=True, exist_ok=True)
+
+    _schtasks("/End", "/TN", WINDOWS_TASK_NAME, check=False)
+    _schtasks("/Delete", "/TN", WINDOWS_TASK_NAME, "/F", check=False)
 
     xml = _windows_task_xml(program_arguments, project_root=project_root)
     xml_path = None
