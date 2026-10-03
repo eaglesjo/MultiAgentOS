@@ -33,39 +33,22 @@ Agent 提供意图、计划和结果，但不直接拥有 filesystem、process�
 
 ## 架构
 
-```text
-                         Web Browser
-                              |
-                              v
-                         ChatGPT Web
-                              |
-                    +---------+---------+
-                    |                   |
-                    v                   v
-       ChatGPT Codex Connector       Agent Execution Runtime
-                    |                MCP / Secure Tunnel
-                    v                   |
-            GitHub Repository            v
-                                  Local Project
-                    |                   |
-                    +---------+---------+
-                              |
-                              v
-                        MultiAgentOS
-                              |
-                              v
-                         Orchestrator
-                              |
-                              v
-                    MultiAgentWorkflow
-                     /       |       \
-               Developer   Tester   Reviewer
-                              |
-                              v
-                         Verification
-                              |
-                              v
-                           Agent Execution Runtime
+```mermaid
+flowchart TB
+    WEB["Web Browser"] --> CHATWEB["ChatGPT Web"]
+    CHATWEB --> CONNECTOR["ChatGPT Codex Connector"]
+    CHATWEB --> MCP["Agent Execution Runtime MCP / Secure Tunnel"]
+    CONNECTOR --> GH["GitHub Repository"]
+    MCP --> PROJECT["Local Project"]
+    GH --> MAOS["MultiAgentOS"]
+    PROJECT --> MAOS
+    MAOS --> ORCH["Orchestrator"]
+    ORCH --> WORKFLOW["MultiAgentWorkflow"]
+    WORKFLOW --> DEV["Developer"]
+    WORKFLOW --> TEST["Tester"]
+    WORKFLOW --> REVIEW["Reviewer"]
+    REVIEW --> VERIFY["Verification"]
+    VERIFY --> RUNTIME["Agent Execution Runtime"]
 ```
 
 ### 责任边界
@@ -82,28 +65,17 @@ Agent 提供意图、计划和结果，但不直接拥有 filesystem、process�
 
 ## 多智能体工作流
 
-```text
-Request
-  |
-  v
-Orchestrator
-  |
-  v
-MultiAgentWorkflow
-  |
-  +--> Developer
-  |
-  +--> Tester
-  |
-  +--> Reviewer
-  |
-  +--> 必要时 Rework
-  |
-  v
-Verification
-  |
-  v
-Completed / Failed
+```mermaid
+flowchart TB
+    REQUEST["Request"] --> ORCH["Orchestrator"]
+    ORCH --> WORKFLOW["MultiAgentWorkflow"]
+    WORKFLOW --> DEV["Developer"]
+    WORKFLOW --> TEST["Tester"]
+    WORKFLOW --> REVIEW["Reviewer"]
+    REVIEW --> REWORK{"Rework required?"}
+    REWORK -->|Yes| DEV
+    REWORK -->|No| VERIFY["Verification"]
+    VERIFY --> RESULT["Completed / Failed"]
 ```
 
 `Orchestrator.run_workflow()` 是稳定的上层编排入口。`MultiAgentWorkflow` 负责具体的 stage、handoff、review 和 rework 语义，`MultiAgentRuntime` 则作为 application/runtime adapter 使用这一编排边界。
@@ -114,29 +86,19 @@ Agent Execution Runtime 是 permission、filesystem、patch、process、Git 和 
 
 ### 远程 GitHub 路径
 
-```text
-ChatGPT Web
-    |
-    v
-ChatGPT Codex Connector
-    |
-    v
-GitHub Repository
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> CONNECTOR["ChatGPT Codex Connector"]
+    CONNECTOR --> GH["GitHub Repository"]
 ```
 
 ### 本地项目路径
 
-```text
-ChatGPT Web
-    |
-    v
-Agent Execution Runtime MCP / Secure Tunnel
-    |
-    v
-Agent Execution Runtime
-    |
-    v
-Local Project
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> MCP["Agent Execution Runtime MCP / Secure Tunnel"]
+    MCP --> RUNTIME["Agent Execution Runtime"]
+    RUNTIME --> PROJECT["Local Project"]
 ```
 
 Agent Execution Runtime **只有一个 MCP Server**。Secure MCP Tunnel 和 `tunnel-client` 是 transport/connection infrastructure，而不是第二个 MCP Server。

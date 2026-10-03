@@ -1,4 +1,4 @@
-"""Built-in specialist agent definitions."""
+"""Built-in specialist and governance execution-role definitions."""
 
 from core.contracts.agent import AgentContract
 
@@ -10,6 +10,56 @@ _COMMON = {
     "tester": ({"testing"}, {"filesystem.read", "process"}),
     "debugger": ({"debugging"}, {"filesystem.read", "process"}),
     "reviewer": ({"review"}, {"filesystem.read"}),
+}
+
+# PetTarotReading execution roles are represented as native AgentContract
+# entries. They do not introduce a second orchestration/runtime layer.
+_GOVERNANCE_ROLES = {
+    "file-picker": (
+        {"discovery"},
+        {"filesystem.read"},
+        frozenset({"filesystem.read"}),
+    ),
+    "planner": (
+        {"planning", "scope"},
+        {"filesystem.read"},
+        frozenset({"filesystem.read"}),
+    ),
+    "web-researcher": (
+        {"research"},
+        {"network.read"},
+        frozenset({"network.read"}),
+    ),
+    "editor": (
+        {"editing", "scope-aware"},
+        {"filesystem.read", "filesystem.write"},
+        frozenset({"filesystem.read", "filesystem.write"}),
+    ),
+    "executor": (
+        {"execution", "validation"},
+        {"filesystem.read", "filesystem.write", "process"},
+        frozenset({"filesystem.read", "filesystem.write", "process"}),
+    ),
+    "terminal-monitor": (
+        {"monitoring"},
+        {"process.read"},
+        frozenset({"process.read"}),
+    ),
+    "reviewer": (
+        {"review", "evidence"},
+        {"filesystem.read"},
+        frozenset({"filesystem.read"}),
+    ),
+    "browser-agent": (
+        {"browser-validation"},
+        {"browser"},
+        frozenset({"browser"}),
+    ),
+    "debugger": (
+        {"debugging", "scope-aware"},
+        {"filesystem.read", "filesystem.write", "process"},
+        frozenset({"filesystem.read", "filesystem.write", "process"}),
+    ),
 }
 
 _PROFILE_SPECIALISTS = {
@@ -37,16 +87,32 @@ _PROFILE_SPECIALISTS = {
 
 def build_agent_catalog(profile_ids: tuple[str, ...] = ()) -> tuple[AgentContract, ...]:
     definitions: dict[str, tuple[set[str], set[str]]] = dict(_COMMON)
+    definitions.update(
+        {agent_id: (capabilities, tools) for agent_id, (capabilities, tools, _) in _GOVERNANCE_ROLES.items()}
+    )
     for profile_id in profile_ids:
         definitions.update(_PROFILE_SPECIALISTS.get(profile_id, {}))
-    return tuple(
-        AgentContract(
-            id=agent_id,
-            role=agent_id,
-            capabilities=frozenset(capabilities),
-            tools=frozenset(tools),
-            metadata={"profiles": list(profile_ids)},
-            kind="specialist",
+
+    agents = []
+    for agent_id, (capabilities, tools) in sorted(definitions.items()):
+        governance = _GOVERNANCE_ROLES.get(agent_id)
+        permissions = governance[2] if governance else frozenset(tools)
+        metadata = {"profiles": list(profile_ids)}
+        if governance:
+            metadata.update({
+                "execution_role": True,
+                "governance_source": "PetTarotReading",
+            })
+        agents.append(
+            AgentContract(
+                id=agent_id,
+                role=agent_id,
+                capabilities=frozenset(capabilities),
+                tools=frozenset(tools),
+                permissions=permissions,
+                metadata=metadata,
+                kind="specialist",
+                scope_aware=True,
+            )
         )
-        for agent_id, (capabilities, tools) in sorted(definitions.items())
-    )
+    return tuple(agents)

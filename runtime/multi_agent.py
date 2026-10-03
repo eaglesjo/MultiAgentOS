@@ -15,6 +15,7 @@ from core.handoff import HandoffManager
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.planning import BasicPlanner
 from core.state import WorkStateStore
+from runtime.governance import validate_scope
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,11 @@ class MultiAgentRuntime:
         Planning and dependency validation stay here as an application adapter.
         Execution orchestration is owned by Orchestrator -> MultiAgentWorkflow.
         """
+        if work_unit.status is WorkStatus.HOLD:
+            raise PermissionError("WorkUnit is on HOLD; explicit authorization is required before execution")
+        scope_check = validate_scope(work_unit.scope_lock)
+        if not scope_check.passed:
+            raise ValueError("Invalid WorkUnit scope: " + "; ".join(scope_check.findings))
         step_list = list(steps)
         plan = self.planner.plan(work_unit, step_list)
         plan.validate()

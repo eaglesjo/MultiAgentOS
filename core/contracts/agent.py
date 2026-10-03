@@ -14,6 +14,7 @@ class AgentContract:
     model_ids: tuple[str, ...] = ()
     metadata: dict[str, object] = field(default_factory=dict)
     kind: str = "custom"
+    scope_aware: bool = True
 
 
 class AgentRuntime(Protocol):

@@ -33,39 +33,22 @@ Agentは意図・計画・結果を提供しますが、filesystem、process、p
 
 ## アーキテクチャ
 
-```text
-                         Web Browser
-                              |
-                              v
-                         ChatGPT Web
-                              |
-                    +---------+---------+
-                    |                   |
-                    v                   v
-       ChatGPT Codex Connector       Agent Execution Runtime
-                    |                MCP / Secure Tunnel
-                    v                   |
-            GitHub Repository            v
-                                  Local Project
-                    |                   |
-                    +---------+---------+
-                              |
-                              v
-                        MultiAgentOS
-                              |
-                              v
-                         Orchestrator
-                              |
-                              v
-                    MultiAgentWorkflow
-                     /       |       \
-               Developer   Tester   Reviewer
-                              |
-                              v
-                         Verification
-                              |
-                              v
-                           Agent Execution Runtime
+```mermaid
+flowchart TB
+    WEB["Web Browser"] --> CHATWEB["ChatGPT Web"]
+    CHATWEB --> CONNECTOR["ChatGPT Codex Connector"]
+    CHATWEB --> MCP["Agent Execution Runtime MCP / Secure Tunnel"]
+    CONNECTOR --> GH["GitHub Repository"]
+    MCP --> PROJECT["Local Project"]
+    GH --> MAOS["MultiAgentOS"]
+    PROJECT --> MAOS
+    MAOS --> ORCH["Orchestrator"]
+    ORCH --> WORKFLOW["MultiAgentWorkflow"]
+    WORKFLOW --> DEV["Developer"]
+    WORKFLOW --> TEST["Tester"]
+    WORKFLOW --> REVIEW["Reviewer"]
+    REVIEW --> VERIFY["Verification"]
+    VERIFY --> RUNTIME["Agent Execution Runtime"]
 ```
 
 ### 責任境界
@@ -82,28 +65,17 @@ Agentは意図・計画・結果を提供しますが、filesystem、process、p
 
 ## マルチエージェントワークフロー
 
-```text
-Request
-  |
-  v
-Orchestrator
-  |
-  v
-MultiAgentWorkflow
-  |
-  +--> Developer
-  |
-  +--> Tester
-  |
-  +--> Reviewer
-  |
-  +--> 必要に応じて Rework
-  |
-  v
-Verification
-  |
-  v
-Completed / Failed
+```mermaid
+flowchart TB
+    REQUEST["Request"] --> ORCH["Orchestrator"]
+    ORCH --> WORKFLOW["MultiAgentWorkflow"]
+    WORKFLOW --> DEV["Developer"]
+    WORKFLOW --> TEST["Tester"]
+    WORKFLOW --> REVIEW["Reviewer"]
+    REVIEW --> REWORK{"Rework required?"}
+    REWORK -->|Yes| DEV
+    REWORK -->|No| VERIFY["Verification"]
+    VERIFY --> RESULT["Completed / Failed"]
 ```
 
 `Orchestrator.run_workflow()` が安定した上位オーケストレーション入口です。`MultiAgentWorkflow` が具体的なstage、handoff、review、reworkの意味論を管理し、`MultiAgentRuntime` はアプリケーション/runtime adapterとしてこの境界を利用します。
@@ -114,29 +86,19 @@ Agent Execution Runtimeはpermission、filesystem、patch、process、Git、veri
 
 ### リモートGitHub path
 
-```text
-ChatGPT Web
-    |
-    v
-ChatGPT Codex Connector
-    |
-    v
-GitHub Repository
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> CONNECTOR["ChatGPT Codex Connector"]
+    CONNECTOR --> GH["GitHub Repository"]
 ```
 
 ### ローカルプロジェクト path
 
-```text
-ChatGPT Web
-    |
-    v
-Agent Execution Runtime MCP / Secure Tunnel
-    |
-    v
-Agent Execution Runtime
-    |
-    v
-Local Project
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> MCP["Agent Execution Runtime MCP / Secure Tunnel"]
+    MCP --> RUNTIME["Agent Execution Runtime"]
+    RUNTIME --> PROJECT["Local Project"]
 ```
 
 Agent Execution Runtimeには**1つのMCP Server**だけがあります。Secure MCP Tunnelと`tunnel-client`はtransport/connection infrastructureであり、別のMCP Serverではありません。

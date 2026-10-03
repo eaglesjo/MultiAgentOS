@@ -23,44 +23,24 @@ Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, G
 
 ## 아키텍처
 
-```text
-                         Web Browser
-                              |
-                              v
-                         ChatGPT Web
-                         /          \
-                        v            v
-       ChatGPT Codex Connector   Agent Execution Runtime MCP
-                    |                  |
-                    v                  v
-            GitHub Repository      Local Project
-
-                         ChatGPT Mobile
-                              |
-                              v
-                    ChatGPT Codex Connector
-                              |
-                              v
-                       GitHub Repository
-                    |                   |
-                    +---------+---------+
-                              |
-                              v
-                        MultiAgentOS
-                              |
-                              v
-                         Orchestrator
-                              |
-                              v
-                    MultiAgentWorkflow
-                     /       |       \
-               Developer   Tester   Reviewer
-                              |
-                              v
-                         Verification
-                              |
-                              v
-                           Agent Execution Runtime
+```mermaid
+flowchart TB
+    WEB["Web Browser"] --> CHATWEB["ChatGPT Web"]
+    CHATWEB --> CONNECTOR["ChatGPT Codex Connector"]
+    CHATWEB --> MCP["Agent Execution Runtime MCP"]
+    CONNECTOR --> GH["GitHub Repository"]
+    MCP --> PROJECT["Local Project"]
+    MOBILE["ChatGPT Mobile"] --> MOBILE_CONNECTOR["ChatGPT Codex Connector"]
+    MOBILE_CONNECTOR --> GH
+    GH --> MAOS["MultiAgentOS"]
+    PROJECT --> MAOS
+    MAOS --> ORCH["Orchestrator"]
+    ORCH --> WORKFLOW["MultiAgentWorkflow"]
+    WORKFLOW --> DEV["Developer"]
+    WORKFLOW --> TEST["Tester"]
+    WORKFLOW --> REVIEW["Reviewer"]
+    REVIEW --> VERIFY["Verification"]
+    VERIFY --> RUNTIME["Agent Execution Runtime"]
 ```
 
 ### ChatGPT 클라이언트 검증 범위
@@ -92,28 +72,17 @@ Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, G
 
 ## 멀티 에이전트 워크플로
 
-```text
-Request
-  |
-  v
-Orchestrator
-  |
-  v
-MultiAgentWorkflow
-  |
-  +--> Developer
-  |
-  +--> Tester
-  |
-  +--> Reviewer
-  |
-  +--> 필요한 경우 Rework
-  |
-  v
-Verification
-  |
-  v
-Completed / Failed
+```mermaid
+flowchart TB
+    REQUEST["Request"] --> ORCH["Orchestrator"]
+    ORCH --> WORKFLOW["MultiAgentWorkflow"]
+    WORKFLOW --> DEV["Developer"]
+    WORKFLOW --> TEST["Tester"]
+    WORKFLOW --> REVIEW["Reviewer"]
+    REVIEW --> REWORK{"Rework required?"}
+    REWORK -->|Yes| DEV
+    REWORK -->|No| VERIFY["Verification"]
+    VERIFY --> RESULT["Completed / Failed"]
 ```
 
 `Orchestrator.run_workflow()`가 안정적인 상위 오케스트레이션 진입점입니다. `MultiAgentWorkflow`가 구체적인 stage, handoff, review, rework 의미론을 담당하며, `MultiAgentRuntime`은 애플리케이션/runtime adapter로서 이 오케스트레이션 경계를 사용합니다.
@@ -124,29 +93,19 @@ Agent Execution Runtime은 permission, filesystem, patch, process, Git, verifica
 
 ### ChatGPT Web — GitHub 경로
 
-```text
-ChatGPT Web
-    |
-    v
-ChatGPT Codex Connector
-    |
-    v
-GitHub Repository
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> CONNECTOR["ChatGPT Codex Connector"]
+    CONNECTOR --> GH["GitHub Repository"]
 ```
 
 ### ChatGPT Web — 로컬 프로젝트 경로
 
-```text
-ChatGPT Web
-    |
-    v
-127.0.0.1:8000/mcp
-    |
-    v
-MultiAgentOS MCP
-    |
-    v
-Local Project
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> MCP["127.0.0.1:8000/mcp"]
+    MCP --> MAOS["MultiAgentOS MCP"]
+    MAOS --> PROJECT["Local Project"]
 ```
 
 로컬 Agent Execution Runtime MCP Server가 기본 경로입니다. 현재 검증 환경에서는 ChatGPT Web이 이 로컬 MCP를 직접 사용할 수 있으며, ChatGPT Mobile에서는 사용할 수 없습니다. 로컬 MCP Client도 독립적으로 사용할 수 있습니다. Secure MCP Tunnel은 기본 경로에 필요하지 않습니다.
