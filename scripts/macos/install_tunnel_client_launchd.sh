@@ -8,7 +8,7 @@ PLIST_PATH="$LAUNCH_AGENTS_DIR/$LABEL.plist"
 WRAPPER_PATH="$PROJECT_ROOT/.multiagentos/tunnel-client-launchd.sh"
 KEYCHAIN_SERVICE="com.eaglesjo.multiagentos.tunnel-client.runtime-key"
 TUNNEL_ID="${CONTROL_PLANE_TUNNEL_ID:-}"
-MCP_SERVER_URL="${MCP_SERVER_URL:-http://127.0.0.1:8000/mcp}"
+MCP_SERVER_URL="${MCP_SERVER_URL:-}"
 TUNNEL_CLIENT_BIN="${TUNNEL_CLIENT_BIN:-}"
 
 usage() {
@@ -24,7 +24,7 @@ Required environment:
   CONTROL_PLANE_API_KEY
 
 Optional environment:
-  MCP_SERVER_URL (default: http://127.0.0.1:8000/mcp)
+  MCP_SERVER_URL (required; point at the project MCP endpoint, e.g. http://127.0.0.1:8003/mcp)
   TUNNEL_CLIENT_BIN (default: resolve tunnel-client from PATH)
 EOF
 }
@@ -44,6 +44,13 @@ fi
 
 if [[ -z "$TUNNEL_ID" ]]; then
   echo "ERROR: CONTROL_PLANE_TUNNEL_ID is required." >&2
+  exit 1
+fi
+
+if [[ -z "$MCP_SERVER_URL" ]]; then
+  echo "ERROR: MCP_SERVER_URL is required." >&2
+  echo "Set it to the exact project MCP endpoint, for example:" >&2
+  echo "  export MCP_SERVER_URL=http://127.0.0.1:8003/mcp" >&2
   exit 1
 fi
 
