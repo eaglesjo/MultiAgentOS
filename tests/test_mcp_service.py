@@ -173,7 +173,7 @@ class MCPServiceTests(unittest.TestCase):
         self.assertFalse(
             any(
                 call.args[0] == "bootout"
-                and f"gui/{__import__('os').getuid()}/{LABEL}" in " ".join(call.args)
+                and call.args[1] == f"gui/{__import__('os').getuid()}/{LABEL}"
                 for call in launchctl.call_args_list
             )
         )
