@@ -23,44 +23,24 @@ Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, G
 
 ## 아키텍처
 
-```text
-                         Web Browser
-                              |
-                              v
-                         ChatGPT Web
-                         /          \
-                        v            v
-       ChatGPT Codex Connector   Agent Execution Runtime MCP
-                    |                  |
-                    v                  v
-            GitHub Repository      Local Project
-
-                         ChatGPT Mobile
-                              |
-                              v
-                    ChatGPT Codex Connector
-                              |
-                              v
-                       GitHub Repository
-                    |                   |
-                    +---------+---------+
-                              |
-                              v
-                        MultiAgentOS
-                              |
-                              v
-                         Orchestrator
-                              |
-                              v
-                    MultiAgentWorkflow
-                     /       |       \
-               Developer   Tester   Reviewer
-                              |
-                              v
-                         Verification
-                              |
-                              v
-                           Agent Execution Runtime
+```mermaid
+flowchart TB
+    WEB["Web Browser"] --> CHATWEB["ChatGPT Web"]
+    CHATWEB --> CONNECTOR["ChatGPT Codex Connector"]
+    CHATWEB --> MCP["Agent Execution Runtime MCP"]
+    CONNECTOR --> GH["GitHub Repository"]
+    MCP --> PROJECT["Local Project"]
+    MOBILE["ChatGPT Mobile"] --> MOBILE_CONNECTOR["ChatGPT Codex Connector"]
+    MOBILE_CONNECTOR --> GH
+    GH --> MAOS["MultiAgentOS"]
+    PROJECT --> MAOS
+    MAOS --> ORCH["Orchestrator"]
+    ORCH --> WORKFLOW["MultiAgentWorkflow"]
+    WORKFLOW --> DEV["Developer"]
+    WORKFLOW --> TEST["Tester"]
+    WORKFLOW --> REVIEW["Reviewer"]
+    REVIEW --> VERIFY["Verification"]
+    VERIFY --> RUNTIME["Agent Execution Runtime"]
 ```
 
 ### ChatGPT 클라이언트 검증 범위
