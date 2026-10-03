@@ -15,7 +15,7 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-LABEL = "com.eaglesjo.multiagentos.mcp"
+LABEL = "multiagentos.mcp.project"
 WINDOWS_TASK_NAME = "MultiAgentOS Local MCP"
 LAUNCH_AGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
 PLIST_PATH = LAUNCH_AGENTS_DIR / f"{LABEL}.plist"
