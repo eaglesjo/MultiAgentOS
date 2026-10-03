@@ -1,23 +1,26 @@
 #!/bin/bash
 set -euo pipefail
 
-LABEL="com.eaglesjo.multiagentos.tunnel-client"
+LABEL_PREFIX="multiagentos.tunnel.project"
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
-PLIST_PATH="$LAUNCH_AGENTS_DIR/$LABEL.plist"
-WRAPPER_PATH="$PROJECT_ROOT/.multiagentos/tunnel-client-launchd.sh"
-KEYCHAIN_SERVICE="com.eaglesjo.multiagentos.tunnel-client.runtime-key"
+PROJECT_ID=""
+LABEL=""
+PLIST_PATH=""
+WRAPPER_PATH=""
+KEYCHAIN_SERVICE=""
 TUNNEL_ID="${CONTROL_PLANE_TUNNEL_ID:-}"
 MCP_SERVER_URL="${MCP_SERVER_URL:-http://127.0.0.1:8000/mcp}"
+HEALTH_LISTEN_ADDR="${HEALTH_LISTEN_ADDR:-127.0.0.1:18080}"
 TUNNEL_CLIENT_BIN="${TUNNEL_CLIENT_BIN:-}"
 
 usage() {
   cat <<EOF
-Usage: $0
+Usage: $0 --path <project-root>
 
-Installs the MultiAgentOS OpenAI tunnel-client as a per-user macOS launchd
-service. The runtime API key is stored in the macOS Keychain and is never
-written to the launchd plist or repository.
+Installs the MultiAgentOS OpenAI tunnel-client as a project-scoped per-user
+macOS launchd service. The service identity is derived from the canonical
+project path so multiple projects can coexist safely.
 
 Required environment:
   CONTROL_PLANE_TUNNEL_ID
@@ -25,17 +28,27 @@ Required environment:
 
 Optional environment:
   MCP_SERVER_URL (default: http://127.0.0.1:8000/mcp)
+  HEALTH_LISTEN_ADDR (default: 127.0.0.1:18080)
   TUNNEL_CLIENT_BIN (default: resolve tunnel-client from PATH)
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --path)
+      [[ $# -ge 2 ]] || { echo "ERROR: --path requires a value." >&2; usage >&2; exit 2; }
+      PROJECT_ROOT="$2"
+      shift 2
+      ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
-  shift
 done
+
+PROJECT_ROOT="$(cd "$PROJECT_ROOT" 2>/dev/null && pwd)" || {
+  echo "ERROR: project root not found: $PROJECT_ROOT" >&2
+  exit 1
+}
 
 if [[ ! -f "$PROJECT_ROOT/pyproject.toml" ]]; then
   echo "ERROR: MultiAgentOS project root not found: $PROJECT_ROOT" >&2
@@ -63,6 +76,23 @@ if [[ -z "$TUNNEL_CLIENT_BIN" || ! -x "$TUNNEL_CLIENT_BIN" ]]; then
 fi
 TUNNEL_CLIENT_BIN="$(cd "$(dirname "$TUNNEL_CLIENT_BIN")" && pwd)/$(basename "$TUNNEL_CLIENT_BIN")"
 
+read -r PROJECT_ID LABEL PLIST_PATH WRAPPER_PATH KEYCHAIN_SERVICE <<EOF
+$(PROJECT_ROOT="$PROJECT_ROOT" python3 - <<'PY'
+import hashlib
+import os
+from pathlib import Path
+
+root = Path(os.environ["PROJECT_ROOT"]).expanduser().resolve()
+project_id = hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:12]
+label = f"multiagentos.tunnel.project.{project_id}"
+plist = Path.home() / "Library" / "LaunchAgents" / f"{label}.plist"
+wrapper = root / ".multiagentos" / "tunnel-client-launchd.sh"
+keychain = f"multiagentos.tunnel.project.{project_id}.runtime-key"
+print(project_id, label, plist, wrapper, keychain)
+PY
+)
+EOF
+
 mkdir -p "$LAUNCH_AGENTS_DIR" "$PROJECT_ROOT/.multiagentos/logs"
 
 echo "== Store runtime key in macOS Keychain =="
@@ -80,15 +110,17 @@ export MAOS_KEYCHAIN_SERVICE="$KEYCHAIN_SERVICE"
 export MAOS_TUNNEL_ID="$TUNNEL_ID"
 export MAOS_MCP_SERVER_URL="$MCP_SERVER_URL"
 export MAOS_TUNNEL_CLIENT_BIN="$TUNNEL_CLIENT_BIN"
+export MAOS_HEALTH_LISTEN_ADDR="$HEALTH_LISTEN_ADDR"
 
 cat > "$WRAPPER_PATH" <<'EOF'
 #!/bin/bash
 set -euo pipefail
 
-KEYCHAIN_SERVICE="com.eaglesjo.multiagentos.tunnel-client.runtime-key"
+KEYCHAIN_SERVICE="__KEYCHAIN_SERVICE__"
 TUNNEL_ID="__TUNNEL_ID__"
 MCP_SERVER_URL="__MCP_SERVER_URL__"
 TUNNEL_CLIENT_BIN="__TUNNEL_CLIENT_BIN__"
+HEALTH_LISTEN_ADDR="__HEALTH_LISTEN_ADDR__"
 LOG_DIR="__LOG_DIR__"
 
 mkdir -p "$LOG_DIR"
@@ -98,7 +130,7 @@ export CONTROL_PLANE_API_KEY
 export CONTROL_PLANE_TUNNEL_ID="$TUNNEL_ID"
 export MCP_SERVER_URL="$MCP_SERVER_URL"
 export MCP_STARTUP_WAIT_TIMEOUT="60s"
-export HEALTH_LISTEN_ADDR="127.0.0.1:18080"
+export HEALTH_LISTEN_ADDR="$HEALTH_LISTEN_ADDR"
 export LOG_LEVEL="info"
 export LOG_FORMAT="struct-text"
 export LOG_FILE="$LOG_DIR/tunnel-client.log"
@@ -116,9 +148,11 @@ from pathlib import Path
 wrapper = Path(os.environ["MAOS_WRAPPER"])
 text = wrapper.read_text()
 replacements = {
+    "__KEYCHAIN_SERVICE__": os.environ["MAOS_KEYCHAIN_SERVICE"],
     "__TUNNEL_ID__": os.environ["MAOS_TUNNEL_ID"],
     "__MCP_SERVER_URL__": os.environ["MAOS_MCP_SERVER_URL"],
     "__TUNNEL_CLIENT_BIN__": os.environ["MAOS_TUNNEL_CLIENT_BIN"],
+    "__HEALTH_LISTEN_ADDR__": os.environ["MAOS_HEALTH_LISTEN_ADDR"],
     "__LOG_DIR__": str(Path(os.environ["MAOS_PROJECT_ROOT"]) / ".multiagentos" / "logs"),
 }
 for old, new in replacements.items():
@@ -155,23 +189,25 @@ plist_path.write_bytes(plistlib.dumps(plist))
 print(plist_path)
 PY
 
-echo "== Stop previous launchd service if present =="
+echo "== Stop previous project tunnel service if present =="
 launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
 
-echo "== Register tunnel-client launchd service =="
+echo "== Register project tunnel-client launchd service =="
 launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
 
-echo "== Start tunnel-client launchd service =="
+echo "== Start project tunnel-client launchd service =="
 launchctl kickstart -k "gui/$(id -u)/$LABEL"
 
 echo
-echo "MultiAgentOS tunnel-client launchd service installed."
-echo "  label:    $LABEL"
-echo "  tunnel:   $TUNNEL_ID"
-echo "  MCP:      $MCP_SERVER_URL"
-echo "  health:   http://127.0.0.1:18080"
-echo "  key:      macOS Keychain ($KEYCHAIN_SERVICE)"
+echo "MultiAgentOS project-scoped tunnel-client launchd service installed."
+echo "  project:    $PROJECT_ROOT"
+echo "  project-id: $PROJECT_ID"
+echo "  label:      $LABEL"
+echo "  tunnel:     $TUNNEL_ID"
+echo "  MCP:        $MCP_SERVER_URL"
+echo "  health:     http://$HEALTH_LISTEN_ADDR"
+echo "  key:        macOS Keychain ($KEYCHAIN_SERVICE)"
 echo
 echo "Verify:"
 echo "  launchctl print gui/$(id -u)/$LABEL"
-echo "  curl -fsS http://127.0.0.1:18080/readyz"
+echo "  curl -fsS http://$HEALTH_LISTEN_ADDR/readyz"
