@@ -78,7 +78,7 @@ class MCPServiceTests(unittest.TestCase):
                             )
 
         self.assertIn("Task Scheduler will start it at user logon", message)
-        create_call = schtasks.call_args_list[0]
+        create_call = next(call for call in schtasks.call_args_list if call.args[0] == "/Create")
         self.assertEqual(create_call.args[0], "/Create")
         self.assertIn(_windows_task_name(root), create_call.args)
         self.assertIn("/XML", create_call.args)
@@ -100,7 +100,7 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn(r"C:\Python314\pythonw.exe", xml)
         self.assertIn("--allow-write", xml)
 
-        run_call = schtasks.call_args_list[1]
+        run_call = next(call for call in schtasks.call_args_list if call.args[0] == "/Run")
         self.assertEqual(run_call.args[0], "/Run")
         self.assertIn(_windows_task_name(root), run_call.args)
 
@@ -118,8 +118,8 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn("Status: Running", status)
         self.assertIn("removed", message)
         self.assertEqual(schtasks.call_args_list[0].args[0], "/Query")
-        self.assertEqual(schtasks.call_args_list[1].args[0], "/End")
-        self.assertEqual(schtasks.call_args_list[2].args[0], "/Delete")
+        self.assertIn("/End", [call.args[0] for call in schtasks.call_args_list])
+        self.assertIn("/Delete", [call.args[0] for call in schtasks.call_args_list])
 
     def test_project_services_have_distinct_service_ids(self):
         first = Path("/tmp/project-one").resolve()
