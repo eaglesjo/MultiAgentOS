@@ -6,6 +6,7 @@ from core.contracts.scope import ScopeLock
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.planning import PlanStep, WorkPlan
 from runtime.governance import smallest_sufficient_path, validate_evidence, validate_scope
+from runtime.multi_agent import MultiAgentRuntime
 
 
 class GovernanceMigrationTests(unittest.TestCase):
@@ -72,6 +73,20 @@ class GovernanceMigrationTests(unittest.TestCase):
         WorkPlan("wu-plan", "edit", (step,)).validate()
         self.assertTrue(step.scope_lock.allows("src/a.py"))
         self.assertFalse(step.scope_lock.allows("src/b.py"))
+
+    def test_runtime_rejects_hold_without_authorization(self):
+        work = WorkUnit("wu-runtime-hold", "pause")
+        work.transition(WorkStatus.EXECUTING)
+        work.hold("awaiting user decision")
+        with self.assertRaises(PermissionError):
+            MultiAgentRuntime().run(
+                project_root=__import__("pathlib").Path("."),
+                work_unit=work,
+                steps=(),
+                agents={},
+                models=[],
+                executors={},
+            )
 
     def test_smallest_sufficient_routes(self):
         self.assertEqual(
