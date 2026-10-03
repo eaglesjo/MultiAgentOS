@@ -15,7 +15,7 @@ macOS user login
       |
       +--> launchd
       |      |
-      |      +--> MultiAgentOS MCP :8000
+      |      +--> Project MCP (for example :8003)
       |      |
       |      +--> tunnel-client :18080 health
       |               |
@@ -63,7 +63,7 @@ Export the existing tunnel values in the installation shell:
 ```bash
 export CONTROL_PLANE_TUNNEL_ID="tunnel_..."
 export CONTROL_PLANE_API_KEY="..."
-export MCP_SERVER_URL="http://127.0.0.1:8000/mcp"
+export MCP_SERVER_URL="http://127.0.0.1:8003/mcp"
 ```
 
 Then install the tunnel service:
