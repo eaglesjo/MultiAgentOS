@@ -202,7 +202,8 @@ class MCPServiceTests(unittest.TestCase):
         second = Path("/tmp/project-two").resolve()
         self.assertNotEqual(_service_label(first), _service_label(second))
         self.assertNotEqual(_windows_task_name(first), _windows_task_name(second))
-        self.assertTrue(_service_label(first).startswith(LABEL + "."))
+        self.assertTrue(_service_label(first).startswith("multiagentos.mcp.project."))
+        self.assertNotIn("eaglesjo", _service_label(first))
         self.assertTrue(_windows_task_name(first).startswith(WINDOWS_TASK_NAME + " ("))
 
 if __name__ == "__main__":
