@@ -175,6 +175,28 @@ The local Agent Execution Runtime MCP server is the default development path. In
 
 Secure MCP Tunnel is an optional remote-connection layer for clients that need to reach a private local MCP server from outside the machine. It is not required for the cost-free local MCP baseline.
 
+### Secure MCP Tunnel project boundary
+
+For projects that need remote access to a private local MCP server, MultiAgentOS uses **one Secure MCP Tunnel per independently operated project by default**. This is an architectural operating rule, not a requirement of the tunnel protocol: the current tunnel-client can support multiple MCP channels through one tunnel, but separate tunnels keep project lifecycle, health, failure isolation, and ChatGPT Connector configuration independent.
+
+The current development layout is:
+
+```text
+MultiAgentOS
+  MCP: 127.0.0.1:8000
+  Health: 127.0.0.1:18080
+  Tunnel: MultiAgentOS-specific
+
+PetTarotReading
+  MCP: 127.0.0.1:8001
+  Health: 127.0.0.1:18081
+  Tunnel: PetTarotReading-specific
+```
+
+This means **project-per-Tunnel is our default deployment convention**, not a platform limitation. A single tunnel may technically expose multiple logical MCP channels when a shared lifecycle is intentional.
+
+Tunnel authentication is also separate from the cost-free baseline: the baseline does not require a paid AI API key, while a Secure MCP Tunnel runtime may use a restricted runtime credential to authenticate the tunnel-client with the control plane. Admin credentials are for tunnel management operations and are not used as the long-running runtime credential.
+
 ### Persistent local MCP service
 
 MultiAgentOS provides OS-native lifecycle management for the local MCP server:
