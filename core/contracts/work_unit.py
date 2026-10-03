@@ -20,14 +20,14 @@ class WorkStatus(str, Enum):
     BLOCKED = "blocked"
 
 _ALLOWED_TRANSITIONS: dict[WorkStatus, frozenset[WorkStatus]] = {
-    WorkStatus.PENDING: frozenset({WorkStatus.PLANNING, WorkStatus.EXECUTING, WorkStatus.FAILED}),
-    WorkStatus.PLANNING: frozenset({WorkStatus.EXECUTING, WorkStatus.FAILED}),
-    WorkStatus.EXECUTING: frozenset({WorkStatus.VERIFYING, WorkStatus.COMPLETED, WorkStatus.FAILED}),
-    WorkStatus.VERIFYING: frozenset({WorkStatus.EXECUTING, WorkStatus.REVIEWING, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED}),
+    WorkStatus.PENDING: frozenset({WorkStatus.PLANNING, WorkStatus.EXECUTING, WorkStatus.FAILED, WorkStatus.HOLD}),
+    WorkStatus.PLANNING: frozenset({WorkStatus.EXECUTING, WorkStatus.FAILED, WorkStatus.HOLD}),
+    WorkStatus.EXECUTING: frozenset({WorkStatus.VERIFYING, WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.HOLD}),
+    WorkStatus.VERIFYING: frozenset({WorkStatus.EXECUTING, WorkStatus.REVIEWING, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.HOLD}),
     WorkStatus.REVIEWING: frozenset({WorkStatus.EXECUTING, WorkStatus.READY_FOR_APPROVAL, WorkStatus.WAITING_HUMAN_APPROVAL, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.HOLD}),
     WorkStatus.WAITING_HUMAN_APPROVAL: frozenset({WorkStatus.EXECUTING, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.HOLD}),
     WorkStatus.READY_FOR_APPROVAL: frozenset({WorkStatus.WAITING_HUMAN_APPROVAL, WorkStatus.EXECUTING, WorkStatus.FAILED, WorkStatus.HOLD}),
-    WorkStatus.HANDOFF: frozenset({WorkStatus.EXECUTING, WorkStatus.COMPLETED, WorkStatus.FAILED}),
+    WorkStatus.HANDOFF: frozenset({WorkStatus.EXECUTING, WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.HOLD}),
     WorkStatus.COMPLETED: frozenset(),
     WorkStatus.FAILED: frozenset({WorkStatus.EXECUTING}),
     WorkStatus.HOLD: frozenset({WorkStatus.BLOCKED, WorkStatus.FAILED}),
