@@ -186,6 +186,31 @@ def _wait_for_endpoint(host: str, port: int, *, timeout: float = 30.0) -> bool:
     return False
 
 
+def _wait_for_service_unloaded(target: str, *, timeout: float = 5.0) -> None:
+    """Wait until launchd no longer reports a service target."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        result = _launchctl("print", target, check=False)
+        if result.returncode != 0:
+            return
+        time.sleep(0.1)
+    raise RuntimeError(f"launchd service did not unload within {timeout:.1f}s: {target}")
+
+
+def _write_plist_atomically(plist_path: Path, plist: dict) -> None:
+    """Write a launchd plist atomically so launchd never sees a partial file."""
+    plist_path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=f".{plist_path.name}.", suffix=".tmp", dir=plist_path.parent)
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(plistlib.dumps(plist))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_name, plist_path)
+    finally:
+        Path(temp_name).unlink(missing_ok=True)
+
+
 def install_mcp_service(
     project_root: Path,
     *,
@@ -245,23 +270,64 @@ def _install_macos(
         "EnvironmentVariables": {"PYTHONUNBUFFERED": "1"},
     }
     plist_path = _plist_path(project_root)
-    plist_path.write_bytes(plistlib.dumps(plist))
-
-    _launchctl("bootout", _target(project_root), check=False)
-    _launchctl("bootout", f"gui/{os.getuid()}/{LABEL}", check=False)
-    PLIST_PATH.unlink(missing_ok=True)
+    target = _target(project_root)
     domain = f"gui/{os.getuid()}"
-    bootstrap = _launchctl("bootstrap", domain, str(plist_path), check=False)
-    if bootstrap.returncode != 0:
-        if "service already loaded" not in bootstrap.stderr.lower():
+
+    previous_plist = plist_path.read_bytes() if plist_path.exists() else None
+    _launchctl("bootout", target, check=False)
+    _wait_for_service_unloaded(target)
+
+    try:
+        _write_plist_atomically(plist_path, plist)
+
+        bootstrap = _launchctl("bootstrap", domain, str(plist_path), check=False)
+        if bootstrap.returncode != 0:
             raise subprocess.CalledProcessError(
                 bootstrap.returncode,
                 bootstrap.args,
                 output=bootstrap.stdout,
                 stderr=bootstrap.stderr,
             )
-    _launchctl("kickstart", "-k", _target(project_root))
-    _launchctl("print", _target(project_root))
+
+        kickstart = _launchctl("kickstart", "-k", target, check=False)
+        if kickstart.returncode != 0:
+            raise subprocess.CalledProcessError(
+                kickstart.returncode,
+                kickstart.args,
+                output=kickstart.stdout,
+                stderr=kickstart.stderr,
+            )
+
+        if not _wait_for_endpoint(host, port):
+            raise RuntimeError(
+                "launchd registered the MultiAgentOS local MCP service, "
+                f"but http://{host}:{port}/mcp did not start within 30 seconds."
+            )
+
+        _launchctl("print", target)
+    except Exception:
+        # Never leave a half-installed project service behind. Restore the
+        # previous project plist when one existed, without touching other
+        # project-scoped launchd services.
+        _launchctl("bootout", target, check=False)
+        try:
+            _wait_for_service_unloaded(target)
+        except Exception:
+            pass
+
+        if previous_plist is None:
+            plist_path.unlink(missing_ok=True)
+        else:
+            try:
+                plist_path.write_bytes(previous_plist)
+                restored = _launchctl("bootstrap", domain, str(plist_path), check=False)
+                if restored.returncode == 0:
+                    _launchctl("kickstart", "-k", target, check=False)
+            except Exception:
+                # Preserve the original install failure; the failed install
+                # must not mask it with a best-effort rollback error.
+                pass
+        raise
 
     return (
         "MultiAgentOS local MCP service installed and started. "
@@ -345,7 +411,9 @@ def uninstall_mcp_service(project_root: Path = Path(".")) -> str:
     project_root = _validate_install_args(project_root, "127.0.0.1", 8000)
     if sys.platform == "darwin":
         label = _service_label(project_root)
-        _launchctl("bootout", _target(project_root), check=False)
+        target = _target(project_root)
+        _launchctl("bootout", target, check=False)
+        _wait_for_service_unloaded(target)
         _plist_path(project_root).unlink(missing_ok=True)
         return f"MultiAgentOS local MCP service removed: {label}"
 

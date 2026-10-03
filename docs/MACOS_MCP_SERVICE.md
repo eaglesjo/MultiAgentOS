@@ -12,12 +12,13 @@ macOS user login
       v
 launchd
       |
-      v
-MultiAgentOS MCP :8000
-      |
-      v
-Local MCP client
+      +--> explicitly installed project MCP services
+             |-- Project A -> :8002
+             |-- Project B -> :8003
+             `-- ...
 ```
+
+Only projects for which `multiagentos mcp install` has been explicitly run get a managed service. Service labels and plist paths are project-scoped and deterministic; installing one project never removes another project service.
 
 The MultiAgentOS MCP server remains a local process. OpenAI hosts the remote tunnel; `tunnel-client` is the local connector.
 
@@ -29,7 +30,7 @@ From the MultiAgentOS repository:
 bash scripts/macos/install_mcp_launchd.sh
 ```
 
-The installer creates a project virtual environment when needed, installs the `mcp-http` extra, registers a per-user launchd service, and starts it immediately.
+The installer creates a project virtual environment when needed, installs the `mcp-http` extra, then delegates service registration to the same project-scoped lifecycle used by `multiagentos mcp install`.
 
 For the local read/write workflow:
 
@@ -60,10 +61,11 @@ The service does not embed OpenAI tunnel credentials or API keys in the launchd 
 ## Verify
 
 ```bash
-launchctl print gui/$(id -u)/com.eaglesjo.multiagentos.mcp
+multiagentos mcp status --path /absolute/path/to/project
+launchctl print gui/$(id -u)/com.eaglesjo.multiagentos.mcp.<project-id>
 ```
 
-The MCP endpoint is `http://127.0.0.1:8000/mcp`.
+The MCP endpoint is the host/port selected at install time (for example, `http://127.0.0.1:8002/mcp`).
 
 A bare GET may return HTTP 400 with `Missing session ID`. That is expected for a stateful Streamable HTTP MCP endpoint and does not by itself indicate that the server is down.
 
@@ -77,8 +79,7 @@ A bare GET may return HTTP 400 with `Missing session ID`. That is expected for a
 ## Stop / remove
 
 ```bash
-launchctl bootout gui/$(id -u)/com.eaglesjo.multiagentos.mcp
-rm -f ~/Library/LaunchAgents/com.eaglesjo.multiagentos.mcp.plist
+multiagentos mcp uninstall --path /absolute/path/to/project
 ```
 
 Removing the launchd service does not remove `.multiagentos` durable state.
@@ -96,3 +97,17 @@ launchd -> MultiAgentOS MCP -> local MCP client
 ```
 
 Secure MCP Tunnel remains an optional remote-connection layer documented separately.
+
+## Lifecycle guarantees
+
+On macOS, installation is transactional for the selected project service:
+
+1. The existing project service is unloaded and launchd is polled until it is gone.
+2. The new plist is written atomically.
+3. The service is bootstrapped and kickstarted.
+4. The TCP endpoint is verified before installation reports success.
+5. If bootstrap, start, or endpoint readiness fails, the new service is removed and the previous project plist is restored when available.
+
+Uninstall also waits for launchd to unload the project service before removing its plist.
+
+These operations are project-scoped. They do not boot out or delete another project's service.
