@@ -93,14 +93,10 @@ Agent Execution Runtime은 permission, filesystem, patch, process, Git, verifica
 
 ### ChatGPT Web — GitHub 경로
 
-```text
-ChatGPT Web
-    |
-    v
-ChatGPT Codex Connector
-    |
-    v
-GitHub Repository
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> CONNECTOR["ChatGPT Codex Connector"]
+    CONNECTOR --> GH["GitHub Repository"]
 ```
 
 ### ChatGPT Web — 로컬 프로젝트 경로
