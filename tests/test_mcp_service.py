@@ -68,7 +68,7 @@ class MCPServiceTests(unittest.TestCase):
             self.assertFalse(
                 any(
                     call.args[0] == "bootout"
-                    and f"gui/{__import__('os').getuid()}/{LABEL}" in " ".join(call.args)
+                    and call.args[1] == f"gui/{__import__('os').getuid()}/{LABEL}"
                     for call in launchctl.call_args_list
                 )
             )
@@ -146,7 +146,10 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn("/Delete", [call.args[0] for call in schtasks.call_args_list])
         self.assertTrue(
             all(
-                WINDOWS_TASK_NAME not in call.args
+                all(
+                    arg != WINDOWS_TASK_NAME
+                    for arg in call.args[1:]
+                )
                 for call in schtasks.call_args_list
                 if call.args[0] in {"/End", "/Delete"}
             )
