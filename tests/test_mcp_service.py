@@ -61,14 +61,14 @@ class MCPServiceTests(unittest.TestCase):
             project_label = _service_label(root)
             self.assertTrue(
                 any(
-                    call.args[0] == "bootout" and project_label in call.args
+                    call.args[0] == "bootout" and project_label in " ".join(call.args)
                     for call in launchctl.call_args_list
                 )
             )
             self.assertFalse(
                 any(
                     call.args[0] == "bootout"
-                    and f"gui/{__import__('os').getuid()}/{LABEL}" in call.args
+                    and f"gui/{__import__('os').getuid()}/{LABEL}" in " ".join(call.args)
                     for call in launchctl.call_args_list
                 )
             )
@@ -163,14 +163,14 @@ class MCPServiceTests(unittest.TestCase):
                     uninstall_mcp_service(root)
         self.assertTrue(
             any(
-                call.args[0] == "bootout" and _service_label(root) in call.args
+                call.args[0] == "bootout" and _service_label(root) in " ".join(call.args)
                 for call in launchctl.call_args_list
             )
         )
         self.assertFalse(
             any(
                 call.args[0] == "bootout"
-                and f"gui/{__import__('os').getuid()}/{LABEL}" in call.args
+                and f"gui/{__import__('os').getuid()}/{LABEL}" in " ".join(call.args)
                 for call in launchctl.call_args_list
             )
         )
