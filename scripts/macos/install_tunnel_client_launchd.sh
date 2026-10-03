@@ -10,13 +10,13 @@ PLIST_PATH=""
 WRAPPER_PATH=""
 KEYCHAIN_SERVICE=""
 TUNNEL_ID="${CONTROL_PLANE_TUNNEL_ID:-}"
-MCP_SERVER_URL="${MCP_SERVER_URL:-http://127.0.0.1:8000/mcp}"
-HEALTH_LISTEN_ADDR="${HEALTH_LISTEN_ADDR:-127.0.0.1:18080}"
+MCP_SERVER_URL="${MCP_SERVER_URL:-}"
+HEALTH_LISTEN_ADDR="${HEALTH_LISTEN_ADDR:-}"
 TUNNEL_CLIENT_BIN="${TUNNEL_CLIENT_BIN:-}"
 
 usage() {
   cat <<EOF
-Usage: $0 --path <project-root>
+Usage: $0 --path <project-root> [--mcp-server-url <url>] [--health-listen-addr <host:port>]
 
 Installs the MultiAgentOS OpenAI tunnel-client as a project-scoped per-user
 macOS launchd service. The service identity is derived from the canonical
@@ -55,7 +55,7 @@ if [[ ! -f "$PROJECT_ROOT/pyproject.toml" ]]; then
   exit 1
 fi
 
-if [[ -z "$TUNNEL_ID" ]]; then
+if [[ -z "$MCP_SERVER_URL" ]]; then\n  echo "ERROR: MCP_SERVER_URL is required." >&2\n  echo "Set it to the exact project MCP endpoint, for example:" >&2\n  echo "  --mcp-server-url http://127.0.0.1:8003/mcp" >&2\n  exit 1\nfi\n\nif [[ -z "$HEALTH_LISTEN_ADDR" ]]; then\n  echo "ERROR: HEALTH_LISTEN_ADDR is required." >&2\n  echo "Choose a unique local health address for each project, for example:" >&2\n  echo "  --health-listen-addr 127.0.0.1:18081" >&2\n  exit 1\nfi\n\nif [[ -z "$TUNNEL_ID" ]]; then
   echo "ERROR: CONTROL_PLANE_TUNNEL_ID is required." >&2
   exit 1
 fi
