@@ -1,4 +1,4 @@
-""""WorkUnit scope-lock contracts inspired by PetTarotReading governance."""
+"""WorkUnit scope-lock contracts inspired by PetTarotReading governance."""
 
 from __future__ import annotations
 
