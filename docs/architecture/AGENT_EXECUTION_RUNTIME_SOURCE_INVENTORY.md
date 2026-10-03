@@ -56,14 +56,15 @@ MultiAgentOS remains the integration base. Multi-Agent orchestration is an exten
 
 The current `AgentContract` is useful but incomplete. A Agent Execution Runtime agent needs explicit runtime bindings:
 
-```text
-Agent
- ├─ Harness
- ├─ Model
- ├─ Provider
- ├─ Tools
- ├─ Permissions
- └─ Session
+```mermaid
+flowchart TB
+    AGENT["Agent"]
+    AGENT --> HARNESS["Harness"]
+    AGENT --> MODEL["Model"]
+    AGENT --> PROVIDER["Provider"]
+    AGENT --> TOOLS["Tools"]
+    AGENT --> PERMISSIONS["Permissions"]
+    AGENT --> SESSION["Session"]
 ```
 
 A model is an inference resource. A harness is an execution/client behavior. They must not be conflated.
