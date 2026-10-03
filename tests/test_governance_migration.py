@@ -41,6 +41,19 @@ class GovernanceMigrationTests(unittest.TestCase):
         scope = ScopeLock(allowed_files=("a.py",), excluded_files=("a.py",))
         self.assertFalse(validate_scope(scope).passed)
 
+    def test_child_scope_cannot_escape_parent_scope(self):
+        parent = ScopeLock(allowed_files=("src/a.py", "src/b.py"))
+        self.assertTrue(parent.contains(ScopeLock(allowed_files=("src/a.py",))))
+        self.assertFalse(parent.contains(ScopeLock(allowed_files=("src/c.py",))))
+        self.assertFalse(parent.contains(ScopeLock()))
+        with self.assertRaises(ValueError):
+            parent.contains(
+                ScopeLock(
+                    allowed_files=("src/a.py",),
+                    excluded_files=("src/a.py",),
+                )
+            )
+
     def test_evidence_is_bound_to_work_unit(self):
         work = WorkUnit("wu-1", "verify")
         evidence = EvidenceRecord(
@@ -73,6 +86,28 @@ class GovernanceMigrationTests(unittest.TestCase):
         WorkPlan("wu-plan", "edit", (step,)).validate()
         self.assertTrue(step.scope_lock.allows("src/a.py"))
         self.assertFalse(step.scope_lock.allows("src/b.py"))
+
+    def test_runtime_rejects_step_scope_outside_work_unit_scope(self):
+        work = WorkUnit(
+            "wu-scope-runtime",
+            "bounded edit",
+            scope_lock=ScopeLock(allowed_files=("src/a.py",)),
+        )
+        step = PlanStep(
+            "edit",
+            "edit outside parent scope",
+            "editor",
+            scope_lock=ScopeLock(allowed_files=("src/b.py",)),
+        )
+        with self.assertRaises(ValueError):
+            MultiAgentRuntime().run(
+                project_root=__import__("pathlib").Path("."),
+                work_unit=work,
+                steps=(step,),
+                agents={},
+                models=[],
+                executors={},
+            )
 
     def test_runtime_rejects_hold_without_authorization(self):
         work = WorkUnit("wu-runtime-hold", "pause")
