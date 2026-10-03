@@ -19,41 +19,42 @@ Multi-Agent is an orchestration extension on top of this runtime.
 
 ## Layered architecture
 
-```text
-                         Agent Execution Runtime
-                            │
-          ┌─────────────────┼─────────────────┐
-          │                 │                 │
-      AI Runtime       Local Runtime     Repository Runtime
-          │                 │                 │
-     Provider/Model       Tools            Git/GitHub
-     Protocol             Filesystem       CI/CD
-     Reasoning            Shell            Recovery
-     Streaming            Processes        Evidence
-     Fallback             Patch
-          │                 │
-          └─────────────────┼─────────────────┘
-                            │
-                       Agent Runtime
-                            │
-              ┌─────────────┼─────────────┐
-              │             │             │
-           Harness        Session        Toolset
-              │             │             │
-       Claude/Codex/   continuity      filesystem
-       ChatGPT/etc.    checkpoint      shell/git/MCP
-                            │
-                            ▼
-                      Work Runtime
-                            │
-                         WorkUnit
-                            │
-                ┌───────────┼───────────┐
-                ▼           ▼           ▼
-             Planner       Coder      Reviewer
-                └───────────┼───────────┘
-                            ▼
-                       Multi-Agent
+```mermaid
+flowchart TB
+    RUNTIME["Agent Execution Runtime"]
+    RUNTIME --> AI["AI Runtime"]
+    RUNTIME --> LOCAL["Local Runtime"]
+    RUNTIME --> REPO["Repository Runtime"]
+    AI --> AI1["Provider / Model"]
+    AI --> AI2["Protocol"]
+    AI --> AI3["Reasoning"]
+    AI --> AI4["Streaming"]
+    AI --> AI5["Fallback"]
+    LOCAL --> L1["Tools"]
+    LOCAL --> L2["Filesystem"]
+    LOCAL --> L3["Shell"]
+    LOCAL --> L4["Processes"]
+    LOCAL --> L5["Patch"]
+    REPO --> R1["Git / GitHub"]
+    REPO --> R2["CI / CD"]
+    REPO --> R3["Recovery"]
+    REPO --> R4["Evidence"]
+    RUNTIME --> AGENT["Agent Runtime"]
+    AGENT --> HARNESS["Harness"]
+    AGENT --> SESSION["Session"]
+    AGENT --> TOOLSET["Toolset"]
+    HARNESS --> H1["Claude / Codex / ChatGPT / etc."]
+    SESSION --> S1["Continuity"]
+    SESSION --> S2["Checkpoint"]
+    TOOLSET --> T1["Filesystem / Shell / Git / MCP"]
+    AGENT --> WORK["Work Runtime"]
+    WORK --> WORKUNIT["WorkUnit"]
+    WORKUNIT --> PLANNER["Planner"]
+    WORKUNIT --> CODER["Coder"]
+    WORKUNIT --> REVIEWER["Reviewer"]
+    PLANNER --> MULTI["Multi-Agent"]
+    CODER --> MULTI
+    REVIEWER --> MULTI
 ```
 
 ## Core contracts
@@ -62,15 +63,16 @@ Multi-Agent is an orchestration extension on top of this runtime.
 
 An agent is a runtime identity with execution bindings.
 
-```text
-Agent
- ├─ id / role
- ├─ harness_id
- ├─ model selection
- ├─ provider selection
- ├─ toolset
- ├─ permissions
- └─ session policy
+```mermaid
+flowchart TB
+    AGENT["Agent"]
+    AGENT --> ID["id / role"]
+    AGENT --> HARNESS["harness_id"]
+    AGENT --> MODEL["model selection"]
+    AGENT --> PROVIDER["provider selection"]
+    AGENT --> TOOLSET["toolset"]
+    AGENT --> PERMISSIONS["permissions"]
+    AGENT --> SESSION["session policy"]
 ```
 
 ### Harness
@@ -132,36 +134,26 @@ This isolates OpenAI Chat/Responses, Anthropic Messages, Gemini, local OpenAI-co
 
 All local and repository mutation passes through policy:
 
-```text
-Agent
-  ↓
-Tool Request
-  ↓
-Permission / Path / Network Policy
-  ↓
-Tool Runtime
-  ↓
-Audit Event
-  ↓
-Result
+```mermaid
+flowchart TB
+    AGENT["Agent"] --> REQUEST["Tool Request"]
+    REQUEST --> POLICY["Permission / Path / Network Policy"]
+    POLICY --> TOOLS["Tool Runtime"]
+    TOOLS --> AUDIT["Audit Event"]
+    AUDIT --> RESULT["Result"]
 ```
 
 Secrets are referenced by environment/credential handles, never stored in WorkUnit state.
 
 ## State boundary
 
-```text
-Durable Repository State
-  commit / branch / PR / artifact
-          │
-          │ recovery identity
-          ▼
-Agent Execution Runtime Session State
-  WorkUnit / checkpoint / event log
-          │
-          ▼
-Local Workspace State
-  files / processes / shell / generated outputs
+```mermaid
+flowchart TB
+    REPO["Durable Repository State<br/>commit / branch / PR / artifact"]
+    SESSION["Agent Execution Runtime Session State<br/>WorkUnit / checkpoint / event log"]
+    LOCAL["Local Workspace State<br/>files / processes / shell / generated outputs"]
+    REPO -->|recovery identity| SESSION
+    SESSION --> LOCAL
 ```
 
 Recovery always prefers exact durable repository identity over conversational reconstruction.
@@ -170,20 +162,19 @@ Recovery always prefers exact durable repository identity over conversational re
 
 Multi-Agent orchestration consumes Agent Execution Runtime services:
 
-```text
-Multi-Agent
- ├─ Planner
- ├─ Delegator
- ├─ Reviewer
- └─ Handoff
-       │
-       ▼
-Agent Execution Runtime
- ├─ Agent Runtime
- ├─ Tool Runtime
- ├─ AI Runtime
- ├─ Repository Runtime
- └─ State/Evidence Runtime
+```mermaid
+flowchart TB
+    MULTI["Multi-Agent"]
+    MULTI --> PLANNER["Planner"]
+    MULTI --> DELEGATOR["Delegator"]
+    MULTI --> REVIEWER["Reviewer"]
+    MULTI --> HANDOFF["Handoff"]
+    MULTI --> RUNTIME["Agent Execution Runtime"]
+    RUNTIME --> AGENT["Agent Runtime"]
+    RUNTIME --> TOOLS["Tool Runtime"]
+    RUNTIME --> AI["AI Runtime"]
+    RUNTIME --> REPO["Repository Runtime"]
+    RUNTIME --> STATE["State / Evidence Runtime"]
 ```
 
 The orchestration layer must not duplicate provider, MCP, filesystem, security, or GitHub implementations.
