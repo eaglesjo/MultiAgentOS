@@ -12,11 +12,13 @@ macOS user login
       v
 launchd
       |
-      v
-MultiAgentOS MCP :8000
+      +--> Project A MCP :8000
       |
-      v
-Local MCP client
+      +--> Project B MCP :8001
+      |
+      +--> Project C MCP :8002
+
+Each service owns exactly one project root.
 ```
 
 The MultiAgentOS MCP server remains a local process. OpenAI hosts the remote tunnel; `tunnel-client` is the local connector.
@@ -56,6 +58,8 @@ The service uses `RunAtLoad` and `KeepAlive`. Each installed project gets a dete
 Durable MultiAgentOS state remains under `.multiagentos/`.
 
 The service does not embed OpenAI tunnel credentials or API keys in the launchd plist.
+
+Each project service uses a deterministic launchd label derived from the canonical project path. The corresponding plist and process arguments point to that same project root.
 
 ## Verify
 
