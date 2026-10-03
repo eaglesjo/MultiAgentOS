@@ -248,6 +248,8 @@ def _install_macos(
     plist_path.write_bytes(plistlib.dumps(plist))
 
     _launchctl("bootout", _target(project_root), check=False)
+    _launchctl("bootout", f"gui/{os.getuid()}/{LABEL}", check=False)
+    PLIST_PATH.unlink(missing_ok=True)
     domain = f"gui/{os.getuid()}"
     bootstrap = _launchctl("bootstrap", domain, str(plist_path), check=False)
     if bootstrap.returncode != 0:
@@ -346,7 +348,9 @@ def uninstall_mcp_service(project_root: Path = Path(".")) -> str:
 
     task_name = _windows_task_name(project_root)
     _schtasks("/End", "/TN", task_name, check=False)
+    _schtasks("/End", "/TN", WINDOWS_TASK_NAME, check=False)
     result = _schtasks("/Delete", "/TN", task_name, "/F", check=False)
+    _schtasks("/Delete", "/TN", WINDOWS_TASK_NAME, "/F", check=False)
     if result.returncode not in {0, 1}:
         raise subprocess.CalledProcessError(result.returncode, result.args, output=result.stdout, stderr=result.stderr)
     return f"MultiAgentOS local MCP service removed: {task_name}"
