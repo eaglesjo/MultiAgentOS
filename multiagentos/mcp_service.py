@@ -15,14 +15,15 @@ import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-LABEL = "com.eaglesjo.multiagentos.mcp"
+LABEL = "multiagentos.mcp.project"
 WINDOWS_TASK_NAME = "MultiAgentOS Local MCP"
 LAUNCH_AGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
 PLIST_PATH = LAUNCH_AGENTS_DIR / f"{LABEL}.plist"
 
 
 def _service_id(project_root: Path) -> str:
-    return hashlib.sha256(str(project_root).encode("utf-8")).hexdigest()[:12]
+    canonical_root = project_root.expanduser().resolve()
+    return hashlib.sha256(str(canonical_root).encode("utf-8")).hexdigest()[:12]
 
 
 def _service_label(project_root: Path) -> str:
@@ -65,10 +66,15 @@ def _target(project_root: Path) -> str:
     return f"gui/{os.getuid()}/{_service_label(project_root)}"
 
 
-def _validate_install_args(project_root: Path, host: str, port: int) -> Path:
+def _resolve_project_root(project_root: Path) -> Path:
     project_root = project_root.expanduser().resolve()
     if not project_root.is_dir():
         raise ValueError(f"Project path does not exist: {project_root}")
+    return project_root
+
+
+def _validate_install_args(project_root: Path, host: str, port: int) -> Path:
+    project_root = _resolve_project_root(project_root)
     if host != "127.0.0.1":
         raise ValueError("The managed local MCP service only supports host 127.0.0.1.")
     if not 1 <= port <= 65535:
@@ -175,6 +181,37 @@ def _windows_task_xml(
     return xml.replace("encoding='utf-8'", "encoding='UTF-16'")
 
 
+def _wait_for_windows_task_stopped(
+    task_name: str,
+    *,
+    timeout: float = 5.0,
+) -> None:
+    deadline = time.monotonic() + timeout
+
+    while time.monotonic() < deadline:
+        result = _schtasks(
+            "/Query",
+            "/TN",
+            task_name,
+            "/FO",
+            "LIST",
+            "/V",
+            check=False,
+        )
+        if result.returncode != 0:
+            return
+
+        output = f"{result.stdout}\n{result.stderr}".lower()
+        if "status:" in output and "running" not in output:
+            return
+
+        time.sleep(0.1)
+
+    raise RuntimeError(
+        "Windows Task Scheduler task did not stop within the timeout: "
+        f"{task_name}"
+    )
+
 def _wait_for_endpoint(host: str, port: int, *, timeout: float = 30.0) -> bool:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -248,8 +285,6 @@ def _install_macos(
     plist_path.write_bytes(plistlib.dumps(plist))
 
     _launchctl("bootout", _target(project_root), check=False)
-    _launchctl("bootout", f"gui/{os.getuid()}/{LABEL}", check=False)
-    PLIST_PATH.unlink(missing_ok=True)
     domain = f"gui/{os.getuid()}"
     bootstrap = _launchctl("bootstrap", domain, str(plist_path), check=False)
     if bootstrap.returncode != 0:
@@ -280,8 +315,10 @@ def _install_windows(
     logs = project_root / ".multiagentos" / "logs"
     logs.mkdir(parents=True, exist_ok=True)
 
-    _schtasks("/End", "/TN", WINDOWS_TASK_NAME, check=False)
-    _schtasks("/Delete", "/TN", WINDOWS_TASK_NAME, "/F", check=False)
+    task_name = _windows_task_name(project_root)
+    _schtasks("/End", "/TN", task_name, check=False)
+    _wait_for_windows_task_stopped(task_name)
+    _schtasks("/Delete", "/TN", task_name, "/F", check=False)
 
     xml = _windows_task_xml(program_arguments, project_root=project_root)
     xml_path = None
@@ -342,7 +379,7 @@ def _install_windows(
 def uninstall_mcp_service(project_root: Path = Path(".")) -> str:
     """Stop and remove the managed local MCP service for a project."""
     _require_supported_platform()
-    project_root = _validate_install_args(project_root, "127.0.0.1", 8000)
+    project_root = _resolve_project_root(project_root)
     if sys.platform == "darwin":
         label = _service_label(project_root)
         _launchctl("bootout", _target(project_root), check=False)
@@ -351,9 +388,8 @@ def uninstall_mcp_service(project_root: Path = Path(".")) -> str:
 
     task_name = _windows_task_name(project_root)
     _schtasks("/End", "/TN", task_name, check=False)
-    _schtasks("/End", "/TN", WINDOWS_TASK_NAME, check=False)
+    _wait_for_windows_task_stopped(task_name)
     result = _schtasks("/Delete", "/TN", task_name, "/F", check=False)
-    _schtasks("/Delete", "/TN", WINDOWS_TASK_NAME, "/F", check=False)
     if result.returncode not in {0, 1}:
         raise subprocess.CalledProcessError(result.returncode, result.args, output=result.stdout, stderr=result.stderr)
     return f"MultiAgentOS local MCP service removed: {task_name}"

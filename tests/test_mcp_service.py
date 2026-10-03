@@ -37,6 +37,9 @@ class MCPServiceTests(unittest.TestCase):
     @patch("multiagentos.mcp_service._launchctl")
     @patch("multiagentos.mcp_service.shutil.which", return_value="/usr/local/bin/multiagentos")
     def test_install_writes_keepalive_launch_agent(self, which, launchctl):
+        launchctl.return_value.returncode = 0
+        launchctl.return_value.stdout = ""
+        launchctl.return_value.stderr = ""
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", root / "LaunchAgents"):
@@ -55,12 +58,39 @@ class MCPServiceTests(unittest.TestCase):
             self.assertTrue(plist["KeepAlive"])
             self.assertIn("--allow-write", plist["ProgramArguments"])
             self.assertNotIn("--allow-process", plist["ProgramArguments"])
+            project_label = _service_label(root)
+            self.assertTrue(
+                any(
+                    call.args[0] == "bootout" and project_label in " ".join(call.args)
+                    for call in launchctl.call_args_list
+                )
+            )
+            self.assertFalse(
+                any(
+                    call.args[0] == "bootout"
+                    and call.args[1] == f"gui/{__import__('os').getuid()}/{LABEL}"
+                    for call in launchctl.call_args_list
+                )
+            )
 
     @unittest.skipUnless(sys.platform == "win32", "Windows Task Scheduler test")
     @patch("multiagentos.mcp_service._wait_for_endpoint", return_value=True)
     @patch("multiagentos.mcp_service._schtasks")
     def test_install_creates_and_runs_windows_task_without_visible_console(self, schtasks, wait_for_endpoint):
-        schtasks.return_value.returncode = 0
+        def schtasks_result(*args, **kwargs):
+            result = type(
+                "Result",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": "Status: Ready\\n" if args and args[0] == "/Query" else "",
+                    "stderr": "",
+                    "args": ["schtasks.exe", *args],
+                },
+            )()
+            return result
+
+        schtasks.side_effect = schtasks_result
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             with patch.object(sys, "platform", "win32"):
@@ -81,6 +111,13 @@ class MCPServiceTests(unittest.TestCase):
         create_call = next(call for call in schtasks.call_args_list if call.args[0] == "/Create")
         self.assertEqual(create_call.args[0], "/Create")
         self.assertIn(_windows_task_name(root), create_call.args)
+        self.assertFalse(
+            any(
+                call.args[0] in {"/End", "/Delete"}
+                and WINDOWS_TASK_NAME in call.args
+                for call in schtasks.call_args_list
+            )
+        )
         self.assertIn("/XML", create_call.args)
         xml_path = create_call.args[create_call.args.index("/XML") + 1]
         self.assertFalse(Path(xml_path).exists())
@@ -120,13 +157,79 @@ class MCPServiceTests(unittest.TestCase):
         self.assertEqual(schtasks.call_args_list[0].args[0], "/Query")
         self.assertIn("/End", [call.args[0] for call in schtasks.call_args_list])
         self.assertIn("/Delete", [call.args[0] for call in schtasks.call_args_list])
+        self.assertTrue(
+            all(
+                all(
+                    arg != WINDOWS_TASK_NAME
+                    for arg in call.args[1:]
+                )
+                for call in schtasks.call_args_list
+                if call.args[0] in {"/End", "/Delete"}
+            )
+        )
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS launchd test")
+    @patch("multiagentos.mcp_service._launchctl")
+    def test_uninstall_macos_only_targets_project_service(self, launchctl):
+        launchctl.return_value.returncode = 0
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", root / "LaunchAgents"):
+                with patch.object(sys, "platform", "darwin"):
+                    uninstall_mcp_service(root)
+        self.assertTrue(
+            any(
+                call.args[0] == "bootout" and _service_label(root) in " ".join(call.args)
+                for call in launchctl.call_args_list
+            )
+        )
+        self.assertFalse(
+            any(
+                call.args[0] == "bootout"
+                and call.args[1] == f"gui/{__import__('os').getuid()}/{LABEL}"
+                for call in launchctl.call_args_list
+            )
+        )
+
+    @unittest.skipUnless(sys.platform == "win32", "Windows Task Scheduler test")
+    @patch("multiagentos.mcp_service._schtasks")
+    def test_uninstall_windows_only_targets_project_task(self, schtasks):
+        def schtasks_result(*args, **kwargs):
+            result = type(
+                "Result",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": "Status: Ready\\n" if args and args[0] == "/Query" else "",
+                    "stderr": "",
+                    "args": ["schtasks.exe", *args],
+                },
+            )()
+            return result
+
+        schtasks.side_effect = schtasks_result
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with patch.object(sys, "platform", "win32"):
+                uninstall_mcp_service(root)
+        project_task = _windows_task_name(root)
+        lifecycle_calls = [
+            call for call in schtasks.call_args_list
+            if call.args[0] in {"/End", "/Delete"}
+        ]
+        self.assertTrue(lifecycle_calls)
+        self.assertTrue(all(project_task in call.args for call in lifecycle_calls))
+        self.assertFalse(
+            any(WINDOWS_TASK_NAME in call.args for call in lifecycle_calls)
+        )
 
     def test_project_services_have_distinct_service_ids(self):
         first = Path("/tmp/project-one").resolve()
         second = Path("/tmp/project-two").resolve()
         self.assertNotEqual(_service_label(first), _service_label(second))
         self.assertNotEqual(_windows_task_name(first), _windows_task_name(second))
-        self.assertTrue(_service_label(first).startswith(LABEL + "."))
+        self.assertTrue(_service_label(first).startswith("multiagentos.mcp.project."))
+        self.assertNotIn("eaglesjo", _service_label(first))
         self.assertTrue(_windows_task_name(first).startswith(WINDOWS_TASK_NAME + " ("))
 
 if __name__ == "__main__":

@@ -28,11 +28,19 @@ py -m pip install ".[mcp-http]"
 multiagentos mcp install --path C:\Users\<you>\Documents\MultiAgentOS --allow-write
 ```
 
-The installer creates a per-user Task Scheduler task named:
+The installer creates a per-user, project-scoped Task Scheduler task named:
 
 ```text
-MultiAgentOS Local MCP
+MultiAgentOS Local MCP (<project-id>)
 ```
+
+The project ID is derived deterministically from the canonical project path:
+
+```text
+SHA-256(canonical_project_root)[:12]
+```
+
+This means separate projects have separate Windows service identities. Installing or uninstalling one project does not target another project's task.
 
 On Windows, Task Scheduler registration may require an Administrator PowerShell depending on the local task-creation policy. The task itself runs as the signed-in user.
 
@@ -48,10 +56,10 @@ multiagentos mcp install --path C:\Users\<you>\Documents\MultiAgentOS --allow-wr
 
 ## Verify
 
-Check the managed task:
+Check the managed task for a specific project:
 
 ```powershell
-multiagentos mcp status
+multiagentos mcp status --path C:\Users\<you>\Documents\MultiAgentOS
 ```
 
 The MCP endpoint is:
@@ -65,16 +73,18 @@ A bare GET may return HTTP 400 with `Missing session ID`. That is expected for a
 You can also query Task Scheduler directly:
 
 ```powershell
-schtasks.exe /Query /TN "MultiAgentOS Local MCP" /FO LIST /V
+schtasks.exe /Query /TN "MultiAgentOS Local MCP (<project-id>)" /FO LIST /V
 ```
 
 ## Stop / remove
 
 ```powershell
-multiagentos mcp uninstall
+multiagentos mcp uninstall --path C:\Users\<you>\Documents\MultiAgentOS
 ```
 
-This removes the managed Task Scheduler task and does not remove `.multiagentos/` project state.
+MultiAgentOS first requests the project task to stop with `schtasks /end`, waits until Task Scheduler no longer reports it as running, and then removes only that project-scoped task. This ordering is deliberate because Microsoft documents that `schtasks /delete` removes the scheduled task but does not interrupt a program already running from that task. citeturn0search0turn0search9
+
+The uninstall does not remove `.multiagentos/` project state.
 
 ## Manual server
 
@@ -98,7 +108,7 @@ Secure MCP Tunnel remains an optional remote-connection layer for clients that c
 | Managed install | launchd | Task Scheduler |
 | Start immediately | Yes | Yes |
 | Start at user logon | Yes | Yes |
-| Restart after process exit | launchd KeepAlive | Not enabled by default |
+| Restart after process exit | launchd KeepAlive | Not enabled by default |\n| Project-scoped identity | Yes | Yes |\n| Lifecycle targets only selected project | Yes | Yes |
 | Status | `multiagentos mcp status` | `multiagentos mcp status` |
 | Uninstall | `multiagentos mcp uninstall` | `multiagentos mcp uninstall` |
 

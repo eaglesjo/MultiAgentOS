@@ -186,14 +186,51 @@ Use:
 
 ```bash
 multiagentos mcp install --path /absolute/path/to/project --allow-write
-multiagentos mcp status
+multiagentos mcp status --path /absolute/path/to/project
 ```
 
 On Windows, the equivalent command is:
 
 ```powershell
 multiagentos mcp install --path C:\\Users\\<you>\\Documents\\your-project --allow-write
-multiagentos mcp status
+multiagentos mcp status --path C:\\Users\\<you>\\Documents\\your-project
+```
+
+Each managed project gets its own OS service identity. The service identity is deterministic and derived automatically from the canonical project path. Users do not need to choose or enter a project ID manually.
+
+The project ID is:
+
+```text
+SHA-256(canonical_project_root)[:12]
+```
+
+where `canonical_project_root` is the resolved project path (`Path(project_path).expanduser().resolve()`). The resulting service label is:
+
+```text
+multiagentos.mcp.project.<project-id>
+```
+
+For example, for the MultiAgentOS repository itself:
+
+```text
+Project Root : /Volumes/DevFiles/GitHubProject/MultiAgentOS
+Project ID   : 842c23a3a1a1
+Service Label: multiagentos.mcp.project.842c23a3a1a1
+```
+
+To inspect the generated project ID and service label:
+
+```bash
+python3 -c '
+from pathlib import Path
+from multiagentos.mcp_service import _service_id, _service_label
+
+p = Path(".").resolve()
+
+print("Project Root :", p)
+print("Project ID   :", _service_id(p))
+print("Service Label:", _service_label(p))
+'
 ```
 
 Each managed project gets its own OS service identity. Use a different port for each simultaneously running project:
@@ -209,6 +246,8 @@ Then inspect or remove a specific project service:
 multiagentos mcp status --path /absolute/path/to/project1
 multiagentos mcp uninstall --path /absolute/path/to/project1
 ```
+
+Project-scoped lifecycle operations target only the service belonging to the supplied project path. Installing, reinstalling, checking, or uninstalling one project does not stop or remove another project's managed MCP service. This isolation applies to the macOS `launchd` label/plist and the Windows Task Scheduler task name.
 
 The service identity is derived from the resolved project path, so multiple projects can coexist without sharing the same OS service registration. See [Windows MCP Service](docs/WINDOWS_MCP_SERVICE.md) and [macOS MCP Service](docs/MACOS_MCP_SERVICE.md) for lifecycle details.
 
