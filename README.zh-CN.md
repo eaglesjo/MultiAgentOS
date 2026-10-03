@@ -65,28 +65,17 @@ flowchart TB
 
 ## 多智能体工作流
 
-```text
-Request
-  |
-  v
-Orchestrator
-  |
-  v
-MultiAgentWorkflow
-  |
-  +--> Developer
-  |
-  +--> Tester
-  |
-  +--> Reviewer
-  |
-  +--> 必要时 Rework
-  |
-  v
-Verification
-  |
-  v
-Completed / Failed
+```mermaid
+flowchart TB
+    REQUEST["Request"] --> ORCH["Orchestrator"]
+    ORCH --> WORKFLOW["MultiAgentWorkflow"]
+    WORKFLOW --> DEV["Developer"]
+    WORKFLOW --> TEST["Tester"]
+    WORKFLOW --> REVIEW["Reviewer"]
+    REVIEW --> REWORK{"Rework required?"}
+    REWORK -->|Yes| DEV
+    REWORK -->|No| VERIFY["Verification"]
+    VERIFY --> RESULT["Completed / Failed"]
 ```
 
 `Orchestrator.run_workflow()` 是稳定的上层编排入口。`MultiAgentWorkflow` 负责具体的 stage、handoff、review 和 rework 语义，`MultiAgentRuntime` 则作为 application/runtime adapter 使用这一编排边界。
