@@ -4,26 +4,16 @@ Multi-Agent Runtime is the orchestration layer above the existing Agent Executio
 
 ## Stage model
 
-```text
-WorkUnit
-   |
-   v
-Planner
-   |
-   v
-Dependency-ordered Plan
-   |
-   +--> Agent A / Session / Tools
-   |
-   +--> Agent B / Session / Tools
-   |
-   +--> Agent C / Session / Tools
-             |
-             v
-          Handoff
-             |
-             v
-          Complete
+```mermaid
+flowchart TB
+    WORKUNIT["WorkUnit"] --> PLANNER["Planner"] --> PLAN["Dependency-ordered Plan"]
+    PLAN --> A["Agent A / Session / Tools"]
+    PLAN --> B["Agent B / Session / Tools"]
+    PLAN --> C["Agent C / Session / Tools"]
+    A --> HANDOFF["Handoff"]
+    B --> HANDOFF
+    C --> HANDOFF
+    HANDOFF --> COMPLETE["Complete"]
 ```
 
 Each plan step has an explicit agent and dependency list. Every stage is executed as a child WorkUnit while the parent WorkUnit remains the durable coordination boundary.
