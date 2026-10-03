@@ -62,8 +62,8 @@ PROJECT_ROOT="$(cd "$PROJECT_ROOT" 2>/dev/null && pwd)" || {
   exit 1
 }
 
-if [[ ! -f "$PROJECT_ROOT/pyproject.toml" ]]; then
-  echo "ERROR: MultiAgentOS project root not found: $PROJECT_ROOT" >&2
+if [[ ! -d "$PROJECT_ROOT" ]]; then
+  echo "ERROR: project root not found: $PROJECT_ROOT" >&2
   exit 1
 fi
 
@@ -215,6 +215,19 @@ PY
 
 echo "== Stop previous project tunnel service if present =="
 launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
+
+echo "== Wait for previous project tunnel service to unload =="
+for _ in {1..50}; do
+  if ! launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 0.1
+done
+
+if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
+  echo "ERROR: previous tunnel service did not unload: $LABEL" >&2
+  exit 1
+fi
 
 echo "== Register project tunnel-client launchd service =="
 launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
