@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.4.3] - 2026-10-03
+
+### Project-scoped local MCP and Secure MCP Tunnel lifecycle
+
+- Isolated managed local MCP services by project path so multiple projects can run independently.
+- Hardened macOS MCP install/uninstall lifecycle handling and service identity.
+- Bound Secure MCP Tunnel launchd services to explicit project MCP and health endpoints.
+- Added project-scoped macOS tunnel status and uninstall scripts.
+- Allowed project-scoped macOS tunnels for arbitrary project roots.
+- Added lifecycle tests for macOS MCP services and tunnel launchd scripts.
+- Preserved the Windows local MCP launcher behavior while isolating platform-specific tests.
+
+### Verification
+
+- Full test suite: 309 tests passed, 3 skipped on macOS.
+- Verified managed MCP LaunchAgent remains running after macOS reboot/login.
+- Verified project-scoped Secure MCP Tunnel launchd service remains running after reboot.
+- Verified source distribution and wheel build successfully.
+- Verified clean reinstall of the generated multiagentos-0.4.3 package and CLI startup.
+
 ## [0.4.2] - 2026-10-02
 
 ### Local MCP service
