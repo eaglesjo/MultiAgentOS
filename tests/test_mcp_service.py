@@ -50,11 +50,11 @@ class MCPServiceTests(unittest.TestCase):
             root = Path(temp)
             with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", root / "LaunchAgents"):
                 with patch.object(sys, "platform", "darwin"):
-                        message = install_mcp_service(
-                            root,
-                            allow_write=True,
-                            allow_process=False,
-                        )
+                    message = install_mcp_service(
+                        root,
+                        allow_write=True,
+                        allow_process=False,
+                    )
 
             self.assertIn("installed and started", message)
             plist_path = next((root / "LaunchAgents").glob("*.plist"))
@@ -138,9 +138,6 @@ class MCPServiceTests(unittest.TestCase):
         self.assertTrue(_service_label(first).startswith(LABEL + "."))
         self.assertTrue(_windows_task_name(first).startswith(WINDOWS_TASK_NAME + " ("))
 
-if __name__ == "__main__":
-    unittest.main()
-
 
     @unittest.skipUnless(sys.platform == "darwin", "macOS launchd test")
     @patch("multiagentos.mcp_service._wait_for_endpoint", return_value=False)
@@ -219,3 +216,7 @@ if __name__ == "__main__":
 
         self.assertEqual(calls[0][0], "bootout")
         self.assertEqual(calls[1][0], "print")
+
+
+if __name__ == "__main__":
+    unittest.main()
