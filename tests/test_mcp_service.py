@@ -9,6 +9,8 @@ from multiagentos.cli import build_parser
 from multiagentos.mcp_service import (
     LABEL,
     WINDOWS_TASK_NAME,
+    _service_label,
+    _windows_task_name,
     _windows_task_xml,
     install_mcp_service,
     mcp_service_status,
@@ -37,9 +39,8 @@ class MCPServiceTests(unittest.TestCase):
     def test_install_writes_keepalive_launch_agent(self, which, launchctl):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            with patch("multiagentos.mcp_service.PLIST_PATH", root / "service.plist"):
-                with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", root / "LaunchAgents"):
-                    with patch.object(sys, "platform", "darwin"):
+            with patch("multiagentos.mcp_service.LAUNCH_AGENTS_DIR", root / "LaunchAgents"):
+                with patch.object(sys, "platform", "darwin"):
                         message = install_mcp_service(
                             root,
                             allow_write=True,
@@ -47,8 +48,9 @@ class MCPServiceTests(unittest.TestCase):
                         )
 
             self.assertIn("installed and started", message)
-            plist = plistlib.loads((root / "service.plist").read_bytes())
-            self.assertEqual(plist["Label"], LABEL)
+            plist_path = next((root / "LaunchAgents").glob("*.plist"))
+            plist = plistlib.loads(plist_path.read_bytes())
+            self.assertEqual(plist["Label"], _service_label(root))
             self.assertTrue(plist["RunAtLoad"])
             self.assertTrue(plist["KeepAlive"])
             self.assertIn("--allow-write", plist["ProgramArguments"])
@@ -76,9 +78,9 @@ class MCPServiceTests(unittest.TestCase):
                             )
 
         self.assertIn("Task Scheduler will start it at user logon", message)
-        create_call = schtasks.call_args_list[0]
+        create_call = next(call for call in schtasks.call_args_list if call.args[0] == "/Create")
         self.assertEqual(create_call.args[0], "/Create")
-        self.assertIn(WINDOWS_TASK_NAME, create_call.args)
+        self.assertIn(_windows_task_name(root), create_call.args)
         self.assertIn("/XML", create_call.args)
         xml_path = create_call.args[create_call.args.index("/XML") + 1]
         self.assertFalse(Path(xml_path).exists())
@@ -98,9 +100,9 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn(r"C:\Python314\pythonw.exe", xml)
         self.assertIn("--allow-write", xml)
 
-        run_call = schtasks.call_args_list[1]
+        run_call = next(call for call in schtasks.call_args_list if call.args[0] == "/Run")
         self.assertEqual(run_call.args[0], "/Run")
-        self.assertIn(WINDOWS_TASK_NAME, run_call.args)
+        self.assertIn(_windows_task_name(root), run_call.args)
 
         wait_for_endpoint.assert_called_once_with("127.0.0.1", 8000)
 
@@ -116,9 +118,16 @@ class MCPServiceTests(unittest.TestCase):
         self.assertIn("Status: Running", status)
         self.assertIn("removed", message)
         self.assertEqual(schtasks.call_args_list[0].args[0], "/Query")
-        self.assertEqual(schtasks.call_args_list[1].args[0], "/End")
-        self.assertEqual(schtasks.call_args_list[2].args[0], "/Delete")
+        self.assertIn("/End", [call.args[0] for call in schtasks.call_args_list])
+        self.assertIn("/Delete", [call.args[0] for call in schtasks.call_args_list])
 
+    def test_project_services_have_distinct_service_ids(self):
+        first = Path("/tmp/project-one").resolve()
+        second = Path("/tmp/project-two").resolve()
+        self.assertNotEqual(_service_label(first), _service_label(second))
+        self.assertNotEqual(_windows_task_name(first), _windows_task_name(second))
+        self.assertTrue(_service_label(first).startswith(LABEL + "."))
+        self.assertTrue(_windows_task_name(first).startswith(WINDOWS_TASK_NAME + " ("))
 
 if __name__ == "__main__":
     unittest.main()

@@ -318,12 +318,14 @@ def build_parser() -> argparse.ArgumentParser:
     mcp_install.add_argument("--allow-process", action="store_true", help="enable shell execution")
 
     mcp_uninstall = mcp_sub.add_parser(
-        "uninstall", help="remove the local Streamable HTTP MCP OS-managed service"
+        "uninstall", help="remove the local Streamable HTTP MCP OS-managed service for a project"
     )
+    mcp_uninstall.add_argument("--path", default=".", help="project root")
 
     mcp_status = mcp_sub.add_parser(
-        "status", help="show the local Streamable HTTP MCP OS-managed service status"
+        "status", help="show the local Streamable HTTP MCP OS-managed service status for a project"
     )
+    mcp_status.add_argument("--path", default=".", help="project root")
 
     github = subparsers.add_parser("github", help="use Agent Execution Runtime GitHub runtime")
     github_sub = github.add_subparsers(dest="github_command", required=True)
@@ -583,12 +585,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "mcp" and args.mcp_command == "uninstall":
         from multiagentos.mcp_service import uninstall_mcp_service
-        print(uninstall_mcp_service())
+        print(uninstall_mcp_service(Path(args.path).expanduser().resolve()))
         return 0
 
     if args.command == "mcp" and args.mcp_command == "status":
         from multiagentos.mcp_service import mcp_service_status
-        print(mcp_service_status())
+        print(mcp_service_status(Path(args.path).expanduser().resolve()))
         return 0
 
     if args.command == "github" and args.github_command == "probe":

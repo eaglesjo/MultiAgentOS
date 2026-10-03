@@ -196,7 +196,21 @@ multiagentos mcp install --path C:\\Users\\<you>\\Documents\\your-project --allo
 multiagentos mcp status
 ```
 
-Both platforms keep the MCP server on `127.0.0.1:8000`. See [Windows MCP Service](docs/WINDOWS_MCP_SERVICE.md) and [macOS MCP Service](docs/MACOS_MCP_SERVICE.md) for lifecycle details.
+Each managed project gets its own OS service identity. Use a different port for each simultaneously running project:
+
+```bash
+multiagentos mcp install --path /absolute/path/to/project1 --port 8000 --allow-write
+multiagentos mcp install --path /absolute/path/to/project2 --port 8001 --allow-write
+```
+
+Then inspect or remove a specific project service:
+
+```bash
+multiagentos mcp status --path /absolute/path/to/project1
+multiagentos mcp uninstall --path /absolute/path/to/project1
+```
+
+The service identity is derived from the resolved project path, so multiple projects can coexist without sharing the same OS service registration. See [Windows MCP Service](docs/WINDOWS_MCP_SERVICE.md) and [macOS MCP Service](docs/MACOS_MCP_SERVICE.md) for lifecycle details.
 
 ## Terminology
 
@@ -287,11 +301,18 @@ multiagentos mcp install --path . --allow-write
 Check or remove the service with:
 
 ```bash
-multiagentos mcp status
-multiagentos mcp uninstall
+multiagentos mcp status --path .
+multiagentos mcp uninstall --path .
 ```
 
-The managed service listens only on `127.0.0.1:8000` and keeps its logs under `.multiagentos/logs/`.
+For multiple projects, assign each project a different port:
+
+```bash
+multiagentos mcp install --path /absolute/path/to/project1 --port 8000 --allow-write
+multiagentos mcp install --path /absolute/path/to/project2 --port 8001 --allow-write
+```
+
+Each managed service listens only on `127.0.0.1` and keeps its logs under that project's `.multiagentos/logs/`.
 
 ## Configuration
 

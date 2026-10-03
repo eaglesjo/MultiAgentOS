@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import getpass
+import hashlib
 import os
 import plistlib
 import shutil
@@ -18,6 +19,22 @@ LABEL = "com.eaglesjo.multiagentos.mcp"
 WINDOWS_TASK_NAME = "MultiAgentOS Local MCP"
 LAUNCH_AGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
 PLIST_PATH = LAUNCH_AGENTS_DIR / f"{LABEL}.plist"
+
+
+def _service_id(project_root: Path) -> str:
+    return hashlib.sha256(str(project_root).encode("utf-8")).hexdigest()[:12]
+
+
+def _service_label(project_root: Path) -> str:
+    return f"{LABEL}.{_service_id(project_root)}"
+
+
+def _windows_task_name(project_root: Path) -> str:
+    return f"{WINDOWS_TASK_NAME} ({_service_id(project_root)})"
+
+
+def _plist_path(project_root: Path) -> Path:
+    return LAUNCH_AGENTS_DIR / f"{_service_label(project_root)}.plist"
 WINDOWS_TASK_NS = "http://schemas.microsoft.com/windows/2004/02/mit/task"
 
 
@@ -44,8 +61,8 @@ def _schtasks(*args: str, check: bool = True) -> subprocess.CompletedProcess[str
     )
 
 
-def _target() -> str:
-    return f"gui/{os.getuid()}/{LABEL}"
+def _target(project_root: Path) -> str:
+    return f"gui/{os.getuid()}/{_service_label(project_root)}"
 
 
 def _validate_install_args(project_root: Path, host: str, port: int) -> Path:
@@ -216,7 +233,7 @@ def _install_macos(
     LAUNCH_AGENTS_DIR.mkdir(parents=True, exist_ok=True)
 
     plist = {
-        "Label": LABEL,
+        "Label": _service_label(project_root),
         "ProgramArguments": program_arguments,
         "WorkingDirectory": str(project_root),
         "RunAtLoad": True,
@@ -227,11 +244,14 @@ def _install_macos(
         "StandardErrorPath": str(logs / "mcp-launchd.error.log"),
         "EnvironmentVariables": {"PYTHONUNBUFFERED": "1"},
     }
-    PLIST_PATH.write_bytes(plistlib.dumps(plist))
+    plist_path = _plist_path(project_root)
+    plist_path.write_bytes(plistlib.dumps(plist))
 
-    _launchctl("bootout", _target(), check=False)
+    _launchctl("bootout", _target(project_root), check=False)
+    _launchctl("bootout", f"gui/{os.getuid()}/{LABEL}", check=False)
+    PLIST_PATH.unlink(missing_ok=True)
     domain = f"gui/{os.getuid()}"
-    bootstrap = _launchctl("bootstrap", domain, str(PLIST_PATH), check=False)
+    bootstrap = _launchctl("bootstrap", domain, str(plist_path), check=False)
     if bootstrap.returncode != 0:
         if "service already loaded" not in bootstrap.stderr.lower():
             raise subprocess.CalledProcessError(
@@ -240,8 +260,8 @@ def _install_macos(
                 output=bootstrap.stdout,
                 stderr=bootstrap.stderr,
             )
-    _launchctl("kickstart", "-k", _target())
-    _launchctl("print", _target())
+    _launchctl("kickstart", "-k", _target(project_root))
+    _launchctl("print", _target(project_root))
 
     return (
         "MultiAgentOS local MCP service installed and started. "
@@ -259,6 +279,9 @@ def _install_windows(
 ) -> str:
     logs = project_root / ".multiagentos" / "logs"
     logs.mkdir(parents=True, exist_ok=True)
+
+    _schtasks("/End", "/TN", WINDOWS_TASK_NAME, check=False)
+    _schtasks("/Delete", "/TN", WINDOWS_TASK_NAME, "/F", check=False)
 
     xml = _windows_task_xml(program_arguments, project_root=project_root)
     xml_path = None
@@ -279,7 +302,7 @@ def _install_windows(
             "/XML",
             xml_path,
             "/TN",
-            WINDOWS_TASK_NAME,
+            _windows_task_name(project_root),
             "/F",
             check=False,
         )
@@ -294,7 +317,7 @@ def _install_windows(
             f"(exit code {result.returncode}): {detail}"
         )
 
-    run = _schtasks("/Run", "/TN", WINDOWS_TASK_NAME, check=False)
+    run = _schtasks("/Run", "/TN", _windows_task_name(project_root), check=False)
     if run.returncode != 0:
         raise subprocess.CalledProcessError(
             run.returncode,
@@ -316,48 +339,42 @@ def _install_windows(
     )
 
 
-def uninstall_mcp_service() -> str:
-    """Stop and remove the managed local MCP service."""
+def uninstall_mcp_service(project_root: Path = Path(".")) -> str:
+    """Stop and remove the managed local MCP service for a project."""
     _require_supported_platform()
+    project_root = _validate_install_args(project_root, "127.0.0.1", 8000)
     if sys.platform == "darwin":
-        _launchctl("bootout", _target(), check=False)
-        PLIST_PATH.unlink(missing_ok=True)
-        return f"MultiAgentOS local MCP service removed: {LABEL}"
+        label = _service_label(project_root)
+        _launchctl("bootout", _target(project_root), check=False)
+        _plist_path(project_root).unlink(missing_ok=True)
+        return f"MultiAgentOS local MCP service removed: {label}"
 
+    task_name = _windows_task_name(project_root)
+    _schtasks("/End", "/TN", task_name, check=False)
     _schtasks("/End", "/TN", WINDOWS_TASK_NAME, check=False)
-    result = _schtasks("/Delete", "/TN", WINDOWS_TASK_NAME, "/F", check=False)
+    result = _schtasks("/Delete", "/TN", task_name, "/F", check=False)
+    _schtasks("/Delete", "/TN", WINDOWS_TASK_NAME, "/F", check=False)
     if result.returncode not in {0, 1}:
-        raise subprocess.CalledProcessError(
-            result.returncode,
-            result.args,
-            output=result.stdout,
-            stderr=result.stderr,
-        )
-    return f"MultiAgentOS local MCP service removed: {WINDOWS_TASK_NAME}"
+        raise subprocess.CalledProcessError(result.returncode, result.args, output=result.stdout, stderr=result.stderr)
+    return f"MultiAgentOS local MCP service removed: {task_name}"
 
 
-def mcp_service_status() -> str:
-    """Return the status for the managed local MCP service."""
+def mcp_service_status(project_root: Path = Path(".")) -> str:
+    """Return the status for the managed local MCP service for a project."""
     _require_supported_platform()
+    project_root = _validate_install_args(project_root, "127.0.0.1", 8000)
     if sys.platform == "darwin":
-        result = _launchctl("print", _target(), check=False)
+        label = _service_label(project_root)
+        result = _launchctl("print", _target(project_root), check=False)
         if result.returncode == 0:
             return result.stdout.strip()
-        return f"MultiAgentOS local MCP service is not installed: {LABEL}"
+        return f"MultiAgentOS local MCP service is not installed: {label}"
 
-    result = _schtasks(
-        "/Query",
-        "/TN",
-        WINDOWS_TASK_NAME,
-        "/FO",
-        "LIST",
-        "/V",
-        check=False,
-    )
+    task_name = _windows_task_name(project_root)
+    result = _schtasks("/Query", "/TN", task_name, "/FO", "LIST", "/V", check=False)
     if result.returncode == 0:
         return result.stdout.strip()
-    return f"MultiAgentOS local MCP service is not installed: {WINDOWS_TASK_NAME}"
-
+    return f"MultiAgentOS local MCP service is not installed: {task_name}"
 
 __all__ = [
     "LABEL",
