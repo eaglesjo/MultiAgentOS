@@ -17,23 +17,20 @@ AI clients provide reasoning, intent, plans, and results.
 **MultiAgentOS provides the execution boundary.**
 
 ```text
-AI Client
-    │
-    ▼
-MCP
-    │
-    ▼
-┌──────────────────────────────────────┐
-│       Agent Execution Runtime        │
-│                                      │
-│  Filesystem   Patch   Process   Git  │
-└──────────────────┬───────────────────┘
-                   │
-                   ▼
-             Real Project
-                   │
-                   ▼
-              GitHub Repo
+​```mermaid
+flowchart TB
+    CLIENT["AI Client"] --> MCP["MCP"]
+    MCP --> RUNTIME["Agent Execution Runtime"]
+    RUNTIME --> FS["Filesystem"]
+    RUNTIME --> PATCH["Patch"]
+    RUNTIME --> PROCESS["Process"]
+    RUNTIME --> GIT["Git"]
+    FS --> PROJECT["Real Project"]
+    PATCH --> PROJECT
+    PROCESS --> PROJECT
+    GIT --> PROJECT
+    PROJECT --> GH["GitHub Repository"]
+```
 ```
 
 This separation makes local project execution explicit, inspectable, and policy-controlled instead of giving an AI client unrestricted operating-system access.
@@ -104,6 +101,31 @@ flowchart LR
 `Orchestrator.run_workflow()` is the higher-level orchestration entry point. `MultiAgentWorkflow` owns stage, handoff, review, and rework semantics.
 
 The runtime remains the authority for permissions and execution.
+
+### Governance migrated from PetTarotReading
+
+MultiAgentOS now treats PetTarotReading's strongest governance patterns as native runtime contracts rather than as a second Agent OS.
+
+```mermaid
+flowchart TB
+    WU["WorkUnit"] --> SCOPE["Scope Lock"]
+    WU --> ROLES["Execution roles"]
+    WU --> ART["Artifacts"]
+    WU --> EVID["Evidence"]
+    WU --> APPROVAL["Human approval"]
+    WU --> HOLD["HOLD safety"]
+
+    SCOPE --> RUNTIME["MultiAgentOS Runtime"]
+    ROLES --> RUNTIME
+    ART --> RUNTIME
+    EVID --> RUNTIME
+    APPROVAL --> RUNTIME
+    HOLD --> RUNTIME
+
+    RUNTIME --> TOOLS["MCP / Filesystem / Process / Git / GitHub"]
+```
+
+The migration keeps MultiAgentOS as the single orchestration and execution authority. See [PetTarotReading Governance Migration](docs/PETTAROTREADING_GOVERNANCE_MIGRATION.md).
 
 ---
 
