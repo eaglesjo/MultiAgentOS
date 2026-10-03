@@ -23,8 +23,10 @@ Required environment:
   CONTROL_PLANE_TUNNEL_ID
   CONTROL_PLANE_API_KEY
 
+Required environment:
+  MCP_SERVER_URL (point at the project MCP endpoint, e.g. http://127.0.0.1:8003/mcp)
+
 Optional environment:
-  MCP_SERVER_URL (required; point at the project MCP endpoint, e.g. http://127.0.0.1:8003/mcp)
   TUNNEL_CLIENT_BIN (default: resolve tunnel-client from PATH)
 EOF
 }
