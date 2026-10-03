@@ -30,7 +30,7 @@ _ALLOWED_TRANSITIONS: dict[WorkStatus, frozenset[WorkStatus]] = {
     WorkStatus.HANDOFF: frozenset({WorkStatus.EXECUTING, WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.HOLD}),
     WorkStatus.COMPLETED: frozenset(),
     WorkStatus.FAILED: frozenset({WorkStatus.EXECUTING}),
-    WorkStatus.HOLD: frozenset({WorkStatus.BLOCKED, WorkStatus.FAILED}),
+    WorkStatus.HOLD: frozenset({WorkStatus.BLOCKED, WorkStatus.FAILED, WorkStatus.EXECUTING}),
     WorkStatus.BLOCKED: frozenset(),
 }
 
