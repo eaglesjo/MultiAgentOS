@@ -147,14 +147,13 @@ This is a compatibility record for the verified environment, **not a universal g
 
 The cost-free local workflow does not depend on Secure MCP Tunnel:
 
-```text
-ChatGPT Web
-   ├── GitHub connection ──► GitHub Repository
-   │
-   └── Local MCP ──────────► 127.0.0.1:8000/mcp
-                                  │
-                                  ▼
-                           Local Project
+```mermaid
+flowchart TB
+    WEB["ChatGPT Web"]
+
+    WEB -->|GitHub connection| GH["GitHub Repository"]
+    WEB -->|Local MCP| MCP["127.0.0.1:8000/mcp"]
+    MCP --> PROJECT["Local Project"]
 ```
 
 ---
@@ -163,23 +162,20 @@ ChatGPT Web
 
 Secure MCP Tunnel is an **optional remote connectivity layer** for supported clients that need to reach a private local MCP server.
 
-```text
-Supported Remote Client
-          │
-          ▼
-OpenAI Secure MCP Tunnel
-          │
-          ▼
-     tunnel-client
-          │
-          ▼
-MultiAgentOS MCP
-          │
-          ▼
-Agent Execution Runtime
-          │
-          ▼
-     Local Project
+```mermaid
+flowchart TB
+    CLIENT["Supported Remote Client"]
+    TUNNEL["OpenAI Secure MCP Tunnel"]
+    TC["tunnel-client"]
+    MCP["MultiAgentOS MCP"]
+    RUNTIME["Agent Execution Runtime"]
+    PROJECT["Local Project"]
+
+    CLIENT --> TUNNEL
+    TUNNEL --> TC
+    TC --> MCP
+    MCP --> RUNTIME
+    RUNTIME --> PROJECT
 ```
 
 The local MCP server can remain loopback-only. The tunnel client establishes the outbound connection.
@@ -208,14 +204,21 @@ See [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md).
 
 Multiple projects can run independently.
 
-```text
-Project A                         Project B
-─────────                         ─────────
-MCP Service                       MCP Service
-Runtime                           Runtime
-Tunnel (optional)                 Tunnel (optional)
-Logs                              Logs
-Permissions                       Permissions
+```mermaid
+flowchart TB
+    A["Project A"]
+    A --> A_MCP["MCP Service"]
+    A --> A_RUNTIME["Runtime"]
+    A --> A_TUNNEL["Tunnel (optional)"]
+    A --> A_LOGS["Logs"]
+    A --> A_PERM["Permissions"]
+
+    B["Project B"]
+    B --> B_MCP["MCP Service"]
+    B --> B_RUNTIME["Runtime"]
+    B --> B_TUNNEL["Tunnel (optional)"]
+    B --> B_LOGS["Logs"]
+    B --> B_PERM["Permissions"]
 ```
 
 Each managed project receives its own service identity derived from its resolved project path.
@@ -256,25 +259,24 @@ The core rule is simple:
 
 The baseline is designed around:
 
-```text
-Install MultiAgentOS
-        │
-        ▼
-Initialize project
-        │
-        ▼
-Agent Execution Runtime MCP
-        │
-        ▼
-AI Client
-   ┌────┼────┬─────┐
-   ▼    ▼    ▼     ▼
- READ  PATCH TEST  VERIFY
-   │    │    │     │
-   └────┴────┴─────┘
-          │
-          ▼
-      GitHub
+```mermaid
+flowchart TB
+    INSTALL["Install MultiAgentOS"]
+    INIT["Initialize project"]
+    MCP["Agent Execution Runtime MCP"]
+    CLIENT["AI Client"]
+
+    INSTALL --> INIT --> MCP --> CLIENT
+
+    CLIENT --> READ["READ"]
+    CLIENT --> PATCH["PATCH"]
+    CLIENT --> TEST["TEST"]
+    CLIENT --> VERIFY["VERIFY"]
+
+    READ --> GH["GitHub"]
+    PATCH --> GH
+    TEST --> GH
+    VERIFY --> GH
 ```
 
 “Cost-Free” describes the **MultiAgentOS runtime architecture**. It does not mean that an AI product has unlimited usage or that every optional AI service is free.
@@ -394,26 +396,31 @@ The current release verification includes:
 
 The repository deliberately distinguishes:
 
-```text
-LOCAL RUNTIME VERIFICATION
-        │
-        ├── MCP
-        ├── filesystem
-        ├── patch
-        ├── process
-        └── GitHub
-              │
-              ▼
-          VERIFIED
+```mermaid
+flowchart TB
+    LOCAL["Local Runtime Verification"]
+    LOCAL --> MCP["MCP"]
+    LOCAL --> FS["Filesystem"]
+    LOCAL --> PATCH["Patch"]
+    LOCAL --> PROCESS["Process"]
+    LOCAL --> GH["GitHub"]
 
-OPTIONAL HOSTED TUNNEL
-        │
-        ├── tunnel lifecycle
-        ├── control-plane polling
-        └── remote client capability
-              │
-              ▼
-     Environment / plan dependent
+    VERIFIED["Verified"]
+    MCP --> VERIFIED
+    FS --> VERIFIED
+    PATCH --> VERIFIED
+    PROCESS --> VERIFIED
+    GH --> VERIFIED
+
+    TUNNEL["Optional Hosted Tunnel"]
+    TUNNEL --> LIFECYCLE["Tunnel lifecycle"]
+    TUNNEL --> POLL["Control-plane polling"]
+    TUNNEL --> REMOTE["Remote client capability"]
+
+    DEP["Environment / plan dependent"]
+    LIFECYCLE --> DEP
+    POLL --> DEP
+    REMOTE --> DEP
 ```
 
 This prevents a healthy tunnel from being incorrectly reported as proof of a hosted client-side MCP tool invocation.
@@ -424,22 +431,23 @@ This prevents a healthy tunnel from being incorrectly reported as proof of a hos
 
 MultiAgentOS keeps execution authority behind an explicit runtime boundary.
 
-```text
-AI Intent
-   │
-   ▼
-MCP Tool Request
-   │
-   ▼
-Execution Policy
-   │
-   ├── filesystem.read
-   ├── filesystem.write
-   ├── patch.apply
-   └── process / shell
-   │
-   ▼
-Real Project
+```mermaid
+flowchart TB
+    INTENT["AI Intent"]
+    REQUEST["MCP Tool Request"]
+    POLICY["Execution Policy"]
+
+    INTENT --> REQUEST --> POLICY
+
+    POLICY --> READ["filesystem.read"]
+    POLICY --> WRITE["filesystem.write"]
+    POLICY --> PATCH["patch.apply"]
+    POLICY --> PROCESS["process / shell"]
+
+    READ --> PROJECT["Real Project"]
+    WRITE --> PROJECT
+    PATCH --> PROJECT
+    PROCESS --> PROJECT
 ```
 
 Write and process capabilities require explicit opt-in.
