@@ -101,17 +101,11 @@ flowchart TB
 
 ### ChatGPT Web — 로컬 프로젝트 경로
 
-```text
-ChatGPT Web
-    |
-    v
-127.0.0.1:8000/mcp
-    |
-    v
-MultiAgentOS MCP
-    |
-    v
-Local Project
+```mermaid
+flowchart TB
+    CHATWEB["ChatGPT Web"] --> MCP["127.0.0.1:8000/mcp"]
+    MCP --> MAOS["MultiAgentOS MCP"]
+    MAOS --> PROJECT["Local Project"]
 ```
 
 로컬 Agent Execution Runtime MCP Server가 기본 경로입니다. 현재 검증 환경에서는 ChatGPT Web이 이 로컬 MCP를 직접 사용할 수 있으며, ChatGPT Mobile에서는 사용할 수 없습니다. 로컬 MCP Client도 독립적으로 사용할 수 있습니다. Secure MCP Tunnel은 기본 경로에 필요하지 않습니다.
