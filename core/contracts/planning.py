@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from core.contracts.scope import ScopeLock
+
 
 @dataclass(frozen=True)
 class PlanStep:
@@ -9,6 +11,7 @@ class PlanStep:
     objective: str
     agent_id: str | None = None
     depends_on: tuple[str, ...] = ()
+    scope_lock: ScopeLock = ScopeLock()
 
 
 @dataclass(frozen=True)
@@ -19,6 +22,8 @@ class WorkPlan:
 
     def validate(self) -> None:
         known = {step.id for step in self.steps}
+        for step in self.steps:
+            step.scope_lock.validate()
         for step in self.steps:
             missing = set(step.depends_on) - known
             if missing:
