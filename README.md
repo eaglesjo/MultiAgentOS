@@ -16,8 +16,7 @@ AI clients provide reasoning, intent, plans, and results.
 
 **MultiAgentOS provides the execution boundary.**
 
-```text
-​```mermaid
+```mermaid
 flowchart TB
     CLIENT["AI Client"] --> MCP["MCP"]
     MCP --> RUNTIME["Agent Execution Runtime"]
@@ -30,7 +29,6 @@ flowchart TB
     PROCESS --> PROJECT
     GIT --> PROJECT
     PROJECT --> GH["GitHub Repository"]
-```
 ```
 
 This separation makes local project execution explicit, inspectable, and policy-controlled instead of giving an AI client unrestricted operating-system access.
