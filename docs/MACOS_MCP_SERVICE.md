@@ -51,7 +51,7 @@ bash scripts/macos/install_mcp_launchd.sh --allow-write
 
 ## Lifecycle
 
-The service uses `RunAtLoad` and `KeepAlive`. It starts when the user session loads the service and is restarted if the MCP process exits.
+The service uses `RunAtLoad` and `KeepAlive`. Each installed project gets a deterministic service ID derived from its canonical project path. Its launchd label and plist are therefore project-scoped. Reinstalling or uninstalling one project does not stop or remove another project's service.
 
 Durable MultiAgentOS state remains under `.multiagentos/`.
 
@@ -60,10 +60,10 @@ The service does not embed OpenAI tunnel credentials or API keys in the launchd 
 ## Verify
 
 ```bash
-launchctl print gui/$(id -u)/com.eaglesjo.multiagentos.mcp
+multiagentos mcp status --path /absolute/path/to/project
 ```
 
-The MCP endpoint is `http://127.0.0.1:8000/mcp`.
+The MCP endpoint is project-specific, for example `http://127.0.0.1:8000/mcp` for one project and `http://127.0.0.1:8001/mcp` for another.
 
 A bare GET may return HTTP 400 with `Missing session ID`. That is expected for a stateful Streamable HTTP MCP endpoint and does not by itself indicate that the server is down.
 
@@ -77,8 +77,7 @@ A bare GET may return HTTP 400 with `Missing session ID`. That is expected for a
 ## Stop / remove
 
 ```bash
-launchctl bootout gui/$(id -u)/com.eaglesjo.multiagentos.mcp
-rm -f ~/Library/LaunchAgents/com.eaglesjo.multiagentos.mcp.plist
+multiagentos mcp uninstall --path /absolute/path/to/project
 ```
 
 Removing the launchd service does not remove `.multiagentos` durable state.
