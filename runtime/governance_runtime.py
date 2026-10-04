@@ -27,7 +27,7 @@ class GovernanceRuntime:
         check = validate_plan(work_unit, plan)
         if not check.passed:
             raise ValueError("Invalid governed plan: " + "; ".join(check.findings))
-        if work_unit.work_type in {"development", "development_research", "ui", "ui_research"}:
+        if work_unit.work_type in {"development", "development_research", "ui", "ui_research"} and (work_unit.target or work_unit.metadata.get("platform")):
             route_check = validate_specialist_route(
                 work_unit,
                 tuple(step.agent_id or "" for step in plan.steps),
