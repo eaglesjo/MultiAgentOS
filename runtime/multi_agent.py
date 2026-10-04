@@ -16,7 +16,7 @@ from core.handoff import HandoffManager
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.planning import BasicPlanner
 from core.state import WorkStateStore
-from runtime.governance import route_plan_steps
+from runtime.governance import route_plan_steps, validate_specialist_route
 from runtime.governance_runtime import GovernanceRuntime
 
 

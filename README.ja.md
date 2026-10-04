@@ -208,3 +208,54 @@ GitHub ActionsでもリポジトリのCIを検証します。
 ## License
 
 [LICENSE](LICENSE)を参照してください。
+
+
+---
+
+### Agent taxonomy と専門ルーティング
+
+MultiAgentOS は **Governance / Execution** とプラットフォーム別の専門エージェントを分離します。
+
+~~~mermaid
+flowchart TB
+    TASK["Task"]
+    TASK --> GOV["Governance / Execution"]
+    TASK --> RESEARCH["Research"]
+    TASK --> DEVELOPMENT["Development"]
+    TASK --> UI["UI"]
+
+    GOV --> FILE["File Picker"]
+    GOV --> PLAN["Planner"]
+    GOV --> EDIT["Editor"]
+    GOV --> EXEC["Executor"]
+    GOV --> REVIEW["Reviewer"]
+
+    RESEARCH --> DEV_R["Development Research"]
+    RESEARCH --> UI_R["UI Research"]
+
+    DEV_R --> REACT_R["React"]
+    DEV_R --> RN_R["React Native"]
+    DEV_R --> ANDROID_R["Android"]
+    DEV_R --> IOS_R["iOS"]
+
+    UI_R --> WEB_R["Web UI / React"]
+    UI_R --> RN_UI_R["React Native UI"]
+    UI_R --> ANDROID_UI_R["Android UI"]
+    UI_R --> IOS_UI_R["iOS UI"]
+
+    DEVELOPMENT --> REACT_D["React Developer"]
+    DEVELOPMENT --> RN_D["React Native Developer"]
+    DEVELOPMENT --> ANDROID_D["Android Developer"]
+    DEVELOPMENT --> IOS_D["iOS Developer"]
+
+    UI --> WEB["Web"]
+    UI --> CROSS["Cross-platform"]
+    UI --> NATIVE["Native"]
+    NATIVE --> ANDROID["Android"]
+    NATIVE --> IOS["iOS"]
+~~~
+
+プラットフォームが指定された開発タスクでは、実装前に対応する Development Research を実行できます。UI タスクではプラットフォーム別 UI Research を実行し、Browser Agent は Web 検証機能としてのみ使用します。
+
+詳細は [Agent Taxonomy and Routing](docs/AGENT_TAXONOMY.md) と [Agent Catalog](docs/AGENT_CATALOG.md) を参照してください。
+

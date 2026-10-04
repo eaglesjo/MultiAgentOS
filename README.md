@@ -127,6 +127,66 @@ The migration keeps MultiAgentOS as the single orchestration and execution autho
 
 ---
 
+### Agent taxonomy and specialist routing
+
+MultiAgentOS separates **Governance / Execution** from platform-oriented specialist agents.
+
+~~~mermaid
+flowchart TB
+    TASK["Task"]
+
+    TASK --> GOV["Governance / Execution"]
+    TASK --> RESEARCH["Research"]
+    TASK --> DEVELOPMENT["Development"]
+    TASK --> UI["UI"]
+
+    GOV --> FILE["File Picker"]
+    GOV --> PLAN["Planner"]
+    GOV --> EDIT["Editor"]
+    GOV --> EXEC["Executor"]
+    GOV --> REVIEW["Reviewer"]
+
+    RESEARCH --> DEV_R["Development Research"]
+    RESEARCH --> UI_R["UI Research"]
+
+    DEV_R --> REACT_R["React"]
+    DEV_R --> RN_R["React Native"]
+    DEV_R --> ANDROID_R["Android"]
+    DEV_R --> IOS_R["iOS"]
+
+    UI_R --> WEB_R["Web UI / React"]
+    UI_R --> RN_UI_R["React Native UI"]
+    UI_R --> ANDROID_UI_R["Android UI"]
+    UI_R --> IOS_UI_R["iOS UI"]
+
+    DEVELOPMENT --> REACT_D["React Developer"]
+    DEVELOPMENT --> RN_D["React Native Developer"]
+    DEVELOPMENT --> ANDROID_D["Android Developer"]
+    DEVELOPMENT --> IOS_D["iOS Developer"]
+
+    UI --> WEB["Web"]
+    UI --> CROSS["Cross-platform"]
+    UI --> NATIVE["Native"]
+    NATIVE --> ANDROID["Android"]
+    NATIVE --> IOS["iOS"]
+~~~
+
+A platform-aware development task can therefore run current platform research before implementation:
+
+~~~mermaid
+flowchart LR
+    TASK["Platform Development"] --> PLAN["Planner"]
+    PLAN --> RESEARCH["Development Research"]
+    RESEARCH --> DEV["Platform Developer"]
+    DEV --> EDIT["Editor"]
+    EDIT --> EXEC["Executor"]
+    EXEC --> REVIEW["Reviewer"]
+~~~
+
+UI work similarly runs UI research before implementation and uses Browser Agent only where browser validation is relevant.
+
+See [Agent Taxonomy and Routing](docs/AGENT_TAXONOMY.md) and [Agent Catalog](docs/AGENT_CATALOG.md).
+
 ## GitHub + Local Project
 
 MultiAgentOS treats the remote repository and the local working tree as complementary development surfaces.
