@@ -19,7 +19,7 @@ MultiAgentOS는 **AI 협업**과 **실행 권한**을 분리합니다.
 - **MultiAgentWorkflow** — Developer → Tester → Reviewer 실행
 - **Agent Execution Runtime** — 권한 및 실행의 최종 경계
 
-Agent는 의도, 계획, 결과를 제공하지만 filesystem, patch, Git 실행 권한을 직접 소유하지 않습니다.
+Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, Git 실행 권한을 직접 소유하지 않습니다.
 
 ## 프로젝트 설치
 
@@ -153,7 +153,7 @@ MultiAgentOS
 Local MCP
         |
         v
-프로젝트 filesystem / shell / test
+프로젝트 상태 / 소스 변경 / verification
 ```
 
 > **Cost-Free 정책:** OpenAI API 비용 없이 ChatGPT Free 텍스트 채팅을 AI 엔진으로 사용하고, MultiAgentOS Local MCP를 통제된 실행 경계로 사용하여 실제 개발 작업을 수행할 수 있어야 합니다.
@@ -167,34 +167,6 @@ Local MCP
 - Tunnel을 위한 두 번째 MCP Server
 
 단, 실제 사용하는 AI 서비스의 플랜 및 사용량 제한은 그대로 적용됩니다. Cost-Free는 MultiAgentOS의 런타임 비용 구조를 의미하며 AI 서비스의 무제한 사용을 의미하지 않습니다.
-
-### Terminal MCP 검증 범위
-
-`--allow-`를 명시한 Local MCP에서 현재 지원하는 shell 계약은 **foreground 실행**입니다.
-
-- `tools/list`에서 권한이 있을 때만 `shell.run` 노출
-- 프로젝트 루트에서 실제 shell 명령 실행
-- return code / stdout / stderr 반환
-- 권한이 없으면 shell 도구 비노출
-- stdio MCP acceptance 경로에서 실제 sub실행
-
-background 의 시작 / 상태 / 출력 스트리밍 / 종료 lifecycle은 아직 이 계약에 포함하지 않습니다. 별도의 lifecycle 구현과 E2E acceptance gate가 생기기 전에는 지원 기능으로 표현하지 않습니다.
-
-자세한 검증 기록은 [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)을 참고하세요.
-
-## Terminal MCP
-
-로컬 MCP에서 shell 실행을 명시적으로 허용하려면:
-
-```bash
-multiagentos mcp serve --path . --allow-```
-
-Streamable HTTP도 동일합니다.
-
-```bash
-multiagentos mcp serve-http --path . --allow-```
-
-`--allow-`가 없으면 `shell.run`은 MCP tool 목록에 노출되지 않습니다.
 
 ## 빠른 시작
 
@@ -279,9 +251,9 @@ GitHub Actions에서도 저장소 CI를 검증합니다.
 - [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
 - [Agent Execution Runtime MCP Architecture](docs/ARCHITECTURE_DECISIONS.md)
 
-영문 README를 canonical technical document로 유지하며, 각 locale README도 동일한 아키텍처, 용어, Cost-Free 기본 경로를 유지합니다.
+한국어 README를 유일한 번역 README로 유지합니다.
 
-**[English](README.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)**
+**[English](README.md)**
 
 ## License
 
