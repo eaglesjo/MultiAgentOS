@@ -19,7 +19,7 @@ MultiAgentOS는 **AI 협업**과 **실행 권한**을 분리합니다.
 - **MultiAgentWorkflow** — Developer → Tester → Reviewer 실행
 - **Agent Execution Runtime** — 권한 및 실행의 최종 경계
 
-Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, Git 실행 권한을 직접 소유하지 않습니다.
+Agent는 의도, 계획, 결과를 제공하지만 filesystem, patch, Git 실행 권한을 직접 소유하지 않습니다.
 
 ## 프로젝트 설치
 
@@ -110,7 +110,7 @@ flowchart TB
 
 `Orchestrator.run_workflow()`가 안정적인 상위 오케스트레이션 진입점입니다. `MultiAgentWorkflow`가 구체적인 stage, handoff, review, rework 의미론을 담당하며, `MultiAgentRuntime`은 애플리케이션/runtime adapter로서 이 오케스트레이션 경계를 사용합니다.
 
-Agent Execution Runtime은 permission, filesystem, patch, process, Git, verification을 담당하는 실행 경계로 유지됩니다.
+Agent Execution Runtime은 permission, filesystem, patch, Git, verification을 담당하는 실행 경계로 유지됩니다. Process/shell 실행은 현재 ChatGPT Free 사용자 경로의 검증된 지원 범위에 포함하지 않습니다.
 
 ## 연결 모델
 
@@ -170,15 +170,15 @@ Local MCP
 
 ### Terminal MCP 검증 범위
 
-`--allow-process`를 명시한 Local MCP에서 현재 지원하는 shell 계약은 **foreground 실행**입니다.
+`--allow-`를 명시한 Local MCP에서 현재 지원하는 shell 계약은 **foreground 실행**입니다.
 
-- `tools/list`에서 process 권한이 있을 때만 `shell.run` 노출
+- `tools/list`에서 권한이 있을 때만 `shell.run` 노출
 - 프로젝트 루트에서 실제 shell 명령 실행
 - return code / stdout / stderr 반환
-- process 권한이 없으면 shell 도구 비노출
-- stdio MCP acceptance 경로에서 실제 subprocess 실행
+- 권한이 없으면 shell 도구 비노출
+- stdio MCP acceptance 경로에서 실제 sub실행
 
-background process의 시작 / 상태 / 출력 스트리밍 / 종료 lifecycle은 아직 이 계약에 포함하지 않습니다. 별도의 lifecycle 구현과 E2E acceptance gate가 생기기 전에는 지원 기능으로 표현하지 않습니다.
+background 의 시작 / 상태 / 출력 스트리밍 / 종료 lifecycle은 아직 이 계약에 포함하지 않습니다. 별도의 lifecycle 구현과 E2E acceptance gate가 생기기 전에는 지원 기능으로 표현하지 않습니다.
 
 자세한 검증 기록은 [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)을 참고하세요.
 
@@ -187,16 +187,14 @@ background process의 시작 / 상태 / 출력 스트리밍 / 종료 lifecycle�
 로컬 MCP에서 shell 실행을 명시적으로 허용하려면:
 
 ```bash
-multiagentos mcp serve --path . --allow-process
-```
+multiagentos mcp serve --path . --allow-```
 
 Streamable HTTP도 동일합니다.
 
 ```bash
-multiagentos mcp serve-http --path . --allow-process
-```
+multiagentos mcp serve-http --path . --allow-```
 
-`--allow-process`가 없으면 `shell.run`은 MCP tool 목록에 노출되지 않습니다.
+`--allow-`가 없으면 `shell.run`은 MCP tool 목록에 노출되지 않습니다.
 
 ## 빠른 시작
 
