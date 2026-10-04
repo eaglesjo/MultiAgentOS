@@ -483,9 +483,9 @@ Credentials and provider API keys are not written into project configuration.
 
 ## Verification
 
-### MultiAgentOS v0.4.3
+### MultiAgentOS v0.4.3 release verification record
 
-The current release verification includes:
+The following results are the recorded verification evidence for the v0.4.3 release:
 
 - **309 tests passed**
 - **3 tests skipped on macOS**
@@ -497,6 +497,8 @@ The current release verification includes:
 - Local Agent Execution Runtime filesystem READ / WRITE verified
 - `patch.apply` verified with filesystem readback
 - GitHub-connected development path verified
+
+These bullets are a release verification record, not a claim that the same test count has been freshly executed for every later `main` commit. Current `main` changes are validated by the repository's GitHub Actions workflows.
 
 ### Verification boundary
 
