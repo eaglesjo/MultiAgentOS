@@ -33,7 +33,10 @@ from core.tool_ledger import ToolInvocationStore
 from core.execution_state import ExecutionStateStore
 from core.recovery_audit import RecoveryAuditStore
 from core.orchestrator import OrchestrationResult, Orchestrator
-from core.agent_selection_policy import AgentSelectionPolicy, AgentSelectionStrategy
+from core.agent_selection_policy import AgentSelectionPolicy, AgentSelectionStrategy, SelectionFallback
+from core.agent_selector import DeterministicAgentSelector, EvidenceEngine
+from core.adaptive_agent_execution import AdaptiveAgentExecutionLoop, AdaptiveExecutionPolicy, ExecutionRound
+from runtime.adaptive_agent_execution import RuntimeExecutionEvidenceCollector, RuntimeStageExecutor
 from core.routing import AIRouter, RoutingStrategy
 from profiles.detector import ProfileDetector
 from profiles.resolver import ProfileResolver
@@ -308,6 +311,75 @@ class AgentExecutionRuntime:
             artifact_store=artifact_store,
             checkpoint=checkpoint,
         )
+
+    def run_adaptive(
+        self,
+        project_root: Path,
+        work_unit: WorkUnit,
+        models: list[ModelSpec],
+        executors_by_agent: dict[str, AgentExecutor],
+        *,
+        explicit_agents: tuple[str, ...] | None = None,
+        repository_evidence=None,
+        selection_strategy: AgentSelectionStrategy | None = None,
+        selection_policy: AgentSelectionPolicy | None = None,
+        preferred_model_ids_by_agent: dict[str, list[str]] | None = None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
+        policy: AdaptiveExecutionPolicy | None = None,
+        confidence_resolver=None,
+    ) -> tuple[ExecutionRound, ...]:
+        """Execute a governed route with bounded specialist-only adaptive reselection."""
+        root = Path(project_root).resolve()
+        registry = build_registry()
+        initial_selector = DeterministicAgentSelector(
+            evidence_engine=EvidenceEngine(),
+            selection_strategy=selection_strategy,
+            selection_policy=selection_policy,
+            registry=registry,
+        )
+        selection = initial_selector.select(
+            work_unit,
+            explicit_agents=explicit_agents,
+            repository_evidence=(
+                repository_evidence
+                if repository_evidence is not None
+                else self.repository.evidence(root)
+            ),
+        )
+        selector = DeterministicAgentSelector(
+            evidence_engine=EvidenceEngine(),
+            selection_strategy=None,
+            selection_policy=selection_policy,
+            registry=registry,
+        )
+        fallback = (
+            SelectionFallback(selection_strategy, policy=selection_policy)
+            if selection_strategy is not None
+            else None
+        )
+        collector = RuntimeExecutionEvidenceCollector(
+            event_store=self.event_store(root),
+            tool_ledger_store=self.tool_ledger_store(root),
+        )
+        stage_executor = RuntimeStageExecutor(
+            agents={agent.id: agent for agent in registry.list()},
+            models=models,
+            executors=executors_by_agent,
+            preferred_model_ids_by_agent=preferred_model_ids_by_agent,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            evidence_collector=collector,
+            confidence_resolver=confidence_resolver,
+        )
+        loop = AdaptiveAgentExecutionLoop(
+            selector=selector,
+            registry=registry,
+            executor=stage_executor,
+            selection_fallback=fallback,
+            policy=policy,
+        )
+        return loop.run(work_unit=work_unit, initial_plan=selection.plan)
 
     def reselect_agents(
         self,
