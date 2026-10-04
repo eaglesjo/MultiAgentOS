@@ -33,6 +33,7 @@ ROUTE_TEMPLATES: dict[str, tuple[str, ...]] = {
     "web_ui": (
         "file-picker",
         "planner",
+        "ui-agent",
         "ui-research-web",
         "ui-web",
         "editor",
