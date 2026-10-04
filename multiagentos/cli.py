@@ -223,6 +223,11 @@ def build_parser() -> argparse.ArgumentParser:
     init = subparsers.add_parser("init", help="initialize Agent Execution Runtime in a project")
     init.add_argument("path", nargs="?", default=".")
     init.add_argument("--component", choices=("agent-execution-runtime", "multi-agent", "all"), default="all")
+    init.add_argument(
+        "--approve",
+        action="store_true",
+        help="approve the detected project plan when detection requires approval",
+    )
 
     providers = subparsers.add_parser(
         "providers", help="inspect configured AI providers and models"
@@ -821,7 +826,21 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    config = ProjectInitializer().apply(root, detections, component=args.component)
+    try:
+        config = ProjectInitializer().apply(
+            root,
+            detections,
+            component=args.component,
+            approved=args.approve,
+        )
+    except PermissionError as exc:
+        print(json.dumps({
+            "error": "approval_required",
+            "message": str(exc),
+            "path": str(root),
+            "action": "review 'multiagentos detect' and rerun 'multiagentos init' with --approve",
+        }, indent=2))
+        return 2
     print(f"Initialized Agent Execution Runtime: {config}")
     return 0
 
