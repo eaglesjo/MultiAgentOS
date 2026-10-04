@@ -22,6 +22,16 @@ class SelectionDecision:
 
 
 class AgentSelectionStrategy(Protocol):
+    def select_stage(
+        self,
+        *,
+        work_unit: WorkUnit,
+        evidence: tuple[EvidenceRecord, ...],
+        candidates: tuple[AgentCandidate, ...],
+        stage_index: int,
+    ) -> SelectionDecision:
+        ...
+
     def select(
         self,
         *,
@@ -88,11 +98,52 @@ class SelectionFallback:
         if not self.policy.should_escalate(deterministic.confidence):
             return deterministic
 
-        decision = self.strategy.select(
-            work_unit=work_unit,
-            evidence=deterministic.evidence,
-            candidates=deterministic.candidates,
+        stage_confidences = deterministic.stage_confidences
+        ambiguous = tuple(
+            stage
+            for stage in stage_confidences
+            if self.policy.should_escalate(stage.score)
         )
+        if not ambiguous:
+            return deterministic
+
+        select_stage = getattr(self.strategy, "select_stage", None)
+        if select_stage is None:
+            decision = self.strategy.select(
+                work_unit=work_unit,
+                evidence=deterministic.evidence,
+                candidates=deterministic.candidates,
+            )
+        else:
+            selected_by_stage = list(deterministic.selected_agents)
+            reasons: list[str] = []
+            confidence_values: list[float] = []
+            candidate_pool = deterministic.candidates
+            for stage in ambiguous:
+                stage_candidates = tuple(
+                    candidate
+                    for candidate in candidate_pool
+                    if stage.stage_index in candidate.stage_indices
+                )
+                decision = select_stage(
+                    work_unit=work_unit,
+                    evidence=deterministic.evidence,
+                    candidates=stage_candidates,
+                    stage_index=stage.stage_index,
+                )
+                if len(decision.selected_agents) != 1:
+                    raise ValueError("stage selection must return exactly one Agent")
+                selected_by_stage[stage.stage_index] = decision.selected_agents[0]
+                reasons.extend(decision.reasons)
+                confidence_values.append(decision.confidence)
+            decision = SelectionDecision(
+                selected_agents=tuple(selected_by_stage),
+                confidence=(
+                    sum(confidence_values) / len(confidence_values)
+                    if confidence_values else deterministic.confidence
+                ),
+                reasons=tuple(reasons) or ("ambiguous stages were reselected",),
+            )
         if not 0.0 <= decision.confidence <= 1.0:
             raise ValueError("selection strategy confidence must be between 0 and 1")
 
