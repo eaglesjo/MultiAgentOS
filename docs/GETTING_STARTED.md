@@ -57,6 +57,18 @@ The initializer writes project-local `.multiagentos/` configuration and runtime 
 
 Agent Execution Runtime's standalone MCP server does not require OpenAI, ChatGPT, a `tunnel_id`, or `tunnel-client`.
 
+## 3.1 Project installation contract
+
+See [Project Installation](PROJECT_INSTALLATION.md) for the complete project bootstrap flow, generated AGENTS.md, project-local MCP contract, runtime state boundaries, and client-neutral installation rules.
+
+```mermaid
+flowchart LR
+    PROJECT["Project"] --> INIT["multiagentos init ."]
+    INIT --> RUNTIME[".multiagentos runtime"]
+    RUNTIME --> MCP["Local MCP"]
+    MCP --> AGENT["Coding Agent"]
+```
+
 ## 4. Choose your connection path
 
 ### Verified ChatGPT client matrix
