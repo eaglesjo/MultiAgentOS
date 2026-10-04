@@ -35,6 +35,8 @@ def classify_project(detections: tuple[DetectionResult, ...]) -> ProjectClassifi
                 "com.android.library",
                 "directory:android",
                 "AndroidManifest.xml",
+                "libs.plugins.android.application",
+                "libs.plugins.android.library",
             }
             if evidence & framework_markers:
                 framework_values.append("Android Native")

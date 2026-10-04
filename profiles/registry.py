@@ -23,6 +23,8 @@ PROFILES = (
         }),
         detect_markers=frozenset({
             "com.android.application", "com.android.library",
+            "libs.plugins.android.application",
+            "libs.plugins.android.library",
             "org.jetbrains.kotlin.android", "androidx.compose",
         }),
         roles=COMMON_ROLES + (

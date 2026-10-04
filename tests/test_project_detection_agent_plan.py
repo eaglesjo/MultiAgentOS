@@ -18,7 +18,7 @@ class ProjectDetectionAgentPlanTests(unittest.TestCase):
             self.assertEqual(detections[0].confidence, 0.35)
             self.assertTrue(build_agent_plan(root, detections).requires_approval)
 
-    def test_android_strong_evidence_activates_only_android_specialists(self):
+    def test_android_strong_evidence_activates_only_evidenced_android_specialists(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "settings.gradle").write_text("rootProject.name='app'\n", encoding="utf-8")
@@ -32,11 +32,46 @@ class ProjectDetectionAgentPlanTests(unittest.TestCase):
 
             plan = build_agent_plan(root, detections)
             self.assertIn("android-architect", plan.selected)
-            self.assertIn("kotlin-developer", plan.selected)
+            self.assertIn("android-developer", plan.selected)
             self.assertIn("gradle", plan.selected)
+            self.assertNotIn("kotlin-developer", plan.selected)
+            self.assertNotIn("jetpack-compose", plan.selected)
+            self.assertNotIn("ui-android", plan.selected)
             self.assertNotIn("react-developer", plan.selected)
             self.assertNotIn("swift-developer", plan.selected)
             self.assertFalse(plan.requires_approval)
+
+    def test_android_version_catalog_alias_is_strong_evidence(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "settings.gradle").write_text("rootProject.name='app'\n", encoding="utf-8")
+            (root / "build.gradle").write_text(
+                "plugins { alias libs.plugins.android.application apply false }\n",
+                encoding="utf-8",
+            )
+            detections = ProfileDetector().detect(root)
+            self.assertEqual(detections[0].profile_id, "android-native")
+            self.assertEqual(detections[0].confidence, 1.0)
+            classification = build_agent_plan(root, detections).classification
+            self.assertEqual(classification.framework_runtime.values, ("Android Native",))
+            self.assertFalse(build_agent_plan(root, detections).requires_approval)
+
+    def test_android_kotlin_and_compose_specialists_require_direct_evidence(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "settings.gradle").write_text("rootProject.name='app'\n", encoding="utf-8")
+            (root / "build.gradle").write_text(
+                "plugins { id 'com.android.application' version '8.0.0' apply false }\n"
+                "plugins { id 'org.jetbrains.kotlin.android' version '2.0.0' apply false }\n",
+                encoding="utf-8",
+            )
+            (root / "app.kt").write_text("// source:kotlin\n", encoding="utf-8")
+            (root / "compose.gradle").write_text("implementation 'androidx.compose.ui:ui:1.0.0'\n", encoding="utf-8")
+            detections = ProfileDetector().detect(root)
+            plan = build_agent_plan(root, detections)
+            self.assertIn("kotlin-developer", plan.selected)
+            self.assertIn("jetpack-compose", plan.selected)
+            self.assertIn("ui-android", plan.selected)
 
     def test_react_native_is_high_confidence_from_dependency_evidence(self):
         with tempfile.TemporaryDirectory() as temp:

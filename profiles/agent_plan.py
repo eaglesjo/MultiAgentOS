@@ -41,10 +41,7 @@ _PROFILE_SPECIALISTS = {
     "android-native": {
         "android-architect",
         "android-developer",
-        "kotlin-developer",
-        "jetpack-compose",
         "gradle",
-        "ui-android",
     },
     "ios-native": {
         "ios-architect",
@@ -66,6 +63,44 @@ _PROFILE_SPECIALISTS = {
 }
 
 
+def _evidence_for_profile(
+    detections: tuple[DetectionResult, ...], profile_id: str
+) -> set[str]:
+    evidence: set[str] = set()
+    for result in detections:
+        if result.profile_id == profile_id:
+            evidence.update(result.evidence)
+    return evidence
+
+
+def _technology_specialists(
+    profiles: tuple[str, ...],
+    detections: tuple[DetectionResult, ...],
+) -> set[str]:
+    selected: set[str] = set()
+
+    for profile_id in profiles:
+        selected.update(_PROFILE_SPECIALISTS.get(profile_id, set()))
+
+        if profile_id == "android-native":
+            evidence = _evidence_for_profile(detections, profile_id)
+            if "source:kotlin" in evidence or "org.jetbrains.kotlin.android" in evidence:
+                selected.add("kotlin-developer")
+            if "androidx.compose" in evidence:
+                selected.update({"jetpack-compose", "ui-android"})
+
+        elif profile_id == "ios-native":
+            evidence = _evidence_for_profile(detections, profile_id)
+            if "source:swift" in evidence:
+                selected.add("swift-developer")
+            if ".xcodeproj" in evidence or ".xcworkspace" in evidence:
+                selected.add("xcode")
+            if "SwiftUI" in evidence:
+                selected.add("swiftui")
+
+    return selected
+
+
 def build_agent_plan(
     project_root: Path,
     detections: tuple[DetectionResult, ...],
@@ -75,7 +110,7 @@ def build_agent_plan(
     profiles = tuple(result.profile_id for result in detections)
     confidence = detections[0].confidence if detections else 0.0
     catalog = build_agent_catalog(profiles)
-    specialist_ids = set().union(*(_PROFILE_SPECIALISTS.get(p, set()) for p in profiles))
+    specialist_ids = _technology_specialists(profiles, detections)
 
     available = {agent.id for agent in catalog}
     selected = set(GOVERNANCE_AGENTS) & available
@@ -90,7 +125,7 @@ def build_agent_plan(
     )
     rationale = (
         "governance agents are always available to preserve execution and review boundaries",
-        "specialists are selected only from detected technology profiles",
+        "specialists are selected only from detected technology profiles and direct technology evidence",
     )
     if confidence < approval_threshold:
         rationale += ("detection confidence is below the automatic activation threshold",)
