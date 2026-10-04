@@ -43,7 +43,7 @@ This separation makes local project execution explicit, inspectable, and policy-
 | **MCP** | Standard AI-to-runtime tool interface |
 | **Filesystem** | Project file READ / WRITE |
 | **Patch** | Structured source changes through `patch.apply` |
-| **Process** | Controlled commands, tests, and verification |
+| **Process** | Internal runtime capability; not part of the current ChatGPT Free verified client path |
 | **Git** | Repository-aware development operations |
 | **GitHub** | Remote repository and collaboration workflow |
 | **Project Isolation** | Independent MCP services and lifecycle per project |
