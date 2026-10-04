@@ -204,3 +204,54 @@ GitHub Actions 也会通过 CI 验证仓库。
 ## License
 
 请参阅 [LICENSE](LICENSE)。
+
+
+---
+
+### Agent taxonomy 与专业路由
+
+MultiAgentOS 将 **Governance / Execution** 与面向平台的专业 Agent 分离。
+
+~~~mermaid
+flowchart TB
+    TASK["Task"]
+    TASK --> GOV["Governance / Execution"]
+    TASK --> RESEARCH["Research"]
+    TASK --> DEVELOPMENT["Development"]
+    TASK --> UI["UI"]
+
+    GOV --> FILE["File Picker"]
+    GOV --> PLAN["Planner"]
+    GOV --> EDIT["Editor"]
+    GOV --> EXEC["Executor"]
+    GOV --> REVIEW["Reviewer"]
+
+    RESEARCH --> DEV_R["Development Research"]
+    RESEARCH --> UI_R["UI Research"]
+
+    DEV_R --> REACT_R["React"]
+    DEV_R --> RN_R["React Native"]
+    DEV_R --> ANDROID_R["Android"]
+    DEV_R --> IOS_R["iOS"]
+
+    UI_R --> WEB_R["Web UI / React"]
+    UI_R --> RN_UI_R["React Native UI"]
+    UI_R --> ANDROID_UI_R["Android UI"]
+    UI_R --> IOS_UI_R["iOS UI"]
+
+    DEVELOPMENT --> REACT_D["React Developer"]
+    DEVELOPMENT --> RN_D["React Native Developer"]
+    DEVELOPMENT --> ANDROID_D["Android Developer"]
+    DEVELOPMENT --> IOS_D["iOS Developer"]
+
+    UI --> WEB["Web"]
+    UI --> CROSS["Cross-platform"]
+    UI --> NATIVE["Native"]
+    NATIVE --> ANDROID["Android"]
+    NATIVE --> IOS["iOS"]
+~~~
+
+指定平台的开发任务可以在实现前执行对应平台的 Development Research。UI 任务执行平台 UI Research，Browser Agent 仅作为 Web 验证能力。
+
+详见 [Agent Taxonomy and Routing](docs/AGENT_TAXONOMY.md) 和 [Agent Catalog](docs/AGENT_CATALOG.md)。
+
