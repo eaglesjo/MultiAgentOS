@@ -102,7 +102,15 @@ class SelectionFallback:
         ambiguous = tuple(
             stage
             for stage in stage_confidences
-            if self.policy.should_escalate(stage.score)
+            if (
+                self.policy.should_escalate(stage.score)
+                and sum(
+                    1
+                    for candidate in deterministic.candidates
+                    if stage.stage_index in candidate.stage_indices
+                ) > 1
+                and registry.get(stage.selected_agent_id).kind == "specialist"
+            )
         )
         if not ambiguous:
             return deterministic
