@@ -20,6 +20,8 @@ class AgentCandidate:
             raise ValueError("agent candidate agent_id must not be empty")
         if not 0.0 <= self.score <= 1.0:
             raise ValueError("agent candidate score must be between 0 and 1")
+        if any(index < 0 for index in self.stage_indices):
+            raise ValueError("agent candidate stage_indices must be non-negative")
 
 
 @dataclass(frozen=True)
