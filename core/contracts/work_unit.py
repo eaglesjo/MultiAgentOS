@@ -84,4 +84,15 @@ class WorkUnit:
             raise ValueError(
                 f"Invalid WorkUnit transition: {self.status.value} -> {status.value}"
             )
+        if (
+            self.status is WorkStatus.COMPLETED
+            and status is WorkStatus.READY_FOR_APPROVAL
+            and (
+                self.release_impact == "none"
+                or self.metadata.get("released") is True
+            )
+        ):
+            raise ValueError(
+                "only unreleased release-impacting work may enter approval gating"
+            )
         self.status = status
