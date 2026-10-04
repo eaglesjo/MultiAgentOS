@@ -35,6 +35,19 @@ class StageConfidence:
     margin: float
     evidence_coverage: float
 
+    @property
+    def score(self) -> float:
+        """Composite confidence used to decide whether this stage needs escalation."""
+        return max(
+            0.0,
+            min(
+                1.0,
+                (self.selected_score * 0.6)
+                + (self.margin * 0.25)
+                + (self.evidence_coverage * 0.15),
+            ),
+        )
+
     def validate(self) -> None:
         if self.stage_index < 0:
             raise ValueError("stage confidence stage_index must be non-negative")
