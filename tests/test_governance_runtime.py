@@ -134,7 +134,15 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
                     work_unit=work,
                     steps=MultiAgentRuntime.route_steps(work),
                     agents=agents,
-                    models=[ModelSpec("local-default", "local")],
+                    models=[
+                        ModelSpec(
+                            "local-default",
+                            "local",
+                            capabilities=frozenset().union(
+                                *(agent.capabilities for agent in agents.values())
+                            ),
+                        )
+                    ],
                     executors=executors,
                 )
         self.assertEqual(work.status, WorkStatus.BLOCKED)
