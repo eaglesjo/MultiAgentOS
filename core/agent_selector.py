@@ -9,7 +9,7 @@ from core.contracts.agent import AgentContract
 from core.contracts.agent_selection import AgentCandidate, AgentPlan, AgentSelection
 from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.work_unit import WorkUnit
-from runtime.governance import specialist_route
+from runtime.governance import smallest_sufficient_path, specialist_route
 
 
 @dataclass(frozen=True)
@@ -78,7 +78,10 @@ class DeterministicAgentSelector:
             reasons = ("caller supplied an explicit Agent route",)
             policy = ("explicit route preserved; automatic selection bypassed",)
         else:
-            selected_ids = specialist_route(work_unit)
+            try:
+                selected_ids = specialist_route(work_unit)
+            except ValueError:
+                selected_ids = smallest_sufficient_path(work_unit.work_type)
             mode = "deterministic"
             reasons = (
                 "route selected from WorkUnit type/target and governed taxonomy",
