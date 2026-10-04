@@ -17,6 +17,8 @@ from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
 from profiles.agent_plan import build_agent_plan
 from profiles.classifier import classify_project
+from profiles.workspace import aggregate_detections, analyze_workspaces
+from profiles.reconciliation import apply_reconciliation, build_reconciliation
 from runtime.github_probe import probe
 from runtime.process import ProcessRuntime
 from runtime.status import project_status
@@ -228,6 +230,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--approve",
         action="store_true",
         help="approve the detected project plan when detection requires approval",
+    )
+
+    reconcile = subparsers.add_parser(
+        "reconcile", help="recompute workspace agent activation and reconcile the project plan"
+    )
+    reconcile.add_argument("path", nargs="?", default=".")
+    reconcile.add_argument(
+        "--approve",
+        action="store_true",
+        help="approve the detected workspace plan before mutating agent activation",
     )
 
     providers = subparsers.add_parser(
@@ -798,55 +810,95 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"id": work.id, "objective": work.objective, "status": work.status.value, "assigned_agents": work.assigned_agents, "metadata": work.metadata}, indent=2))
         return 0
 
-    detector = ProfileDetector()
-    detections = detector.detect(root)
+    analyses = analyze_workspaces(root)
+    detections = aggregate_detections(analyses)
+    plan = build_agent_plan(root, detections)
 
     if args.command == "detect":
-        plan = build_agent_plan(root, detections)
         classification = classify_project(detections)
-        print(
-            json.dumps(
+        print(json.dumps({
+            "project": root.name.strip() or "project",
+            "workspaces": [
                 {
-                    "project": root.name.strip() or "project",
+                    "id": analysis.spec.id,
+                    "kind": analysis.spec.kind,
+                    "path": str(analysis.spec.path),
+                    "evidence": list(analysis.spec.evidence),
                     "detections": [
                         {
                             "profile": result.profile_id,
                             "confidence": result.confidence,
                             "evidence": list(result.evidence),
                         }
-                        for result in detections
+                        for result in analysis.detections
                     ],
-                    "classification": {
-                        "ambiguous": classification.ambiguous,
-                        "reasons": list(classification.reasons),
-                        "dimensions": {
-                            "platform": {
-                                "values": list(classification.platform.values),
-                                "confidence": classification.platform.confidence,
-                                "evidence": list(classification.platform.evidence),
-                            },
-                            "framework_runtime": {
-                                "values": list(classification.framework_runtime.values),
-                                "confidence": classification.framework_runtime.confidence,
-                                "evidence": list(classification.framework_runtime.evidence),
-                            },
-                            "language_toolchain": {
-                                "values": list(classification.language_toolchain.values),
-                                "confidence": classification.language_toolchain.confidence,
-                                "evidence": list(classification.language_toolchain.evidence),
-                            },
-                        },
+                }
+                for analysis in analyses
+            ],
+            "detections": [
+                {
+                    "profile": result.profile_id,
+                    "confidence": result.confidence,
+                    "evidence": list(result.evidence),
+                }
+                for result in detections
+            ],
+            "classification": {
+                "ambiguous": classification.ambiguous,
+                "reasons": list(classification.reasons),
+                "dimensions": {
+                    "platform": {
+                        "values": list(classification.platform.values),
+                        "confidence": classification.platform.confidence,
+                        "evidence": list(classification.platform.evidence),
                     },
-                    "agent_plan": {
-                        "selected": list(plan.selected),
-                        "excluded": list(plan.excluded),
-                        "requires_approval": plan.requires_approval,
-                        "rationale": list(plan.rationale),
+                    "framework_runtime": {
+                        "values": list(classification.framework_runtime.values),
+                        "confidence": classification.framework_runtime.confidence,
+                        "evidence": list(classification.framework_runtime.evidence),
+                    },
+                    "language_toolchain": {
+                        "values": list(classification.language_toolchain.values),
+                        "confidence": classification.language_toolchain.confidence,
+                        "evidence": list(classification.language_toolchain.evidence),
                     },
                 },
-                indent=2,
-            )
-        )
+            },
+            "agent_plan": {
+                "selected": list(plan.selected),
+                "excluded": list(plan.excluded),
+                "requires_approval": plan.requires_approval,
+                "rationale": list(plan.rationale),
+            },
+        }, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "reconcile":
+        reconciliation = build_reconciliation(root, plan, analyses)
+        if reconciliation.requires_approval and not args.approve:
+            print(json.dumps({
+                "error": "approval_required",
+                "message": "workspace agent-plan reconciliation requires approval",
+                "path": str(root),
+                "workspaces": list(reconciliation.workspaces),
+                "current": list(reconciliation.current),
+                "desired": list(reconciliation.desired),
+                "to_add": list(reconciliation.to_add),
+                "to_remove": list(reconciliation.to_remove),
+                "unchanged": list(reconciliation.unchanged),
+                "action": "review 'multiagentos detect' and rerun 'multiagentos reconcile' with --approve",
+            }, indent=2, ensure_ascii=False))
+            return 2
+        result = apply_reconciliation(root, plan, analyses, approved=args.approve)
+        print(json.dumps({
+            "workspaces": list(result.workspaces),
+            "current": list(result.current),
+            "desired": list(result.desired),
+            "to_add": list(result.to_add),
+            "to_remove": list(result.to_remove),
+            "unchanged": list(result.unchanged),
+            "approved": args.approve,
+        }, indent=2, ensure_ascii=False))
         return 0
 
     try:
