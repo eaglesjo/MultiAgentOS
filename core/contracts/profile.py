@@ -1,4 +1,4 @@
-"""Technology, project, and agent profile contracts for AGENT_EXECUTION_RUNTIME."""
+"""Technology, project, and agent profile contracts for MultiAgentOS."""
 
 from dataclasses import dataclass, field
 
@@ -10,6 +10,8 @@ class ProfileSpec:
     detect_files: frozenset[str] = frozenset()
     detect_markers: frozenset[str] = frozenset()
     roles: tuple[str, ...] = ()
+    file_weight: float = 0.35
+    marker_weight: float = 0.65
 
 
 @dataclass(frozen=True)
@@ -53,7 +55,7 @@ class AgentProfile:
 
 @dataclass(frozen=True)
 class ProjectProfile:
-    """Resolved project identity shared by AGENT_EXECUTION_RUNTIME integrations."""
+    """Resolved project identity shared by MultiAgentOS integrations."""
 
     id: str
     root: str
