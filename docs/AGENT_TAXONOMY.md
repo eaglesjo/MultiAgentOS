@@ -129,6 +129,26 @@ flowchart LR
     TEST --> REVIEW["Reviewer"]
 ~~~
 
+## Runtime route hierarchy
+
+Taxonomy roots are executable routing stages rather than documentation-only labels.
+
+```mermaid
+flowchart TB
+    UI["UI Agent"]
+    UI --> WEB["Web"]
+    UI --> CROSS["Cross-platform"]
+    UI --> NATIVE["Native"]
+    CROSS --> RN["React Native"]
+    NATIVE --> ANDROID["Android"]
+    NATIVE --> IOS["iOS"]
+    WEB --> REACT["React"]
+```
+
+For Android and iOS UI work the runtime route includes `ui-agent -> ui-native -> ui-android/ui-ios`. React Native uses `ui-agent -> ui-react-native`, and Web uses `ui-agent -> ui-web`.
+
+Governance validates the generated route against the requested work type and target before execution. A plan with a mismatched specialist route is rejected at the runtime governance boundary.
+
 ## Browser boundary
 
 Browser Agent is not the UI root.
