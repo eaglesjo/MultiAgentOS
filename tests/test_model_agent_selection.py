@@ -43,8 +43,8 @@ def _inputs():
         ),
     )
     candidates = (
-        AgentCandidate("android-developer", 0.90, ("platform match",), ("e1",)),
-        AgentCandidate("development-research-android", 0.85, ("research match",), ("e1",)),
+        AgentCandidate("android-developer", 0.90, ("platform match",), ("e1",), (0,)),
+        AgentCandidate("development-research-android", 0.85, ("research match",), ("e1",), (0,)),
     )
     return work_unit, evidence, candidates
 
