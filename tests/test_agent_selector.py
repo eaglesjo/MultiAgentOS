@@ -132,3 +132,34 @@ def test_low_confidence_deterministic_selection_uses_policy_safe_fallback():
     assert selection.plan.confidence == 0.88
     assert selection.plan.selected_agents == selection.plan.route
     assert selection.plan.policy_decisions
+
+
+def test_selection_exposes_stage_aware_confidence_breakdown():
+    from core.contracts.repository import RepositoryEvidence
+
+    work_unit = WorkUnit(
+        id="wu-stage-confidence",
+        objective="Implement Android settings",
+        work_type="development",
+        target="android",
+        metadata={"technology": "kotlin"},
+    )
+    repository_evidence = RepositoryEvidence(
+        checkpoint_id="cp-stage-confidence",
+        git_status="clean",
+        git_diff="",
+        validation={"platform": "android", "technology": "kotlin"},
+    )
+
+    selection = DeterministicAgentSelector().select(
+        work_unit,
+        repository_evidence=repository_evidence,
+    )
+
+    stages = selection.plan.stage_confidences
+    assert len(stages) == len(selection.plan.route)
+    assert tuple(item.stage_index for item in stages) == tuple(range(len(stages)))
+    assert all(0.0 <= item.margin <= 1.0 for item in stages)
+    assert all(0.0 <= item.evidence_coverage <= 1.0 for item in stages)
+    assert any(item.evidence_coverage > 0.0 for item in stages)
+    assert work_unit.metadata["agent_plan"]["stage_confidences"]
