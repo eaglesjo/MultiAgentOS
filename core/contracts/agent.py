@@ -40,6 +40,14 @@ class AgentContract:
 
     def validate(self) -> None:
         self.taxonomy.validate()
+        if self.kind == "governance" and self.taxonomy.layer != "governance":
+            raise ValueError(
+                "governance agents must use the governance taxonomy layer"
+            )
+        if self.kind == "specialist" and self.taxonomy.layer != "specialist":
+            raise ValueError(
+                "specialist agents must use the specialist taxonomy layer"
+            )
 
 
 class AgentRuntime(Protocol):
