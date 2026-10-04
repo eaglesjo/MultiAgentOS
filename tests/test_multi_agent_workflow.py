@@ -25,6 +25,27 @@ class FakeExecutor:
 
 
 class MultiAgentWorkflowTests(unittest.TestCase):
+    def test_workflow_rejects_invalid_agent_contract(self):
+        from core.contracts.agent import AgentTaxonomy
+
+        executor = FakeExecutor()
+        invalid = AgentContract(
+            id="invalid",
+            role="invalid",
+            kind="governance",
+            taxonomy=AgentTaxonomy(),
+        )
+        work_unit = WorkUnit("wu-invalid-agent", "reject invalid agent")
+        models = [ModelSpec("local", "local", frozenset())]
+
+        with self.assertRaises(ValueError):
+            MultiAgentWorkflow().run(
+                work_unit=work_unit,
+                stages=[invalid],
+                models=models,
+                executor=executor,
+            )
+
     def test_agents_execute_in_order_and_create_handoffs(self):
         executor = FakeExecutor()
         agents = [
