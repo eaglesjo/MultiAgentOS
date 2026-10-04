@@ -1,0 +1,67 @@
+"""Tests for evidence-driven automatic Agent selection."""
+
+from core.agent_selector import DeterministicAgentSelector
+from core.contracts.work_unit import WorkUnit
+
+
+def test_android_work_selects_governed_android_route():
+    work_unit = WorkUnit(
+        id="wu-android",
+        objective="Implement Android settings",
+        work_type="development",
+        target="android",
+        metadata={"technology": "kotlin"},
+    )
+
+    selection = DeterministicAgentSelector().select(work_unit)
+
+    assert selection.plan.selection_mode == "deterministic"
+    assert "android-developer" in selection.plan.selected_agents
+    assert selection.plan.selected_agents[0] == "file-picker"
+    assert selection.plan.selected_agents[-1] == "reviewer"
+    assert work_unit.assigned_agents == list(selection.plan.route)
+    assert selection.plan.evidence
+
+
+def test_explicit_agent_route_bypasses_automatic_selection_but_remains_validated():
+    work_unit = WorkUnit(
+        id="wu-explicit",
+        objective="Run explicit route",
+        work_type="development",
+        target="android",
+    )
+
+    selection = DeterministicAgentSelector().select(
+        work_unit,
+        explicit_agents=("planner", "android-developer", "reviewer"),
+    )
+
+    assert selection.plan.selection_mode == "explicit"
+    assert selection.plan.selected_agents == (
+        "planner",
+        "android-developer",
+        "reviewer",
+    )
+    assert work_unit.assigned_agents == [
+        "planner",
+        "android-developer",
+        "reviewer",
+    ]
+
+
+def test_generic_development_uses_bounded_route_without_platform_evidence():
+    work_unit = WorkUnit(
+        id="wu-generic",
+        objective="Make a small code change",
+        work_type="development",
+    )
+
+    selection = DeterministicAgentSelector().select(work_unit)
+
+    assert selection.plan.selected_agents == (
+        "file-picker",
+        "planner",
+        "editor",
+        "executor",
+        "reviewer",
+    )
