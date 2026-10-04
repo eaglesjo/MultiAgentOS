@@ -13,6 +13,7 @@ class AgentCandidate:
     score: float
     reasons: tuple[str, ...] = ()
     evidence_ids: tuple[str, ...] = ()
+    stage_indices: tuple[int, ...] = ()
 
     def validate(self) -> None:
         if not self.agent_id.strip():
@@ -44,7 +45,7 @@ class AgentPlan:
             raise ValueError("agent plan route must match selected_agents")
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError("agent plan confidence must be between 0 and 1")
-        if self.selection_mode not in {"deterministic", "llm", "hybrid", "explicit"}:
+        if self.selection_mode not in {"deterministic", "model", "hybrid", "explicit"}:
             raise ValueError("unsupported agent plan selection mode")
         for candidate in self.candidates:
             candidate.validate()
