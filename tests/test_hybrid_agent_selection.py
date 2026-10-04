@@ -38,7 +38,7 @@ def test_full_hybrid_selection_pipeline():
         models={"selector-model": model},
         adapters={"selector-model": _Adapter()},
     )
-    llm_selector = AIRouterLLMSelector(
+    selection_strategy = AIRouterBackedAgentSelector(
         router=AIRouter(),
         runtime=runtime,
         selector_agent=selector_agent,
