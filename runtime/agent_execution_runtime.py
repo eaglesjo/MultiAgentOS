@@ -33,6 +33,7 @@ from core.tool_ledger import ToolInvocationStore
 from core.execution_state import ExecutionStateStore
 from core.recovery_audit import RecoveryAuditStore
 from core.orchestrator import OrchestrationResult, Orchestrator
+from core.agent_selection_policy import AgentSelectionPolicy, LLMSelector
 from core.routing import AIRouter, RoutingStrategy
 from profiles.detector import ProfileDetector
 from profiles.resolver import ProfileResolver
@@ -270,6 +271,8 @@ class AgentExecutionRuntime:
         explicit_agents: tuple[str, ...] | None = None,
         repository_evidence=None,
         project_root: Path | None = None,
+        llm_selector: LLMSelector | None = None,
+        selection_policy: AgentSelectionPolicy | None = None,
         verifier: ResultVerifier | None = None,
         reviewers=None,
         executors_by_agent: dict[str, AgentExecutor] | None = None,
@@ -291,6 +294,8 @@ class AgentExecutionRuntime:
             executor=executor,
             explicit_agents=explicit_agents,
             repository_evidence=repository_evidence,
+            llm_selector=llm_selector,
+            selection_policy=selection_policy,
             verifier=verifier,
             reviewers=reviewers,
             executors_by_agent=executors_by_agent,
@@ -302,6 +307,22 @@ class AgentExecutionRuntime:
             routing_strategy=routing_strategy,
             artifact_store=artifact_store,
             checkpoint=checkpoint,
+        )
+
+    def reselect_agents(
+        self,
+        work_unit: WorkUnit,
+        *,
+        evidence,
+        llm_selector: LLMSelector | None = None,
+        selection_policy: AgentSelectionPolicy | None = None,
+    ):
+        """Re-evaluate Agent routing from evidence produced after execution."""
+        return self.orchestrator.reselect_agents(
+            work_unit,
+            evidence=evidence,
+            llm_selector=llm_selector,
+            selection_policy=selection_policy,
         )
 
     def repository_checkpoint(self, project_root: Path, *, metadata: dict[str, object] | None = None):
