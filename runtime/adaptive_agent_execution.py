@@ -7,7 +7,7 @@ stage-scoped EvidenceRecord objects.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 from core.adaptive_agent_execution import StageExecutionOutcome, StageExecutor
@@ -133,7 +133,7 @@ class RuntimeStageExecutor(StageExecutor):
     agents: dict[str, AgentContract]
     models: list[ModelSpec]
     executors: dict[str, AgentExecutor]
-    delegation: DelegationEngine = DelegationEngine()
+    delegation: DelegationEngine = field(default_factory=DelegationEngine)
     preferred_model_ids_by_agent: dict[str, list[str]] | None = None
     preferred_model_ids: list[str] | None = None
     routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL
