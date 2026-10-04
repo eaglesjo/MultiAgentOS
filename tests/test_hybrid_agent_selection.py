@@ -52,7 +52,9 @@ def test_full_hybrid_selection_pipeline():
         metadata={"technology": "kotlin"},
     )
 
+    from agents.registry import build_registry
     selection = DeterministicAgentSelector(
+        registry=build_registry(("android-native",)),
         selection_strategy=selection_strategy,
         selection_policy=AgentSelectionPolicy(confidence_threshold=1.0),
     ).select(work_unit)
