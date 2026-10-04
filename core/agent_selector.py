@@ -141,7 +141,7 @@ class DeterministicAgentSelector:
         for stage_index, expected_id in enumerate(route):
             expected = self.registry.get(expected_id)
             expected.validate()
-            for candidate in self.registry.all():
+            for candidate in self.registry.list():
                 candidate.validate()
                 if not self._compatible(expected, candidate):
                     continue
@@ -251,6 +251,8 @@ class DeterministicAgentSelector:
             candidates = list(plan.candidates)
             selected_ids = plan.selected_agents
             mode = plan.selection_mode
+            selected_map = {candidate.agent_id: candidate for candidate in candidates}
+            selected_candidates = tuple(selected_map[agent_id] for agent_id in selected_ids)
             selection = AgentSelection(plan=plan, selected=selected_candidates)
         else:
             selection = AgentSelection(plan=plan, selected=selected_candidates)
