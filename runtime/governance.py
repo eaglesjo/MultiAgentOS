@@ -1,4 +1,4 @@
-"""Deterministic governance helpers migrated from PetTarotReading."""
+"""Deterministic governance and specialist routing helpers."""
 
 from __future__ import annotations
 
@@ -11,8 +11,17 @@ from core.contracts.scope import ScopeLock
 from core.contracts.work_unit import WorkUnit
 
 
+GOVERNANCE_PREFIX = ("file-picker", "planner")
+GOVERNANCE_SUFFIX = ("editor", "executor", "reviewer")
+
 ROUTE_TEMPLATES: dict[str, tuple[str, ...]] = {
-    "simple": ("file-picker", "planner", "editor", "executor", "reviewer"),
+    "simple": GOVERVANCE_PREFIX if False else (
+        "file-picker",
+        "planner",
+        "editor",
+        "executor",
+        "reviewer",
+    ),
     "external_research": (
         "file-picker",
         "planner",
@@ -24,6 +33,8 @@ ROUTE_TEMPLATES: dict[str, tuple[str, ...]] = {
     "web_ui": (
         "file-picker",
         "planner",
+        "ui-research-web",
+        "ui-web",
         "editor",
         "executor",
         "browser-agent",
@@ -40,13 +51,52 @@ ROUTE_TEMPLATES: dict[str, tuple[str, ...]] = {
     ),
 }
 
+
 WORK_TYPE_ALIASES = {
-    "development": "simple",
+    "development": "development",
     "simple": "simple",
     "external_research": "external_research",
-    "research": "external_research",
-    "web_ui": "web_ui",
+    "research": "research",
+    "development_research": "development_research",
+    "ui_research": "ui_research",
+    "ui": "ui",
+    "web_ui": "ui",
     "failure": "failure",
+}
+
+
+_PLATFORM_ALIASES = {
+    "react": "react",
+    "web": "react",
+    "react-native": "react-native",
+    "react_native": "react-native",
+    "android": "android",
+    "android-native": "android",
+    "ios": "ios",
+    "ios-native": "ios",
+}
+
+
+_DEVELOPMENT_SPECIALISTS = {
+    "react": ("development-research-react", "react-developer"),
+    "react-native": (
+        "development-research-react-native",
+        "react-native-developer",
+    ),
+    "android": ("development-research-android", "android-developer"),
+    "ios": ("development-research-ios", "ios-developer"),
+}
+
+
+_UI_SPECIALISTS = {
+    "react": ("ui-research-web", "ui-web", "browser-agent"),
+    "react-native": (
+        "ui-research-react-native",
+        "ui-react-native",
+        "tester",
+    ),
+    "android": ("ui-research-android", "ui-android", "tester"),
+    "ios": ("ui-research-ios", "ui-ios", "tester"),
 }
 
 
@@ -56,13 +106,77 @@ class GovernanceCheck:
     findings: tuple[str, ...] = ()
 
 
+def _normalize_platform(target: str) -> str:
+    normalized = _PLATFORM_ALIASES.get(target.strip().lower())
+    if normalized is None:
+        raise ValueError(f"unsupported specialist platform: {target}")
+    return normalized
+
+
+def _specialist_platform(work_unit: WorkUnit) -> str:
+    target = work_unit.target or str(work_unit.metadata.get("platform", ""))
+    return _normalize_platform(target)
+
+
 def smallest_sufficient_path(work_type: str) -> tuple[str, ...]:
     """Return the smallest bounded execution-role path for a work type."""
     route = WORK_TYPE_ALIASES.get(work_type, work_type)
-    try:
+    if route == "development":
+        return ROUTE_TEMPLATES["simple"]
+    if route in ROUTE_TEMPLATES:
         return ROUTE_TEMPLATES[route]
-    except KeyError as exc:
-        raise ValueError(f"unsupported governance work type: {work_type}") from exc
+    if route in {"research", "development_research", "ui_research", "ui"}:
+        raise ValueError(
+            f"specialist target is required for work type: {work_type}"
+        )
+    raise ValueError(f"unsupported governance work type: {work_type}")
+
+
+def specialist_route(
+    work_unit: WorkUnit,
+    *,
+    research_required: bool | None = None,
+) -> tuple[str, ...]:
+    """Compose governance stages with a platform/domain specialist path."""
+    work_type = WORK_TYPE_ALIASES.get(work_unit.work_type, work_unit.work_type)
+
+    if work_type == "development":
+        platform = _specialist_platform(work_unit)
+        research, developer = _DEVELOPMENT_SPECIALISTS[platform]
+        include_research = (
+            bool(work_unit.metadata.get("research_required", True))
+            if research_required is None
+            else research_required
+        )
+        specialist = (research, developer) if include_research else (developer,)
+        return GOVERNANCE_PREFIX + specialist + GOVERNANCE_SUFFIX
+
+    if work_type == "development_research":
+        platform = _specialist_platform(work_unit)
+        return GOVERNANCE_PREFIX + (_DEVELOPMENT_SPECIALISTS[platform][0],) + (
+            "reviewer",
+        )
+
+    if work_type == "ui_research":
+        platform = _specialist_platform(work_unit)
+        return GOVERNANCE_PREFIX + (_UI_SPECIALISTS[platform][0],) + ("reviewer",)
+
+    if work_type == "ui":
+        platform = _specialist_platform(work_unit)
+        research, ui_agent, validation = _UI_SPECIALISTS[platform]
+        return GOVERNANCE_PREFIX + (
+            research,
+            ui_agent,
+            "editor",
+            "executor",
+            validation,
+            "reviewer",
+        )
+
+    if work_type == "research":
+        return ROUTE_TEMPLATES["external_research"]
+
+    return smallest_sufficient_path(work_type)
 
 
 def validate_scope(scope: ScopeLock) -> GovernanceCheck:
@@ -134,8 +248,17 @@ def route_plan_steps(
     *,
     work_type: str | None = None,
 ) -> tuple[PlanStep, ...]:
-    """Build the native PlanStep route for the smallest sufficient path."""
-    route = smallest_sufficient_path(work_type or work_unit.work_type)
+    """Build native PlanStep objects for governance + specialist routing."""
+    effective_type = work_type or work_unit.work_type
+    if effective_type in {"development", "simple"} and (
+        work_unit.target or work_unit.metadata.get("platform")
+    ):
+        route = specialist_route(work_unit)
+    elif effective_type in {"development", "simple"}:
+        route = smallest_sufficient_path(effective_type)
+    else:
+        route = specialist_route(work_unit)
+
     return tuple(
         PlanStep(
             id=f"{agent_id}-{index + 1}",
