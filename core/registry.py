@@ -9,6 +9,7 @@ class AgentRegistry:
         self._agents: dict[str, AgentContract] = {}
 
     def register(self, agent: AgentContract) -> None:
+        agent.validate()
         if agent.id in self._agents:
             raise ValueError(f"Agent already registered: {agent.id}")
         self._agents[agent.id] = agent
