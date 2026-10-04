@@ -179,9 +179,12 @@ class DeterministicAgentSelector:
         work_unit: WorkUnit,
         evidence: tuple[EvidenceRecord, ...],
         route: tuple[str, ...],
+        *,
+        allow_expansion: bool = True,
     ) -> tuple[AgentCandidate, ...]:
         """Build a bounded candidate pool, expanding specialist profiles only when needed."""
-        self._expand_candidate_registry(work_unit, route)
+        if allow_expansion:
+            self._expand_candidate_registry(work_unit, route)
         by_id: dict[str, tuple[float, tuple[str, ...], set[int]]] = {}
 
         for stage_index, expected_id in enumerate(route):
@@ -268,7 +271,14 @@ class DeterministicAgentSelector:
             )
             policy = ("route validated by existing governance policy",)
 
-        candidates = list(self._candidate_pool(work_unit, records, selected_ids))
+        candidates = list(
+            self._candidate_pool(
+                work_unit,
+                records,
+                selected_ids,
+                allow_expansion=not bool(explicit_agents),
+            )
+        )
         candidate_map = {candidate.agent_id: candidate for candidate in candidates}
         selected_candidates = tuple(candidate_map[agent_id] for agent_id in selected_ids)
 
