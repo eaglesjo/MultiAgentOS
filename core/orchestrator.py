@@ -9,7 +9,7 @@ from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifi
 from core.contracts.work_unit import WorkUnit
 from core.agent_selector import DeterministicAgentSelector, EvidenceEngine
 from core.contracts.agent_selection import AgentSelection
-from core.agent_selection_policy import AgentSelectionPolicy, LLMSelector
+from core.agent_selection_policy import AgentSelectionPolicy, AgentSelectionStrategy
 from core.delegation import Delegation
 from core.lifecycle import LifecycleCoordinator
 from core.routing import RoutingStrategy
@@ -111,13 +111,13 @@ class Orchestrator:
         explicit_agents: tuple[str, ...] | None = None,
         evidence=None,
         repository_evidence=None,
-        llm_selector: LLMSelector | None = None,
+        selection_strategy: AgentSelectionStrategy | None = None,
         selection_policy: AgentSelectionPolicy | None = None,
     ) -> AgentSelection:
         """Build a governed AgentPlan from WorkUnit and repository evidence."""
         selector = DeterministicAgentSelector(
             evidence_engine=EvidenceEngine(),
-            llm_selector=llm_selector,
+            selection_strategy=selection_strategy,
             selection_policy=selection_policy,
         )
         return selector.select(
@@ -132,14 +132,14 @@ class Orchestrator:
         work_unit: WorkUnit,
         *,
         evidence,
-        llm_selector: LLMSelector | None = None,
+        selection_strategy: AgentSelectionStrategy | None = None,
         selection_policy: AgentSelectionPolicy | None = None,
     ) -> AgentSelection:
         """Re-evaluate the route after execution produces new evidence."""
         return self.select_agents(
             work_unit,
             evidence=tuple(evidence),
-            llm_selector=llm_selector,
+            selection_strategy=selection_strategy,
             selection_policy=selection_policy,
         )
 
@@ -151,7 +151,7 @@ class Orchestrator:
         executor: AgentExecutor,
         explicit_agents: tuple[str, ...] | None = None,
         repository_evidence=None,
-        llm_selector: LLMSelector | None = None,
+        selection_strategy: AgentSelectionStrategy | None = None,
         selection_policy: AgentSelectionPolicy | None = None,
         verifier: ResultVerifier | None = None,
         reviewers=None,
@@ -170,7 +170,7 @@ class Orchestrator:
             work_unit,
             explicit_agents=explicit_agents,
             repository_evidence=repository_evidence,
-            llm_selector=llm_selector,
+            selection_strategy=selection_strategy,
             selection_policy=selection_policy,
         )
         stages = DeterministicAgentSelector().agents(selection)

@@ -1,4 +1,4 @@
-"""End-to-end test for deterministic selection, AIRouter, LLM proposal, and policy."""
+"""End-to-end test for deterministic selection, AIRouter, model proposal, and policy."""
 
 from core.agent_selector import DeterministicAgentSelector
 from core.contracts.agent import AgentContract, AgentTaxonomy
@@ -7,7 +7,7 @@ from core.contracts.model_runtime import ModelResponse
 from core.contracts.work_unit import WorkUnit
 from core.agent_selection_policy import AgentSelectionPolicy
 from core.routing import AIRouter
-from runtime.airouter_agent_selector import AIRouterLLMSelector
+from runtime.airouter_agent_selector import AIRouterBackedAgentSelector
 from runtime.model.ai_runtime import AIRuntime
 
 
@@ -20,7 +20,7 @@ class _Adapter:
                 '"development-research-android","android-developer",'
                 '"editor","executor","reviewer"],'
                 '"confidence":0.94,'
-                '"reasons":["LLM confirmed the deterministic Android route"]}'
+                '"reasons":["Model confirmed the deterministic Android route"]}'
             ),
             model_id=model.id,
         )
@@ -53,7 +53,7 @@ def test_full_hybrid_selection_pipeline():
     )
 
     selection = DeterministicAgentSelector(
-        llm_selector=llm_selector,
+        selection_strategy=selection_strategy,
         selection_policy=AgentSelectionPolicy(confidence_threshold=1.0),
     ).select(work_unit)
 

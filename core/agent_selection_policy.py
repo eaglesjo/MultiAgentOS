@@ -21,7 +21,7 @@ class SelectionDecision:
     reasons: tuple[str, ...] = ()
 
 
-class LLMSelector(Protocol):
+class AgentSelectionStrategy(Protocol):
     def select(
         self,
         *,
@@ -34,7 +34,7 @@ class LLMSelector(Protocol):
 
 @dataclass(frozen=True)
 class AgentSelectionPolicy:
-    """Hard boundary that an LLM selector cannot bypass."""
+    """Hard boundary that a secondary selection strategy cannot bypass."""
 
     confidence_threshold: float = 0.75
     min_confidence: float = 0.0
@@ -71,11 +71,11 @@ class AgentSelectionPolicy:
         return selected_agents
 
 
-class LLMFallbackSelector:
+class SelectionFallback:
     """Invoke a secondary selector only when deterministic confidence is low."""
 
-    def __init__(self, selector: LLMSelector, *, policy: AgentSelectionPolicy | None = None):
-        self.selector = selector
+    def __init__(self, strategy: AgentSelectionStrategy, *, policy: AgentSelectionPolicy | None = None):
+        self.strategy = strategy
         self.policy = policy or AgentSelectionPolicy()
 
     def select(
@@ -88,7 +88,7 @@ class LLMFallbackSelector:
         if not self.policy.should_escalate(deterministic.confidence):
             return deterministic
 
-        decision = self.selector.select(
+        decision = self.strategy.select(
             work_unit=work_unit,
             evidence=deterministic.evidence,
             candidates=deterministic.candidates,
@@ -105,7 +105,7 @@ class LLMFallbackSelector:
             AgentCandidate(
                 agent_id=agent_id,
                 score=decision.confidence,
-                reasons=decision.reasons or ("LLM fallback selected this route",),
+                reasons=decision.reasons or ("secondary selection selected this route",),
                 evidence_ids=tuple(record.id for record in deterministic.evidence),
             )
             for agent_id in selected

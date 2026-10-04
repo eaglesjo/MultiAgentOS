@@ -33,7 +33,7 @@ from core.tool_ledger import ToolInvocationStore
 from core.execution_state import ExecutionStateStore
 from core.recovery_audit import RecoveryAuditStore
 from core.orchestrator import OrchestrationResult, Orchestrator
-from core.agent_selection_policy import AgentSelectionPolicy, LLMSelector
+from core.agent_selection_policy import AgentSelectionPolicy, AgentSelectionStrategy
 from core.routing import AIRouter, RoutingStrategy
 from profiles.detector import ProfileDetector
 from profiles.resolver import ProfileResolver
@@ -271,7 +271,7 @@ class AgentExecutionRuntime:
         explicit_agents: tuple[str, ...] | None = None,
         repository_evidence=None,
         project_root: Path | None = None,
-        llm_selector: LLMSelector | None = None,
+        selection_strategy: AgentSelectionStrategy | None = None,
         selection_policy: AgentSelectionPolicy | None = None,
         verifier: ResultVerifier | None = None,
         reviewers=None,
@@ -294,7 +294,7 @@ class AgentExecutionRuntime:
             executor=executor,
             explicit_agents=explicit_agents,
             repository_evidence=repository_evidence,
-            llm_selector=llm_selector,
+            selection_strategy=selection_strategy,
             selection_policy=selection_policy,
             verifier=verifier,
             reviewers=reviewers,
@@ -314,14 +314,14 @@ class AgentExecutionRuntime:
         work_unit: WorkUnit,
         *,
         evidence,
-        llm_selector: LLMSelector | None = None,
+        selection_strategy: AgentSelectionStrategy | None = None,
         selection_policy: AgentSelectionPolicy | None = None,
     ):
         """Re-evaluate Agent routing from evidence produced after execution."""
         return self.orchestrator.reselect_agents(
             work_unit,
             evidence=evidence,
-            llm_selector=llm_selector,
+            selection_strategy=selection_strategy,
             selection_policy=selection_policy,
         )
 

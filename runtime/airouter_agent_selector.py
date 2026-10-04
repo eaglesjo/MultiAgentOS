@@ -7,12 +7,12 @@ from core.contracts.evidence import EvidenceRecord
 from core.contracts.work_unit import WorkUnit
 from core.routing import AIRouter, RoutingStrategy
 from runtime.model.ai_runtime import AIRuntime
-from runtime.agent_selection import AIRuntimeLLMSelector
+from runtime.agent_selection import ModelBackedAgentSelector
 
 
 @dataclass(frozen=True)
-class AIRouterLLMSelector:
-    """Select the selector model through the existing AIRouter, then ask it for a route."""
+class AIRouterBackedAgentSelector:
+    """Use AIRouter to choose the model behind the Agent-selection strategy."""
 
     router: AIRouter
     runtime: AIRuntime
@@ -34,7 +34,7 @@ class AIRouterLLMSelector:
             preferred_model_ids=list(self.preferred_model_ids) or None,
             strategy=self.routing_strategy,
         )
-        selector = AIRuntimeLLMSelector(
+        selector = ModelBackedAgentSelector(
             runtime=self.runtime,
             model_id=assignment.model_id,
         )
