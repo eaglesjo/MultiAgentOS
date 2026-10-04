@@ -7,6 +7,8 @@ from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
 from core.contracts.work_unit import WorkUnit
+from core.agent_selector import DeterministicAgentSelector, EvidenceEngine
+from core.contracts.agent_selection import AgentSelection
 from core.delegation import Delegation
 from core.lifecycle import LifecycleCoordinator
 from core.routing import RoutingStrategy
