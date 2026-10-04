@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from agents.catalog import build_agent_catalog
+from profiles.agent_plan import build_agent_plan
 from core.contracts.profile import DetectionResult
 from runtime.execution_config import write_default_execution_config
 from runtime.chat_config import write_default_chat_config
@@ -109,7 +110,11 @@ The project-local MCP contract is recorded in `.multiagentos/mcp.json`. The defa
         if component == "agent-execution-runtime":
             return config
 
-        agents = build_agent_catalog(tuple(result.profile_id for result in detections))
+        plan = build_agent_plan(project_root, detections)
+        agents = tuple(
+            agent for agent in build_agent_catalog(tuple(result.profile_id for result in detections))
+            if agent.id in plan.selected
+        )
         agent_payload = {
             "version": 1,
             "agents": [

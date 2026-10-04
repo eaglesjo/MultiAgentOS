@@ -394,7 +394,7 @@ def build_agent_catalog(profile_ids: tuple[str, ...] = ()) -> tuple[AgentContrac
         if governance:
             metadata.update({
                 "execution_role": True,
-                "governance_source": "PetTarotReading",
+                "governance_source": "MultiAgentOS",
             })
         agents.append(
             AgentContract(
