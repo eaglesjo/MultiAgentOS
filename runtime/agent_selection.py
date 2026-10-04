@@ -46,6 +46,27 @@ class ModelBackedAgentSelector:
         return self._parse(execution.response.text, candidate_ids)
 
     @staticmethod
+    def _ranked_candidates(
+        candidates: tuple[AgentCandidate, ...],
+    ) -> dict[str, list[dict[str, object]]]:
+        """Expose stage-local ranking without allowing the model to invent candidates."""
+        ranked: dict[str, list[dict[str, object]]] = {}
+        for stage_index in sorted({i for candidate in candidates for i in candidate.stage_indices}):
+            stage = [
+                candidate for candidate in candidates if stage_index in candidate.stage_indices
+            ]
+            stage.sort(key=lambda candidate: (-candidate.score, candidate.agent_id))
+            ranked[str(stage_index)] = [
+                {
+                    "agent_id": candidate.agent_id,
+                    "score": candidate.score,
+                    "reasons": list(candidate.reasons),
+                }
+                for candidate in stage
+            ]
+        return ranked
+
+    @staticmethod
     def _prompt(work_unit: WorkUnit, evidence: tuple[EvidenceRecord, ...], candidates: tuple[AgentCandidate, ...]) -> str:
         payload = {
             "work_unit": {
@@ -60,14 +81,20 @@ class ModelBackedAgentSelector:
                 {"id": e.id, "kind": e.kind.value, "source": e.source, "statement": e.statement}
                 for e in evidence
             ],
-            "candidates": [
+            "candidate_pool": [
                 {"agent_id": c.agent_id, "score": c.score, "reasons": list(c.reasons), "stage_indices": list(c.stage_indices)}
                 for c in candidates
             ],
+            "stage_rankings": ModelBackedAgentSelector._ranked_candidates(candidates),
             "output_schema": {
-                "selected_agents": ["candidate-agent-id"],
+                "selected_agents": ["candidate-agent-id-for-stage-0", "candidate-agent-id-for-stage-1"],
                 "confidence": 0.0,
                 "reasons": ["short reason"],
+                "constraints": [
+                    "select exactly one candidate for each governed stage, in stage order",
+                    "use only candidate_pool Agent IDs",
+                    "respect each candidate's stage_indices",
+                ],
             },
         }
         return json.dumps(payload, ensure_ascii=False, sort_keys=True)
