@@ -34,7 +34,7 @@ class AgentSelectionStrategy(Protocol):
 
 @dataclass(frozen=True)
 class AgentSelectionPolicy:
-    """Hard boundary that an secondary selection strategy cannot bypass."""
+    """Hard boundary that a secondary selection strategy cannot bypass."""
 
     confidence_threshold: float = 0.75
     min_confidence: float = 0.0
