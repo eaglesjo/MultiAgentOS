@@ -65,6 +65,19 @@ class ProjectDetectionAgentPlanTests(unittest.TestCase):
             self.assertEqual(detections[0].confidence, 1.0)
             self.assertFalse(build_agent_plan(root, detections).requires_approval)
 
+    def test_react_native_platform_ambiguity_requires_approval(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "package.json").write_text(
+                json.dumps({"dependencies": {"react-native": "0.80.0"}}),
+                encoding="utf-8",
+            )
+            detections = ProfileDetector().detect(root)
+            plan = build_agent_plan(root, detections)
+            self.assertTrue(plan.requires_approval)
+            self.assertIsNotNone(plan.classification)
+            self.assertIn("React Native detected without an explicit native platform", plan.rationale)
+
     def test_empty_project_requires_approval_and_has_governance_only(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
