@@ -1,7 +1,7 @@
 """Model-backed Agent selection using the existing provider-neutral AI runtime.
 
-The selector is deliberately a proposal layer: it never executes an Agent and
-never bypasses the deterministic selection policy.
+Model inference is an implementation strategy behind the Agent-selection boundary.
+This component proposes a route only; it never executes an Agent or bypasses policy.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from runtime.model.ai_runtime import AIRuntime
 
 
 @dataclass(frozen=True)
-class AIRuntimeLLMSelector:
+class ModelBackedAgentSelector:
     """Use an existing AIRuntime model to propose a structured Agent route."""
 
     runtime: AIRuntime
@@ -86,25 +86,25 @@ class AIRuntimeLLMSelector:
         try:
             payload = json.loads(cleaned)
         except json.JSONDecodeError as exc:
-            raise ValueError("LLM selector response must be valid JSON") from exc
+            raise ValueError("model-backed selector response must be valid JSON") from exc
         if not isinstance(payload, dict):
-            raise ValueError("LLM selector response must be a JSON object")
+            raise ValueError("model-backed selector response must be a JSON object")
 
         selected = payload.get("selected_agents")
         confidence = payload.get("confidence")
         reasons = payload.get("reasons", ())
         if not isinstance(selected, list) or not all(isinstance(item, str) and item for item in selected):
-            raise ValueError("LLM selector response requires selected_agents")
+            raise ValueError("model-backed selector response requires selected_agents")
         if not isinstance(confidence, (int, float)) or isinstance(confidence, bool):
-            raise ValueError("LLM selector response requires numeric confidence")
+            raise ValueError("model-backed selector response requires numeric confidence")
         if not isinstance(reasons, list) or not all(isinstance(item, str) for item in reasons):
-            raise ValueError("LLM selector response reasons must be a list of strings")
+            raise ValueError("model-backed selector response reasons must be a list of strings")
 
         allowed = set(candidate_ids)
         unknown = tuple(agent_id for agent_id in selected if agent_id not in allowed)
         if unknown:
             raise ValueError(
-                "LLM selector returned Agent IDs outside the candidate set: "
+                "model-backed selector returned Agent IDs outside the candidate set: "
                 + ", ".join(unknown)
             )
         return SelectionDecision(
