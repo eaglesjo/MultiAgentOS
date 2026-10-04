@@ -10,6 +10,7 @@ from core.contracts.agent_selection import AgentCandidate, AgentPlan, AgentSelec
 from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.repository import RepositoryEvidence
 from core.contracts.work_unit import WorkUnit
+from core.agent_selection_policy import AgentSelectionPolicy, LLMFallbackSelector, LLMSelector
 from core.repository_evidence import RepositoryEvidenceProvider
 from runtime.governance import smallest_sufficient_path, specialist_route
 
@@ -74,9 +75,13 @@ class DeterministicAgentSelector:
         *,
         evidence_engine: EvidenceEngine | None = None,
         registry=None,
+        llm_selector: LLMSelector | None = None,
+        selection_policy: AgentSelectionPolicy | None = None,
     ) -> None:
         self.evidence_engine = evidence_engine or EvidenceEngine()
         self.registry = registry or build_registry()
+        self.llm_selector = llm_selector
+        self.selection_policy = selection_policy or AgentSelectionPolicy()
 
     @staticmethod
     def _score_agent(
@@ -167,7 +172,23 @@ class DeterministicAgentSelector:
             policy_decisions=policy,
             selection_mode=mode,
         )
-        selection = AgentSelection(plan=plan, selected=tuple(candidates))
+        if self.llm_selector is not None and not explicit_agents:
+            fallback = LLMFallbackSelector(
+                self.llm_selector,
+                policy=self.selection_policy,
+            )
+            plan = fallback.select(
+                work_unit=work_unit,
+                deterministic=plan,
+                registry=self.registry,
+            )
+            candidates = list(plan.candidates)
+            selected_ids = plan.selected_agents
+            mode = plan.selection_mode
+            selection = AgentSelection(plan=plan, selected=tuple(candidates))
+        else:
+            selection = AgentSelection(plan=plan, selected=tuple(candidates))
+
         selection.validate()
 
         for agent_id in selected_ids:
