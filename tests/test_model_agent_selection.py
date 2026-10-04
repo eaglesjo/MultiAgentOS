@@ -17,12 +17,12 @@ class _SelectorAdapter:
         return ModelResponse(text=self.text, model_id=model.id)
 
 
-def _selector(response: str) -> AIRuntimeLLMSelector:
+def _selector(response: str) -> ModelBackedAgentSelector:
     runtime = AIRuntime(
         models={"selector-model": ModelSpec("selector-model", "test")},
         adapters={"selector-model": _SelectorAdapter(response)},
     )
-    return AIRuntimeLLMSelector(runtime=runtime, model_id="selector-model")
+    return ModelBackedAgentSelector(runtime=runtime, model_id="selector-model")
 
 
 def _inputs():
