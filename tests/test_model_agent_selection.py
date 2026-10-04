@@ -83,3 +83,13 @@ def test_model_backed_selector_rejects_unknown_agent():
         assert "outside the candidate set" in str(exc)
     else:
         raise AssertionError("unknown Agent should be rejected")
+
+
+def test_model_backed_selector_ranks_candidates_by_stage():
+    work_unit, evidence, candidates = _inputs()
+    prompt = ModelBackedAgentSelector._prompt(work_unit, evidence, candidates)
+    import json
+    payload = json.loads(prompt)
+    assert payload["stage_rankings"]["0"][0]["agent_id"] == "android-developer"
+    assert payload["stage_rankings"]["0"][1]["agent_id"] == "development-research-android"
+    assert payload["stage_rankings"]["0"][0]["score"] > payload["stage_rankings"]["0"][1]["score"]
