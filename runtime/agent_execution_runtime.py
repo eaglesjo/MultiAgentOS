@@ -269,6 +269,7 @@ class AgentExecutionRuntime:
         *,
         explicit_agents: tuple[str, ...] | None = None,
         repository_evidence=None,
+        project_root: Path | None = None,
         verifier: ResultVerifier | None = None,
         reviewers=None,
         executors_by_agent: dict[str, AgentExecutor] | None = None,
@@ -282,6 +283,8 @@ class AgentExecutionRuntime:
         checkpoint=None,
     ):
         """Select a governed Agent route automatically, then execute it."""
+        if repository_evidence is None and project_root is not None:
+            repository_evidence = self.repository.evidence(project_root)
         return self.orchestrator.run_auto(
             work_unit=work_unit,
             models=models,
