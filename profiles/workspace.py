@@ -140,10 +140,9 @@ def aggregate_detections(analyses: tuple[WorkspaceAnalysis, ...]) -> tuple[Detec
     for analysis in analyses:
         for result in analysis.detections:
             confidence, evidence = by_profile.get(result.profile_id, (0.0, []))
-            tagged = [f"{analysis.spec.id}:{item}" for item in result.evidence]
             by_profile[result.profile_id] = (
                 max(confidence, result.confidence),
-                evidence + [item for item in tagged if item not in evidence],
+                evidence + [item for item in result.evidence if item not in evidence],
             )
     return tuple(
         sorted(
