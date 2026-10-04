@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document records the ChatGPT client boundary verified during the MultiAgentOS 0.4.2 local MCP validation.
+This document records the ChatGPT client boundary relevant to the MultiAgentOS Cost-Free target. The intended AI engine is ChatGPT Free text chat; local MCP availability remains a client/environment capability.
 
 It is a compatibility record for the verified development environment. It is not a universal guarantee for every ChatGPT account, plan, client build, or future product configuration.
 
@@ -52,6 +52,7 @@ Therefore, a task that requires direct access to the developer's local working t
 
 The client matrix does not change the MultiAgentOS cost-free architecture:
 
+- ChatGPT Free text chat is the primary AI-engine target for the Cost-Free path.
 - Local MCP remains the primary local execution path.
 - No paid OpenAI API key is required for the local MCP service.
 - Secure MCP Tunnel remains optional for remote clients that need to reach a private local MCP server.

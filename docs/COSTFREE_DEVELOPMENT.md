@@ -2,7 +2,7 @@
 
 ## Purpose
 
-MultiAgentOS is designed so that a project can be developed without requiring a paid AI API key.
+MultiAgentOS is designed so that a project can be developed without requiring an OpenAI API key. The intended Cost-Free AI path is **ChatGPT Free text chat + MultiAgentOS + Local MCP**.
 
 The baseline architecture keeps the MCP runtime local:
 
@@ -46,7 +46,7 @@ AI client
     +-- TEST project
 ```
 
-The test is about **AI API cost**, not about whether an AI service account or product subscription is free.
+The test is about **AI API cost**. ChatGPT Free text chat is the intended AI engine; MultiAgentOS supplies the local execution boundary. ChatGPT product feature limits remain separate from the runtime cost policy.
 
 ### Required capabilities
 
@@ -85,7 +85,7 @@ The returned file content matched the requested COSTFREE-001 test content. The f
 
 ### Shell/process execution
 
-The AI client discovered:
+The local MCP acceptance contract is foreground execution through `shell.run`.
 
 ```
 mcp__agent-execution-runtime__shell_run
@@ -152,7 +152,7 @@ The current development environment has verified two distinct ChatGPT client bou
 
 This is a client-capability observation for the current setup. It should not be generalized to every ChatGPT account, plan, or future client configuration.
 
-ChatGPT Web therefore provides the complete user-facing path in the verified setup:
+ChatGPT Web is the intended user-facing client path for the Cost-Free baseline when the local MCP connection is available:
 
 ```text
 ChatGPT Web
@@ -251,7 +251,7 @@ OpenAI's documented setup path is to create a custom app in Developer Mode, conf
 
 ## Design rule
 
-Do not make an OpenAI API key a prerequisite for installing or operating MultiAgentOS.
+Do not make an OpenAI API key a prerequisite for installing or operating MultiAgentOS. The primary Cost-Free AI-engine target is ChatGPT Free text chat; other AI clients and local models remain optional alternatives.
 
 The system may support:
 

@@ -6,7 +6,7 @@ Build, inspect, patch, test, and operate real software projects through an AI-na
 
 MultiAgentOS connects an AI client to a real project workspace while keeping **filesystem, patch, process, Git, and verification authority inside the Agent Execution Runtime**.
 
-> **Cost-Free Baseline:** MultiAgentOS does not require a separate paid AI API key to install and operate its local runtime.
+> **Cost-Free Baseline:** The target user-facing AI path is **ChatGPT Free text chat + MultiAgentOS + Local MCP**. MultiAgentOS does not require a separate paid OpenAI API key for the local runtime.
 
 ---
 
@@ -330,9 +330,24 @@ Supported OS-native lifecycle management includes:
 
 ## Cost-Free Development Baseline
 
-The core rule is simple:
+The core user-facing path is:
 
-> **No separate paid AI API key is required for the MultiAgentOS local runtime baseline.**
+```text
+ChatGPT Free text chat
+        |
+        v
+MultiAgentOS
+        |
+        v
+Local MCP
+        |
+        v
+Project filesystem / shell / tests
+```
+
+> **Cost-Free policy:** development must be possible without an OpenAI API key by using ChatGPT Free text chat as the AI engine and MultiAgentOS Local MCP as the controlled execution boundary.
+
+This policy does not claim that every ChatGPT feature is unlimited. It defines the intended AI-engine path for ordinary text-based development work.
 
 The baseline is designed around:
 
@@ -479,7 +494,7 @@ The current release verification includes:
 - Native release artifacts published
 - Local Agent Execution Runtime filesystem READ / WRITE verified
 - `patch.apply` verified with filesystem readback
-- `shell.run` verified
+- Terminal MCP foreground acceptance coverage added: `tools/list`, `shell.run`, project-root execution, stdout/stderr, exit code, and process-permission gating
 - GitHub-connected development path verified
 
 ### Verification boundary
@@ -516,6 +531,20 @@ flowchart TB
 This prevents a healthy tunnel from being incorrectly reported as proof of a hosted client-side MCP tool invocation.
 
 ---
+
+## Terminal MCP
+
+The local MCP server exposes `shell.run` only when the process capability is explicitly enabled with `--allow-process`.
+
+The currently verified contract is **foreground shell execution**:
+
+- MCP `tools/list` exposes `shell.run` only with process permission.
+- `shell.run` executes in the project root.
+- return code, stdout, and stderr are returned to the MCP caller.
+- process execution is denied when the capability is disabled.
+- the stdio MCP acceptance path invokes a real subprocess through `shell.run`.
+
+Background process start/status/output/termination is **not** part of this shell contract yet and must not be described as supported until a separate lifecycle implementation and E2E acceptance gate exist.
 
 ## Security and Permission Model
 
