@@ -94,3 +94,39 @@ def test_repository_evidence_is_attached_and_changes_candidate_confidence():
     assert selection.plan.confidence > 0.5
     assert selection.plan.candidates
     assert all(0.0 <= item.score <= 1.0 for item in selection.plan.candidates)
+
+
+class _LowConfidenceSelector:
+    def select(self, *, work_unit, evidence, candidates):
+        from core.agent_selection_policy import SelectionDecision
+        from runtime.governance import specialist_route
+        return SelectionDecision(
+            selected_agents=specialist_route(work_unit),
+            confidence=0.88,
+            reasons=("fallback selector confirmed governed route",),
+        )
+
+
+def test_low_confidence_deterministic_selection_uses_policy_safe_fallback():
+    from core.agent_selection_policy import AgentSelectionPolicy
+    from core.agent_selector import EvidenceEngine
+
+    work_unit = WorkUnit(
+        id="wu-fallback",
+        objective="Make an Android change",
+        work_type="development",
+        target="android",
+        metadata={"technology": "kotlin"},
+    )
+    selector = DeterministicAgentSelector(
+        evidence_engine=EvidenceEngine(),
+        llm_selector=_LowConfidenceSelector(),
+        selection_policy=AgentSelectionPolicy(confidence_threshold=1.0),
+    )
+
+    selection = selector.select(work_unit)
+
+    assert selection.plan.selection_mode == "hybrid"
+    assert selection.plan.confidence == 0.88
+    assert selection.plan.selected_agents == selection.plan.route
+    assert selection.plan.policy_decisions
