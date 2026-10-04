@@ -118,9 +118,11 @@ class SelectionFallback:
         deterministic: AgentPlan,
         registry,
     ) -> AgentPlan:
+        """Merge model decisions into only the ambiguous deterministic stages."""
         stage_confidences = deterministic.stage_confidences
         if not stage_confidences and not self.policy.should_escalate(deterministic.confidence):
             return deterministic
+
         ambiguous = tuple(
             stage
             for stage in stage_confidences
@@ -137,22 +139,16 @@ class SelectionFallback:
         if not ambiguous:
             return deterministic
 
+        selected_by_stage = list(deterministic.selected_agents)
+        model_confidence_by_stage: dict[int, float] = {}
+        model_reasons: list[str] = []
         select_stage = getattr(self.strategy, "select_stage", None)
-        if select_stage is None:
-            decision = self.strategy.select(
-                work_unit=work_unit,
-                evidence=deterministic.evidence,
-                candidates=deterministic.candidates,
-            )
-        else:
-            selected_by_stage = list(deterministic.selected_agents)
-            reasons: list[str] = []
-            confidence_values: list[float] = []
-            candidate_pool = deterministic.candidates
+
+        if select_stage is not None:
             for stage in ambiguous:
                 stage_candidates = tuple(
                     candidate
-                    for candidate in candidate_pool
+                    for candidate in deterministic.candidates
                     if stage.stage_index in candidate.stage_indices
                 )
                 decision = select_stage(
@@ -163,30 +159,51 @@ class SelectionFallback:
                 )
                 if len(decision.selected_agents) != 1:
                     raise ValueError("stage selection must return exactly one Agent")
+                if not 0.0 <= decision.confidence <= 1.0:
+                    raise ValueError("selection strategy confidence must be between 0 and 1")
                 selected_by_stage[stage.stage_index] = decision.selected_agents[0]
-                reasons.extend(decision.reasons)
-                confidence_values.append(decision.confidence)
-            decision = SelectionDecision(
-                selected_agents=tuple(selected_by_stage),
-                confidence=(
-                    sum(confidence_values) / len(confidence_values)
-                    if confidence_values else deterministic.confidence
-                ),
-                reasons=tuple(reasons) or ("ambiguous stages were reselected",),
+                model_confidence_by_stage[stage.stage_index] = decision.confidence
+                model_reasons.extend(decision.reasons)
+        else:
+            decision = self.strategy.select(
+                work_unit=work_unit,
+                evidence=deterministic.evidence,
+                candidates=deterministic.candidates,
             )
-        if not 0.0 <= decision.confidence <= 1.0:
-            raise ValueError("selection strategy confidence must be between 0 and 1")
+            if len(decision.selected_agents) != len(deterministic.selected_agents):
+                raise ValueError(
+                    "legacy selection strategy must return the complete governed route"
+                )
+            if not 0.0 <= decision.confidence <= 1.0:
+                raise ValueError("selection strategy confidence must be between 0 and 1")
+            changed = {
+                index
+                for index, (before, after) in enumerate(
+                    zip(deterministic.selected_agents, decision.selected_agents, strict=True)
+                )
+                if before != after
+            }
+            ambiguous_indices = {stage.stage_index for stage in ambiguous}
+            if not changed.issubset(ambiguous_indices):
+                raise ValueError(
+                    "selection strategy may only change ambiguous specialist stages"
+                )
+            selected_by_stage = list(decision.selected_agents)
+            for stage in ambiguous:
+                model_confidence_by_stage[stage.stage_index] = decision.confidence
+            model_reasons.extend(decision.reasons)
 
-        candidate_map = {candidate.agent_id: candidate for candidate in deterministic.candidates}
-        unknown = tuple(
-            agent_id for agent_id in decision.selected_agents if agent_id not in candidate_map
-        )
+        selected_ids = tuple(selected_by_stage)
+        candidate_map = {
+            candidate.agent_id: candidate for candidate in deterministic.candidates
+        }
+        unknown = tuple(agent_id for agent_id in selected_ids if agent_id not in candidate_map)
         if unknown:
             raise ValueError(
                 "selection strategy returned Agent IDs outside the candidate pool: "
                 + ", ".join(unknown)
             )
-        for index, agent_id in enumerate(decision.selected_agents):
+        for index, agent_id in enumerate(selected_ids):
             if index not in candidate_map[agent_id].stage_indices:
                 raise ValueError(
                     f"selection strategy assigned {agent_id} to incompatible stage {index}"
@@ -194,91 +211,46 @@ class SelectionFallback:
 
         selected = self.policy.validate(
             work_unit,
-            decision.selected_agents,
+            selected_ids,
             registry,
         )
-        candidates = tuple(
-            AgentCandidate(
-                agent_id=agent_id,
-                score=decision.confidence,
-                reasons=decision.reasons or ("secondary selection selected this route",),
-                evidence_ids=tuple(record.id for record in deterministic.evidence),
-                stage_indices=next(
-                    candidate.stage_indices
-                    for candidate in deterministic.candidates
-                    if candidate.agent_id == agent_id
-                ),
-            )
-            for agent_id in selected
-        )
-        stage_confidences = tuple(
+
+        merged_stage_confidences = tuple(
             StageConfidence(
-                stage_index=index,
-                selected_agent_id=agent_id,
-                selected_score=candidate_map[agent_id].score,
-                best_score=max(
-                    (
-                        candidate.score
-                        for candidate in deterministic.candidates
-                        if index in candidate.stage_indices
-                    ),
-                    default=candidate_map[agent_id].score,
+                stage_index=stage.stage_index,
+                selected_agent_id=selected[stage.stage_index],
+                selected_score=candidate_map[selected[stage.stage_index]].score,
+                best_score=stage.best_score,
+                margin=stage.margin,
+                evidence_coverage=stage.evidence_coverage,
+                selection_source=(
+                    "model" if stage.stage_index in model_confidence_by_stage else stage.selection_source
                 ),
-                margin=(
-                    1.0
-                    if sum(
-                        1
-                        for candidate in deterministic.candidates
-                        if index in candidate.stage_indices
-                    ) <= 1
-                    else max(
-                        0.0,
-                        min(
-                            1.0,
-                            max(
-                                (
-                                    candidate.score
-                                    for candidate in deterministic.candidates
-                                    if index in candidate.stage_indices
-                                ),
-                                default=candidate_map[agent_id].score,
-                            ) - max(
-                                (
-                                    candidate.score
-                                    for candidate in deterministic.candidates
-                                    if index in candidate.stage_indices
-                                    and candidate.agent_id != agent_id
-                                ),
-                                default=0.0,
-                            ),
-                        ),
-                    )
-                ),
-                evidence_coverage=(
-                    sum(
-                        1
-                        for record in deterministic.evidence
-                        if record.kind.value == "verified"
-                    )
-                    / max(1, len(deterministic.evidence))
-                ),
+                model_confidence=model_confidence_by_stage.get(stage.stage_index),
             )
-            for index, agent_id in enumerate(selected)
+            for stage in stage_confidences
         )
         plan = AgentPlan(
             work_unit_id=work_unit.id,
             selected_agents=selected,
             route=selected,
-            candidates=candidates,
+            candidates=deterministic.candidates,
             evidence=deterministic.evidence,
-            confidence=decision.confidence,
-            stage_confidences=stage_confidences,
+            confidence=(
+                sum(stage.score for stage in merged_stage_confidences)
+                / len(merged_stage_confidences)
+                if merged_stage_confidences
+                else deterministic.confidence
+            ),
+            stage_confidences=merged_stage_confidences,
             reasons=(
                 "deterministic confidence below escalation threshold",
-                *decision.reasons,
+                "only ambiguous specialist stages were reselected",
+                *tuple(model_reasons),
             ),
             policy_decisions=(
                 f"secondary selection allowed below confidence {self.policy.confidence_threshold:.2f}",
+                "deterministic candidate pool preserved during merge",
                 "route passed deterministic governance validation",
             ),
             selection_mode="hybrid",

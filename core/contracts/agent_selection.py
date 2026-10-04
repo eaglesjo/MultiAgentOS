@@ -34,10 +34,14 @@ class StageConfidence:
     best_score: float
     margin: float
     evidence_coverage: float
+    selection_source: str = "deterministic"
+    model_confidence: float | None = None
 
     @property
     def score(self) -> float:
-        """Composite confidence used to decide whether this stage needs escalation."""
+        """Effective confidence used for escalation and final plan confidence."""
+        if self.model_confidence is not None:
+            return self.model_confidence
         return max(
             0.0,
             min(
@@ -53,6 +57,12 @@ class StageConfidence:
             raise ValueError("stage confidence stage_index must be non-negative")
         if not self.selected_agent_id.strip():
             raise ValueError("stage confidence selected_agent_id must not be empty")
+        if self.selection_source not in {"deterministic", "model"}:
+            raise ValueError("unsupported stage confidence selection_source")
+        if self.model_confidence is not None and not 0.0 <= self.model_confidence <= 1.0:
+            raise ValueError("stage confidence model_confidence must be between 0 and 1")
+        if self.selection_source == "model" and self.model_confidence is None:
+            raise ValueError("model stage confidence requires model_confidence")
         for name, value in (
             ("selected_score", self.selected_score),
             ("best_score", self.best_score),
