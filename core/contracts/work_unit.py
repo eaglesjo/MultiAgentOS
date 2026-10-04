@@ -34,7 +34,7 @@ _ALLOWED_TRANSITIONS: dict[WorkStatus, frozenset[WorkStatus]] = {
     WorkStatus.USER_APPROVED: frozenset({WorkStatus.RELEASED, WorkStatus.FAILED, WorkStatus.HOLD}),
     WorkStatus.RELEASED: frozenset({WorkStatus.COMPLETED}),
     WorkStatus.HANDOFF: frozenset({WorkStatus.EXECUTING, WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.HOLD}),
-    WorkStatus.COMPLETED: frozenset({WorkStatus.READY_FOR_APPROVAL}),
+    WorkStatus.COMPLETED: frozenset({WorkStatus.READY_FOR_APPROVAL, WorkStatus.BLOCKED}),
     WorkStatus.FAILED: frozenset({WorkStatus.EXECUTING}),
     WorkStatus.HOLD: frozenset({WorkStatus.BLOCKED, WorkStatus.FAILED, WorkStatus.EXECUTING}),
     WorkStatus.BLOCKED: frozenset(),
