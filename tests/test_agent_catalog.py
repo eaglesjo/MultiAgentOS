@@ -28,6 +28,32 @@ class AgentCatalogTests(unittest.TestCase):
         self.assertEqual(agents["tester"].taxonomy.domain, "testing")
         self.assertEqual(agents["tester"].taxonomy.specialization, "general")
 
+
+    def test_agent_contract_rejects_kind_taxonomy_mismatch(self):
+        from core.contracts.agent import AgentContract, AgentTaxonomy
+
+        governance = AgentContract(
+            id="invalid-governance",
+            role="invalid-governance",
+            kind="governance",
+            taxonomy=AgentTaxonomy(),
+        )
+        with self.assertRaises(ValueError):
+            governance.validate()
+
+        specialist = AgentContract(
+            id="invalid-specialist",
+            role="invalid-specialist",
+            kind="specialist",
+            taxonomy=AgentTaxonomy(layer="governance"),
+        )
+        with self.assertRaises(ValueError):
+            specialist.validate()
+
+    def test_catalog_contracts_validate(self):
+        for agent in build_agent_catalog():
+            agent.validate()
+
     def test_governance_and_specialist_layers_are_disjoint_by_id(self):
         agents = build_agent_catalog()
 
