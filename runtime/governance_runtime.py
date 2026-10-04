@@ -11,6 +11,7 @@ from runtime.governance import (
     validate_evidence,
     validate_plan,
     validate_scope,
+    validate_specialist_route,
 )
 
 
@@ -26,6 +27,13 @@ class GovernanceRuntime:
         check = validate_plan(work_unit, plan)
         if not check.passed:
             raise ValueError("Invalid governed plan: " + "; ".join(check.findings))
+        if work_unit.work_type in {"development", "development_research", "ui", "ui_research"} and (work_unit.target or work_unit.metadata.get("platform")):
+            route_check = validate_specialist_route(
+                work_unit,
+                tuple(step.agent_id or "" for step in plan.steps),
+            )
+            if not route_check.passed:
+                raise ValueError("Invalid specialist route: " + "; ".join(route_check.findings))
 
     def validate_artifacts(
         self,

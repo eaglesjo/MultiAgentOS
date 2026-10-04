@@ -87,6 +87,7 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
             (
                 "file-picker",
                 "planner",
+                "development",
                 "development-research-react",
                 "react-developer",
                 "editor",
@@ -107,6 +108,7 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
             (
                 "file-picker",
                 "planner",
+                "development",
                 "development-research-react-native",
                 "react-native-developer",
                 "editor",
@@ -127,7 +129,9 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
             (
                 "file-picker",
                 "planner",
+                "ui-agent",
                 "ui-research-android",
+                "ui-native",
                 "ui-android",
                 "editor",
                 "executor",
@@ -148,7 +152,9 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
             (
                 "file-picker",
                 "planner",
+                "ui-agent",
                 "ui-research-ios",
+                "ui-native",
                 "ui-ios",
                 "editor",
                 "executor",
@@ -296,6 +302,30 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
                 executors={},
             )
 
+
+    def test_ui_taxonomy_has_explicit_cross_platform_and_native_branches(self):
+        rn = specialist_route(WorkUnit("wu-rn-ui", "update RN UI", work_type="ui", target="react-native"))
+        android = specialist_route(WorkUnit("wu-android-ui-branch", "update Android UI", work_type="ui", target="android"))
+        ios = specialist_route(WorkUnit("wu-ios-ui-branch", "update iOS UI", work_type="ui", target="ios"))
+        self.assertIn("ui-agent", rn)
+        self.assertIn("ui-react-native", rn)
+        self.assertNotIn("ui-native", rn)
+        self.assertIn("ui-native", android)
+        self.assertIn("ui-android", android)
+        self.assertIn("ui-native", ios)
+        self.assertIn("ui-ios", ios)
+
+    def test_governance_rejects_wrong_specialist_route(self):
+        work = WorkUnit("wu-route-check", "update Android UI", work_type="ui", target="android")
+        wrong = ("file-picker", "planner", "ui-research-android", "ui-android", "editor", "executor", "tester", "reviewer")
+        plan = __import__("core.contracts.planning", fromlist=["WorkPlan"]).WorkPlan(
+            work.id, work.objective,
+            tuple(__import__("core.contracts.planning", fromlist=["PlanStep"]).PlanStep(
+                f"{agent}-{i}", agent, agent, scope_lock=work.scope_lock
+            ) for i, agent in enumerate(wrong))
+        )
+        with self.assertRaises(ValueError):
+            GovernanceRuntime().validate_plan(work, plan)
 
 if __name__ == "__main__":
     unittest.main()

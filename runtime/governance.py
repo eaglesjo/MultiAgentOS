@@ -33,6 +33,7 @@ ROUTE_TEMPLATES: dict[str, tuple[str, ...]] = {
     "web_ui": (
         "file-picker",
         "planner",
+        "ui-agent",
         "ui-research-web",
         "ui-web",
         "editor",
@@ -137,7 +138,7 @@ def specialist_route(
     *,
     research_required: bool | None = None,
 ) -> tuple[str, ...]:
-    """Compose governance stages with a platform/domain specialist path."""
+    """Compose governance stages with explicit domain and UI taxonomy roots."""
     work_type = WORK_TYPE_ALIASES.get(work_unit.work_type, work_unit.work_type)
 
     if work_type == "development":
@@ -149,24 +150,36 @@ def specialist_route(
             else research_required
         )
         specialist = (research, developer) if include_research else (developer,)
-        return GOVERNANCE_PREFIX + specialist + GOVERNANCE_SUFFIX
+        return GOVERNANCE_PREFIX + ("development",) + specialist + GOVERNANCE_SUFFIX
 
     if work_type == "development_research":
         platform = _specialist_platform(work_unit)
-        return GOVERNANCE_PREFIX + (_DEVELOPMENT_SPECIALISTS[platform][0],) + (
+        return GOVERNANCE_PREFIX + (
+            "development",
+            _DEVELOPMENT_SPECIALISTS[platform][0],
             "reviewer",
         )
 
     if work_type == "ui_research":
         platform = _specialist_platform(work_unit)
-        return GOVERNANCE_PREFIX + (_UI_SPECIALISTS[platform][0],) + ("reviewer",)
+        return GOVERNANCE_PREFIX + (
+            "ui-agent",
+            _UI_SPECIALISTS[platform][0],
+            "reviewer",
+        )
 
     if work_type == "ui":
         platform = _specialist_platform(work_unit)
         research, ui_agent, validation = _UI_SPECIALISTS[platform]
+        branch = (
+            ("ui-web",)
+            if platform == "react"
+            else (("ui-react-native",) if platform == "react-native" else ("ui-native", ui_agent))
+        )
         return GOVERNANCE_PREFIX + (
+            "ui-agent",
             research,
-            ui_agent,
+            *branch,
             "editor",
             "executor",
             validation,
@@ -177,8 +190,6 @@ def specialist_route(
         return ROUTE_TEMPLATES["external_research"]
 
     return smallest_sufficient_path(work_type)
-
-
 def validate_specialist_route(
     work_unit: WorkUnit,
     agent_ids: tuple[str, ...],
