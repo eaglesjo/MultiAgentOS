@@ -126,7 +126,7 @@ class GovernanceMigrationTests(unittest.TestCase):
     def test_smallest_sufficient_routes(self):
         self.assertEqual(
             smallest_sufficient_path("simple"),
-            ("planner", "editor", "executor", "reviewer"),
+            ("file-picker", "planner", "editor", "executor", "reviewer"),
         )
         self.assertEqual(
             smallest_sufficient_path("external_research"),
