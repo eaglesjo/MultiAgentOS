@@ -232,5 +232,36 @@ class CLITests(unittest.TestCase):
             self.assertTrue((Path(temp) / ".multiagentos" / "chat.json").exists())
 
 
+    def test_init_bootstraps_project_runtime_contract(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertEqual(main(["init", temp]), 0)
+
+            self.assertTrue((root / "AGENTS.md").exists())
+            self.assertTrue((root / ".multiagentos" / "mcp.json").exists())
+            self.assertTrue((root / ".multiagentos" / "state").is_dir())
+            self.assertTrue((root / ".multiagentos" / "checkpoints").is_dir())
+            self.assertTrue((root / ".multiagentos" / "sessions").is_dir())
+
+            mcp = json.loads((root / ".multiagentos" / "mcp.json").read_text(encoding="utf-8"))
+            self.assertEqual(mcp["transport"], "streamable-http")
+            self.assertEqual(mcp["endpoint"], "http://127.0.0.1:8000/mcp")
+            self.assertFalse(mcp["allow_write"])
+            self.assertFalse(mcp["allow_process"])
+
+            instructions = (root / "AGENTS.md").read_text(encoding="utf-8")
+            self.assertIn("execution and governance boundary", instructions)
+            self.assertIn(".multiagentos/profile.json", instructions)
+
+    def test_init_preserves_existing_project_instructions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            existing = root / "AGENTS.md"
+            existing.write_text("# Existing project instructions\n", encoding="utf-8")
+
+            self.assertEqual(main(["init", temp]), 0)
+            self.assertEqual(existing.read_text(encoding="utf-8"), "# Existing project instructions\n")
+
+
 if __name__ == "__main__":
     unittest.main()
