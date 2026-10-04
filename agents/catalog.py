@@ -398,17 +398,17 @@ def build_agent_catalog(profile_ids: tuple[str, ...] = ()) -> tuple[AgentContrac
                 "execution_role": True,
                 "governance_source": "MultiAgentOS",
             })
-        agents.append(
-            AgentContract(
-                id=agent_id,
-                role=agent_id,
-                capabilities=frozenset(capabilities),
-                tools=frozenset(tools),
-                permissions=permissions,
-                metadata=metadata,
-                kind="governance" if governance else "specialist",
-                scope_aware=True,
-                taxonomy=taxonomy,
-            )
+        agent = AgentContract(
+            id=agent_id,
+            role=agent_id,
+            capabilities=frozenset(capabilities),
+            tools=frozenset(tools),
+            permissions=permissions,
+            metadata=metadata,
+            kind="governance" if governance else "specialist",
+            scope_aware=True,
+            taxonomy=taxonomy,
         )
+        agent.validate()
+        agents.append(agent)
     return tuple(agents)
