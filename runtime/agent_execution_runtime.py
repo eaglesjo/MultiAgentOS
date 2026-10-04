@@ -1867,13 +1867,13 @@ __all__ = ["AgentExecutionRuntime"]    def run_adaptive(
         """Execute a governed route with bounded specialist-only adaptive reselection."""
         root = Path(project_root).resolve()
         registry = build_registry()
-        selector = DeterministicAgentSelector(
+        initial_selector = DeterministicAgentSelector(
             evidence_engine=EvidenceEngine(),
             selection_strategy=selection_strategy,
             selection_policy=selection_policy,
             registry=registry,
         )
-        selection = selector.select(
+        selection = initial_selector.select(
             work_unit,
             explicit_agents=explicit_agents,
             repository_evidence=(
@@ -1881,6 +1881,13 @@ __all__ = ["AgentExecutionRuntime"]    def run_adaptive(
                 if repository_evidence is not None
                 else self.repository.evidence(root)
             ),
+        )
+        # The adaptive loop owns the fallback boundary; its selector stays deterministic.
+        selector = DeterministicAgentSelector(
+            evidence_engine=EvidenceEngine(),
+            selection_strategy=None,
+            selection_policy=selection_policy,
+            registry=registry,
         )
         fallback = (
             SelectionFallback(selection_strategy, policy=selection_policy)
