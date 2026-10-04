@@ -48,20 +48,22 @@ class ProjectInitializer:
         (target / "state").mkdir(exist_ok=True)
         (target / "checkpoints").mkdir(exist_ok=True)
         (target / "sessions").mkdir(exist_ok=True)
-        (target / "mcp.json").write_text(
-            json.dumps(
-                {
-                    "version": 1,
-                    "transport": "streamable-http",
-                    "endpoint": "http://127.0.0.1:8000/mcp",
-                    "project_root": str(project_root.resolve()),
-                    "allow_write": False,
-                    "allow_process": False,
-                },
-                indent=2,
-            ) + "\n",
-            encoding="utf-8",
-        )
+        mcp_config = target / "mcp.json"
+        if not mcp_config.exists():
+            mcp_config.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "transport": "streamable-http",
+                        "endpoint": "http://127.0.0.1:8000/mcp",
+                        "project_root": str(project_root.resolve()),
+                        "allow_write": False,
+                        "allow_process": False,
+                    },
+                    indent=2,
+                ) + "\n",
+                encoding="utf-8",
+            )
 
         agents_md = project_root / "AGENTS.md"
         if not agents_md.exists():
@@ -93,10 +95,12 @@ The project-local MCP contract is recorded in `.multiagentos/mcp.json`. The defa
                 encoding="utf-8",
             )
 
-        (target / ".gitignore").write_text(
-            "state/\ncheckpoints/\nsessions/\n*.log\n",
-            encoding="utf-8",
-        )
+        runtime_ignore = target / ".gitignore"
+        if not runtime_ignore.exists():
+            runtime_ignore.write_text(
+                "state/\ncheckpoints/\nsessions/\n*.log\n",
+                encoding="utf-8",
+            )
 
         if component in {"agent-execution-runtime", "all"}:
             write_default_execution_config(project_root)
