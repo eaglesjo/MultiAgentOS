@@ -22,7 +22,7 @@ class ProfileInstallerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             detections = ProfileDetector().detect(root)
-            path = ProjectInitializer().apply(root, detections)
+            path = ProjectInitializer().apply(root, detections, approved=True)
             self.assertTrue(path.exists())
             self.assertEqual(json.loads(path.read_text())["version"], 1)
 
