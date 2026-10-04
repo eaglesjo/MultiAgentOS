@@ -19,6 +19,7 @@ class WorkspaceDetectionTests(unittest.TestCase):
             web = root / "apps" / "web"
             android.mkdir(parents=True)
             web.mkdir(parents=True)
+            (android / "package.json").write_text("{}\n", encoding="utf-8")
             (android / "settings.gradle").write_text("include ':app'\n", encoding="utf-8")
             (web / "package.json").write_text(
                 json.dumps({"dependencies": {"react-native": "0.80.0"}}), encoding="utf-8"
@@ -51,6 +52,7 @@ class WorkspaceDetectionTests(unittest.TestCase):
             web = root / "apps" / "web"
             android.mkdir(parents=True)
             web.mkdir(parents=True)
+            (android / "package.json").write_text("{}\n", encoding="utf-8")
             (android / "settings.gradle").write_text("rootProject.name='android'\n", encoding="utf-8")
             (android / "build.gradle").write_text(
                 "plugins { id 'com.android.application' version '8.0.0' apply false }\n",
@@ -93,7 +95,7 @@ class WorkspaceDetectionTests(unittest.TestCase):
             reconciliation = build_reconciliation(root, plan, analyses)
             self.assertIn("android-developer", reconciliation.to_remove)
             self.assertIn("planner", reconciliation.unchanged)
-            self.assertFalse(reconciliation.to_add)
+            self.assertIn("executor", reconciliation.to_add)
 
     def test_reconciliation_blocks_ambiguous_plan_without_approval(self):
         with tempfile.TemporaryDirectory() as temp:
