@@ -20,10 +20,10 @@ class ProfileDetector:
     def __init__(self, registry: ProfileRegistry | None = None) -> None:
         self.registry = registry or ProfileRegistry()
 
-    def detect(self, project_root: Path) -> tuple[DetectionResult, ...]:
+    def detect(self, project_root: Path, *, recursive: bool = True) -> tuple[DetectionResult, ...]:
         results = []
         for profile in self.registry.list():
-            evidence, file_hits, marker_hits = self._evidence(project_root, profile)
+            evidence, file_hits, marker_hits = self._evidence(project_root, profile, recursive=recursive)
             if not evidence:
                 continue
             confidence = min(
@@ -39,13 +39,13 @@ class ProfileDetector:
         )
 
     def _evidence(
-        self, root: Path, profile: ProfileSpec
+        self, root: Path, profile: ProfileSpec, *, recursive: bool = True
     ) -> tuple[list[str], bool, bool]:
         evidence: list[str] = []
         file_hits = False
         marker_hits = False
 
-        files = self._files(root)
+        files = self._files(root, recursive=recursive)
         names = {path.name for path in files}
         for name in profile.detect_files:
             if name in names:
@@ -126,9 +126,10 @@ class ProfileDetector:
         return list(dict.fromkeys(evidence)), file_hits, marker_hits
 
     @staticmethod
-    def _files(root: Path) -> list[Path]:
+    def _files(root: Path, *, recursive: bool = True) -> list[Path]:
         files: list[Path] = []
-        for path in root.rglob("*"):
+        paths = root.rglob("*") if recursive else root.glob("*")
+        for path in paths:
             if any(part in _IGNORED_DIRS for part in path.parts):
                 continue
             if path.is_file():
