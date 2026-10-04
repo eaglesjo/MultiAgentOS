@@ -15,7 +15,7 @@ GOVERNANCE_PREFIX = ("file-picker", "planner")
 GOVERNANCE_SUFFIX = ("editor", "executor", "reviewer")
 
 ROUTE_TEMPLATES: dict[str, tuple[str, ...]] = {
-    "simple": GOVERVANCE_PREFIX if False else (
+    "simple": (
         "file-picker",
         "planner",
         "editor",
