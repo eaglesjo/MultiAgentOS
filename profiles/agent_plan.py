@@ -46,7 +46,10 @@ _PROFILE_SPECIALISTS = {
     "ios-native": {
         "ios-architect",
         "ios-developer",
+        "swift-developer",
+        "swiftui",
         "xcode",
+        "ui-ios",
     },
     "react-native": {
         "architect",
