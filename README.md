@@ -100,9 +100,9 @@ flowchart LR
 
 The runtime remains the authority for permissions and execution.
 
-### Governance migrated from PetTarotReading
+### Governance contracts
 
-MultiAgentOS now treats PetTarotReading's strongest governance patterns as native runtime contracts rather than as a second Agent OS.
+MultiAgentOS keeps execution governance inside its own provider-neutral runtime contracts.
 
 ```mermaid
 flowchart TB
@@ -123,7 +123,7 @@ flowchart TB
     RUNTIME --> TOOLS["MCP / Filesystem / Process / Git / GitHub"]
 ```
 
-The migration keeps MultiAgentOS as the single orchestration and execution authority. See [PetTarotReading Governance Migration](docs/PETTAROTREADING_GOVERNANCE_MIGRATION.md).
+These governance contracts are native to MultiAgentOS; they are not dependent on another repository or project-specific Agent OS.
 
 ---
 
