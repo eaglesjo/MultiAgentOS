@@ -65,3 +65,32 @@ def test_generic_development_uses_bounded_route_without_platform_evidence():
         "executor",
         "reviewer",
     )
+
+
+def test_repository_evidence_is_attached_and_changes_candidate_confidence():
+    from core.contracts.repository import RepositoryEvidence
+
+    work_unit = WorkUnit(
+        id="wu-repo-evidence",
+        objective="Inspect an Android repository change",
+        work_type="development",
+        target="android",
+        metadata={"technology": "kotlin"},
+    )
+    repository_evidence = RepositoryEvidence(
+        checkpoint_id="cp-test",
+        git_status=" M app/src/main/java/MainActivity.kt",
+        git_diff="+++ b/app/src/main/java/MainActivity.kt\n",
+        validation={"platform": "android", "technology": "kotlin"},
+    )
+
+    selection = DeterministicAgentSelector().select(
+        work_unit,
+        repository_evidence=repository_evidence,
+    )
+
+    assert any(item.source == "repository.validation.platform" for item in selection.plan.evidence)
+    assert any(item.kind.value == "verified" for item in selection.plan.evidence)
+    assert selection.plan.confidence > 0.5
+    assert selection.plan.candidates
+    assert all(0.0 <= item.score <= 1.0 for item in selection.plan.candidates)
