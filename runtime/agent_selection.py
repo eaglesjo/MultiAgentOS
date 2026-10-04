@@ -45,6 +45,49 @@ class ModelBackedAgentSelector:
         )
         return self._parse(execution.response.text, candidate_ids)
 
+    def select_stage(
+        self,
+        *,
+        work_unit: WorkUnit,
+        evidence: tuple[EvidenceRecord, ...],
+        candidates: tuple[AgentCandidate, ...],
+        stage_index: int,
+    ) -> SelectionDecision:
+        """Select exactly one Agent for one ambiguous stage."""
+        execution = self.runtime.execute(
+            ModelRequest(
+                prompt=self._prompt(
+                    work_unit,
+                    evidence,
+                    candidates,
+                    stage_index=stage_index,
+                ),
+                system=(
+                    "You are the Agent selection component of MultiAgentOS. "
+                    "Choose exactly one Agent from the supplied candidates for this stage. "
+                    "Return JSON only; do not execute tools or Agents."
+                ),
+            ),
+            model_id=self.model_id,
+        )
+        decision = self._parse(execution.response.text, tuple(candidate.agent_id for candidate in candidates))
+        if len(decision.selected_agents) != 1:
+            matches = tuple(
+                agent_id
+                for agent_id in decision.selected_agents
+                if agent_id in {candidate.agent_id for candidate in candidates}
+            )
+            if len(matches) == 1:
+                return SelectionDecision(
+                    selected_agents=matches,
+                    confidence=decision.confidence,
+                    reasons=decision.reasons,
+                )
+            raise ValueError(
+                f"model-backed stage selector must return exactly one Agent for stage {stage_index}"
+            )
+        return decision
+
     @staticmethod
     def _ranked_candidates(
         candidates: tuple[AgentCandidate, ...],
@@ -67,7 +110,13 @@ class ModelBackedAgentSelector:
         return ranked
 
     @staticmethod
-    def _prompt(work_unit: WorkUnit, evidence: tuple[EvidenceRecord, ...], candidates: tuple[AgentCandidate, ...]) -> str:
+    def _prompt(
+        work_unit: WorkUnit,
+        evidence: tuple[EvidenceRecord, ...],
+        candidates: tuple[AgentCandidate, ...],
+        *,
+        stage_index: int | None = None,
+    ) -> str:
         payload = {
             "work_unit": {
                 "id": work_unit.id,
@@ -87,7 +136,11 @@ class ModelBackedAgentSelector:
             ],
             "stage_rankings": ModelBackedAgentSelector._ranked_candidates(candidates),
             "output_schema": {
-                "selected_agents": ["candidate-agent-id-for-stage-0", "candidate-agent-id-for-stage-1"],
+                "selected_agents": (
+                    ["candidate-agent-id-for-stage"]
+                    if stage_index is not None
+                    else ["candidate-agent-id-for-stage-0", "candidate-agent-id-for-stage-1"]
+                ),
                 "confidence": 0.0,
                 "reasons": ["short reason"],
                 "constraints": [
@@ -97,6 +150,8 @@ class ModelBackedAgentSelector:
                 ],
             },
         }
+        if stage_index is not None:
+            payload["stage_index"] = stage_index
         return json.dumps(payload, ensure_ascii=False, sort_keys=True)
 
     @staticmethod

@@ -163,3 +163,77 @@ def test_selection_exposes_stage_aware_confidence_breakdown():
     assert all(0.0 <= item.evidence_coverage <= 1.0 for item in stages)
     assert any(item.evidence_coverage > 0.0 for item in stages)
     assert work_unit.metadata["agent_plan"]["stage_confidences"]
+
+
+def test_partial_fallback_reselects_only_ambiguous_specialist_stage():
+    from agents.registry import build_registry
+    from core.agent_selection_policy import AgentSelectionPolicy, SelectionDecision, SelectionFallback
+    from core.contracts.agent_selection import AgentCandidate, AgentPlan, StageConfidence
+    from runtime.governance import specialist_route
+
+    work_unit = WorkUnit(
+        id="wu-partial",
+        objective="Implement Android settings",
+        work_type="development",
+        target="android",
+        metadata={"technology": "kotlin"},
+    )
+    route = specialist_route(work_unit)
+    candidates = [
+        AgentCandidate(agent_id=agent_id, score=0.90, stage_indices=(index,))
+        for index, agent_id in enumerate(route)
+    ]
+    candidates.append(
+        AgentCandidate(
+            agent_id="react-native-developer",
+            score=0.40,
+            stage_indices=(4,),
+        )
+    )
+    stages = [
+        StageConfidence(
+            stage_index=index,
+            selected_agent_id=agent_id,
+            selected_score=0.40 if index == 4 else 0.90,
+            best_score=0.90,
+            margin=0.10 if index == 4 else 1.0,
+            evidence_coverage=0.0,
+        )
+        for index, agent_id in enumerate(route)
+    ]
+    plan = AgentPlan(
+        work_unit_id=work_unit.id,
+        selected_agents=route,
+        route=route,
+        candidates=tuple(candidates),
+        confidence=0.80,
+        stage_confidences=tuple(stages),
+        evidence=(),
+    )
+
+    class StageStrategy:
+        def __init__(self):
+            self.stages = []
+
+        def select_stage(self, *, work_unit, evidence, candidates, stage_index):
+            self.stages.append(stage_index)
+            return SelectionDecision(
+                selected_agents=("react-native-developer",),
+                confidence=0.91,
+                reasons=("specialist ambiguity resolved",),
+            )
+
+    strategy = StageStrategy()
+    result = SelectionFallback(
+        strategy,
+        policy=AgentSelectionPolicy(confidence_threshold=0.75),
+    ).select(
+        work_unit=work_unit,
+        deterministic=plan,
+        registry=build_registry(),
+    )
+
+    assert strategy.stages == [4]
+    assert result.selected_agents[4] == "react-native-developer"
+    assert result.selected_agents[:4] == route[:4]
+    assert result.selected_agents[5:] == route[5:]

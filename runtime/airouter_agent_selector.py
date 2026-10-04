@@ -21,6 +21,31 @@ class AIRouterBackedAgentSelector:
     preferred_model_ids: tuple[str, ...] = ()
     routing_strategy: RoutingStrategy | str = RoutingStrategy.AUTO
 
+    def select_stage(
+        self,
+        *,
+        work_unit: WorkUnit,
+        evidence: tuple[EvidenceRecord, ...],
+        candidates: tuple[AgentCandidate, ...],
+        stage_index: int,
+    ) -> SelectionDecision:
+        assignment = self.router.assign(
+            self.selector_agent,
+            list(self.models),
+            preferred_model_ids=list(self.preferred_model_ids) or None,
+            strategy=self.routing_strategy,
+        )
+        selector = ModelBackedAgentSelector(
+            runtime=self.runtime,
+            model_id=assignment.model_id,
+        )
+        return selector.select_stage(
+            work_unit=work_unit,
+            evidence=evidence,
+            candidates=candidates,
+            stage_index=stage_index,
+        )
+
     def select(
         self,
         *,
