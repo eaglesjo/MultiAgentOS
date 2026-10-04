@@ -27,6 +27,7 @@ class DelegationEngine:
         preferred_model_ids: list[str] | None = None,
         strategy: RoutingStrategy | str = RoutingStrategy.POOL,
     ) -> Delegation:
+        agent.validate()
         assignment = self.router.assign(agent, models, preferred_model_ids, strategy)
         work_unit.assign(agent.id)
         work_unit.transition(WorkStatus.EXECUTING)
