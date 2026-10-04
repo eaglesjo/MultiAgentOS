@@ -237,3 +237,63 @@ def test_partial_fallback_reselects_only_ambiguous_specialist_stage():
     assert result.selected_agents[4] == "react-native-developer"
     assert result.selected_agents[:4] == route[:4]
     assert result.selected_agents[5:] == route[5:]
+
+
+def test_sparse_android_stage_expands_profile_candidates_and_keeps_top_k():
+    from core.agent_selection_policy import CandidatePoolExpansionPolicy
+
+    work_unit = WorkUnit(
+        id="wu-adaptive-pool",
+        objective="Implement Android build settings",
+        work_type="development",
+        target="android",
+        metadata={"technology": "kotlin"},
+    )
+    selection = DeterministicAgentSelector(
+        candidate_pool_policy=CandidatePoolExpansionPolicy(min_candidates=2, top_k=3),
+    ).select(work_unit)
+
+    stage_index = selection.plan.route.index("android-developer")
+    stage_candidates = [
+        candidate
+        for candidate in selection.plan.candidates
+        if stage_index in candidate.stage_indices
+    ]
+
+    assert len(stage_candidates) == 3
+    assert "android-developer" in {candidate.agent_id for candidate in stage_candidates}
+    assert "kotlin-developer" in {candidate.agent_id for candidate in stage_candidates}
+    assert all(candidate.stage_indices for candidate in selection.plan.candidates)
+
+
+def test_candidate_pool_does_not_expand_governance_only_routes():
+    from core.agent_selection_policy import CandidatePoolExpansionPolicy
+    from core.registry import AgentRegistry
+
+    registry = AgentRegistry()
+    from agents.catalog import build_agent_catalog
+
+    for agent in build_agent_catalog():
+        registry.register(agent)
+
+    selector = DeterministicAgentSelector(
+        registry=registry,
+        candidate_pool_policy=CandidatePoolExpansionPolicy(min_candidates=2, top_k=3),
+    )
+    work_unit = WorkUnit(
+        id="wu-no-governance-expansion",
+        objective="Run a simple task",
+        work_type="simple",
+    )
+
+    selection = selector.select(work_unit)
+
+    assert all(
+        selection.plan.route[index] in {
+            candidate.agent_id
+            for candidate in selection.plan.candidates
+            if index in candidate.stage_indices
+        }
+        for index in range(len(selection.plan.route))
+    )
+    assert "android-architect" not in {candidate.agent_id for candidate in selection.plan.candidates}
