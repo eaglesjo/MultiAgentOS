@@ -3,14 +3,20 @@
 from core.contracts.agent import AgentContract, AgentTaxonomy
 
 
-_COMMON = {
-    "planner": ({"planning"}, {"filesystem.read"}),
-    "researcher": ({"research"}, {"network.read"}),
-    "editor": ({"editing"}, {"filesystem.read", "filesystem.write"}),
-    "executor": ({"execution"}, {"filesystem.read", "filesystem.write", "process"}),
-    "tester": ({"testing"}, {"filesystem.read", "process"}),
-    "debugger": ({"debugging"}, {"filesystem.read", "process"}),
-    "reviewer": ({"review"}, {"filesystem.read"}),
+# These are intentionally specialist roles. Governance roles are defined below
+# and must not be duplicated here: planner/editor/executor/reviewer/debugger
+# are governance agents, while researcher/tester remain reusable specialists.
+_COMMON_SPECIALISTS = {
+    "researcher": (
+        {"research"},
+        {"network.read"},
+        AgentTaxonomy(domain="research", specialization="general"),
+    ),
+    "tester": (
+        {"testing"},
+        {"filesystem.read", "process"},
+        AgentTaxonomy(domain="testing", specialization="general"),
+    ),
 }
 
 
@@ -273,12 +279,8 @@ _ROUTING_NODES = {
 
 def _build_definition_map() -> dict[str, tuple[set[str], set[str], AgentTaxonomy]]:
     definitions: dict[str, tuple[set[str], set[str], AgentTaxonomy]] = {}
-    for agent_id, (capabilities, tools) in _COMMON.items():
-        definitions[agent_id] = (
-            capabilities,
-            tools,
-            AgentTaxonomy(layer="specialist", domain=agent_id),
-        )
+    for agent_id, (capabilities, tools, taxonomy) in _COMMON_SPECIALISTS.items():
+        definitions[agent_id] = (capabilities, tools, taxonomy)
     for agent_id, (capabilities, tools, taxonomy) in _GOVERNANCE_ROLES.items():
         definitions[agent_id] = (
             capabilities,
