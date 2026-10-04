@@ -52,6 +52,8 @@ class ProjectDetectionAgentPlanTests(unittest.TestCase):
             detections = ProfileDetector().detect(root)
             self.assertEqual(detections[0].profile_id, "android-native")
             self.assertEqual(detections[0].confidence, 1.0)
+            classification = build_agent_plan(root, detections).classification
+            self.assertEqual(classification.framework_runtime.values, ("Android Native",))
             self.assertFalse(build_agent_plan(root, detections).requires_approval)
 
     def test_android_kotlin_and_compose_specialists_require_direct_evidence(self):
