@@ -130,7 +130,10 @@ class AdaptiveAgentExecutionLoop:
         plan = initial_plan
 
         for attempt in range(1, self.policy.max_attempts + 1):
-            stage_indices = tuple(range(len(plan.route)))
+            if attempt == 1:
+                stage_indices = tuple(range(len(plan.route)))
+            else:
+                stage_indices = retryable
             outcomes = self.executor.execute(
                 work_unit=work_unit,
                 plan=plan,
@@ -158,9 +161,12 @@ class AdaptiveAgentExecutionLoop:
                 if outcome.stage_index in retryable
                 for record in outcome.evidence
             )
+            merged_evidence = tuple(
+                dict.fromkeys((*plan.evidence, *execution_evidence))
+            )
             deterministic = self.selector.select(
                 work_unit,
-                evidence=execution_evidence or None,
+                evidence=merged_evidence,
             ).plan
             plan = self.selection_fallback.select(
                 work_unit=work_unit,
