@@ -62,3 +62,45 @@ def test_full_hybrid_selection_pipeline():
     assert selection.plan.selected_agents[0] == "file-picker"
     assert selection.plan.selected_agents[-1] == "reviewer"
     assert work_unit.assigned_agents == list(selection.plan.route)
+
+
+def test_stage_selector_accepts_full_route_response_and_extracts_stage_candidate():
+    selector_agent = AgentContract(
+        id="agent-selector",
+        role="agent-selector",
+        kind="governance",
+        taxonomy=AgentTaxonomy(layer="governance"),
+    )
+    model = ModelSpec("selector-model", "test")
+    runtime = AIRuntime(
+        models={"selector-model": model},
+        adapters={"selector-model": _Adapter()},
+    )
+    selector = ModelBackedAgentSelector(
+        runtime=runtime,
+        model_id="selector-model",
+    )
+    work_unit = WorkUnit(
+        id="wu-stage-selector",
+        objective="Implement Android settings",
+        work_type="development",
+        target="android",
+        metadata={"technology": "kotlin"},
+    )
+    from core.contracts.agent_selection import AgentCandidate
+    candidates = (
+        AgentCandidate(
+            agent_id="android-developer",
+            score=0.70,
+            stage_indices=(4,),
+        ),
+    )
+
+    decision = selector.select_stage(
+        work_unit=work_unit,
+        evidence=(),
+        candidates=candidates,
+        stage_index=4,
+    )
+
+    assert decision.selected_agents == ("android-developer",)
