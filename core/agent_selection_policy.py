@@ -43,6 +43,29 @@ class AgentSelectionStrategy(Protocol):
 
 
 @dataclass(frozen=True)
+class CandidatePoolExpansionPolicy:
+    """Expand specialist candidates only when the deterministic pool is too small."""
+
+    min_candidates: int = 2
+    top_k: int = 4
+    profile_by_platform: tuple[tuple[str, str], ...] = (
+        ("react-native", "react-native"),
+        ("android", "android-native"),
+        ("ios", "ios-native"),
+    )
+
+    def __post_init__(self) -> None:
+        if self.min_candidates < 1:
+            raise ValueError("candidate pool min_candidates must be at least 1")
+        if self.top_k < self.min_candidates:
+            raise ValueError("candidate pool top_k must be >= min_candidates")
+
+    def profile_for(self, work_unit: WorkUnit) -> str | None:
+        platform = (work_unit.target or str(work_unit.metadata.get("platform", ""))).strip().lower()
+        return dict(self.profile_by_platform).get(platform)
+
+
+@dataclass(frozen=True)
 class AgentSelectionPolicy:
     """Hard boundary that a secondary selection strategy cannot bypass."""
 
