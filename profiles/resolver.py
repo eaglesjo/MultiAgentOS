@@ -53,6 +53,27 @@ class ProfileResolver:
                     "requires_approval": plan.requires_approval,
                     "rationale": list(plan.rationale),
                 },
+                "classification": {
+                    "ambiguous": plan.classification.ambiguous if plan.classification else False,
+                    "reasons": list(plan.classification.reasons) if plan.classification else [],
+                    "dimensions": {
+                        "platform": {
+                            "values": list(plan.classification.platform.values),
+                            "confidence": plan.classification.platform.confidence,
+                            "evidence": list(plan.classification.platform.evidence),
+                        },
+                        "framework_runtime": {
+                            "values": list(plan.classification.framework_runtime.values),
+                            "confidence": plan.classification.framework_runtime.confidence,
+                            "evidence": list(plan.classification.framework_runtime.evidence),
+                        },
+                        "language_toolchain": {
+                            "values": list(plan.classification.language_toolchain.values),
+                            "confidence": plan.classification.language_toolchain.confidence,
+                            "evidence": list(plan.classification.language_toolchain.evidence),
+                        },
+                    },
+                },
                 "detection": [
                     {
                         "profile": result.profile_id,
