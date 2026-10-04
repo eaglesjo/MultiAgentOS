@@ -263,5 +263,19 @@ class CLITests(unittest.TestCase):
             self.assertEqual(existing.read_text(encoding="utf-8"), "# Existing project instructions\n")
 
 
+    def test_init_preserves_existing_mcp_configuration(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            mcp_path = root / ".multiagentos" / "mcp.json"
+            mcp_path.parent.mkdir(parents=True)
+            mcp_path.write_text(json.dumps({"endpoint": "http://127.0.0.1:9000/mcp"}), encoding="utf-8")
+
+            self.assertEqual(main(["init", temp]), 0)
+            self.assertEqual(
+                json.loads(mcp_path.read_text(encoding="utf-8")),
+                {"endpoint": "http://127.0.0.1:9000/mcp"},
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
