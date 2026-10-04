@@ -179,6 +179,23 @@ def specialist_route(
     return smallest_sufficient_path(work_type)
 
 
+def validate_specialist_route(
+    work_unit: WorkUnit,
+    agent_ids: tuple[str, ...],
+) -> GovernanceCheck:
+    """Ensure the planned specialist stages match the requested taxonomy."""
+    expected = specialist_route(work_unit)
+    if agent_ids != expected:
+        return GovernanceCheck(
+            False,
+            (
+                "specialist route mismatch: "
+                f"expected {expected}, got {agent_ids}",
+            ),
+        )
+    return GovernanceCheck(True)
+
+
 def validate_scope(scope: ScopeLock) -> GovernanceCheck:
     try:
         scope.validate()
