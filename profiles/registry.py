@@ -1,4 +1,4 @@
-"""Built-in AGENT_EXECUTION_RUNTIME technology profile registry."""
+"""Built-in MultiAgentOS technology profile registry."""
 
 from core.contracts.profile import ProfileSpec
 from profiles.common import COMMON_ROLES
@@ -17,8 +17,14 @@ PROFILES = (
     ProfileSpec(
         id="android-native",
         display_name="Android Native",
-        detect_files=frozenset({"settings.gradle", "settings.gradle.kts"}),
-        detect_markers=frozenset({"com.android.application", "com.android.library"}),
+        detect_files=frozenset({
+            "settings.gradle", "settings.gradle.kts",
+            "build.gradle", "build.gradle.kts", "gradlew",
+        }),
+        detect_markers=frozenset({
+            "com.android.application", "com.android.library",
+            "org.jetbrains.kotlin.android", "androidx.compose",
+        }),
         roles=COMMON_ROLES + (
             "android-architect", "kotlin-developer", "jetpack-compose", "gradle",
         ),
