@@ -5,12 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agents.registry import build_registry
+from agents.catalog import build_agent_catalog
 from core.contracts.agent import AgentContract
 from core.contracts.agent_selection import AgentCandidate, AgentPlan, AgentSelection, StageConfidence
 from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.repository import RepositoryEvidence
 from core.contracts.work_unit import WorkUnit
-from core.agent_selection_policy import AgentSelectionPolicy, SelectionFallback, AgentSelectionStrategy
+from core.agent_selection_policy import (
+    AgentSelectionPolicy,
+    AgentSelectionStrategy,
+    CandidatePoolExpansionPolicy,
+    SelectionFallback,
+)
 from core.repository_evidence import RepositoryEvidenceProvider
 from runtime.governance import smallest_sufficient_path, specialist_route
 
@@ -77,11 +83,13 @@ class DeterministicAgentSelector:
         registry=None,
         selection_strategy: AgentSelectionStrategy | None = None,
         selection_policy: AgentSelectionPolicy | None = None,
+        candidate_pool_policy: CandidatePoolExpansionPolicy | None = None,
     ) -> None:
         self.evidence_engine = evidence_engine or EvidenceEngine()
         self.registry = registry or build_registry()
         self.selection_strategy = selection_strategy
         self.selection_policy = selection_policy or AgentSelectionPolicy()
+        self.candidate_pool_policy = candidate_pool_policy or CandidatePoolExpansionPolicy()
 
     @staticmethod
     def _score_agent(
@@ -129,13 +137,54 @@ class DeterministicAgentSelector:
             return False
         return True
 
+    def _expand_candidate_registry(
+        self,
+        work_unit: WorkUnit,
+        route: tuple[str, ...],
+    ) -> bool:
+        """Load a platform profile only when a specialist stage lacks alternatives."""
+        profile_id = self.candidate_pool_policy.profile_for(work_unit)
+        if profile_id is None:
+            return False
+
+        needs_expansion = False
+        for expected_id in route:
+            expected = self.registry.get(expected_id)
+            if expected.kind != "specialist":
+                continue
+            compatible = sum(
+                1
+                for candidate in self.registry.list()
+                if self._compatible(expected, candidate)
+            )
+            if compatible < self.candidate_pool_policy.min_candidates:
+                needs_expansion = True
+                break
+
+        if not needs_expansion:
+            return False
+
+        existing_ids = {item.id for item in self.registry.list()}
+        added = False
+        for candidate in build_agent_catalog((profile_id,)):
+            if candidate.id in existing_ids:
+                continue
+            self.registry.register(candidate)
+            existing_ids.add(candidate.id)
+            added = True
+        return added
+
     def _candidate_pool(
         self,
         work_unit: WorkUnit,
         evidence: tuple[EvidenceRecord, ...],
         route: tuple[str, ...],
+        *,
+        allow_expansion: bool = True,
     ) -> tuple[AgentCandidate, ...]:
-        """Build a policy-shaped candidate pool across every governed route stage."""
+        """Build a bounded candidate pool, expanding specialist profiles only when needed."""
+        if allow_expansion:
+            self._expand_candidate_registry(work_unit, route)
         by_id: dict[str, tuple[float, tuple[str, ...], set[int]]] = {}
 
         for stage_index, expected_id in enumerate(route):
@@ -156,15 +205,41 @@ class DeterministicAgentSelector:
                 else:
                     by_id[candidate.id] = (score, reasons, {stage_index})
 
+        ranked_by_stage: dict[int, list[tuple[str, float]]] = {}
+        for stage_index, expected_id in enumerate(route):
+            stage_candidates = [
+                (agent_id, score)
+                for agent_id, (score, _reasons, indices) in by_id.items()
+                if stage_index in indices
+            ]
+            stage_candidates.sort(key=lambda item: (-item[1], item[0]))
+            expected_score = next(
+                (score for agent_id, score in stage_candidates if agent_id == expected_id),
+                None,
+            )
+            limited = stage_candidates[: self.candidate_pool_policy.top_k]
+            if expected_score is not None and expected_id not in {agent_id for agent_id, _ in limited}:
+                limited.append((expected_id, expected_score))
+            ranked_by_stage[stage_index] = limited
+
+        allowed_by_stage = {
+            stage_index: {agent_id for agent_id, _ in candidates}
+            for stage_index, candidates in ranked_by_stage.items()
+        }
         return tuple(
             AgentCandidate(
                 agent_id=agent_id,
                 score=score,
                 reasons=reasons,
                 evidence_ids=tuple(record.id for record in evidence),
-                stage_indices=tuple(sorted(indices)),
+                stage_indices=tuple(
+                    index
+                    for index in sorted(indices)
+                    if agent_id in allowed_by_stage[index]
+                ),
             )
             for agent_id, (score, reasons, indices) in sorted(by_id.items())
+            if any(agent_id in allowed_by_stage[index] for index in indices)
         )
 
     def select(
@@ -196,7 +271,14 @@ class DeterministicAgentSelector:
             )
             policy = ("route validated by existing governance policy",)
 
-        candidates = list(self._candidate_pool(work_unit, records, selected_ids))
+        candidates = list(
+            self._candidate_pool(
+                work_unit,
+                records,
+                selected_ids,
+                allow_expansion=not bool(explicit_agents),
+            )
+        )
         candidate_map = {candidate.agent_id: candidate for candidate in candidates}
         selected_candidates = tuple(candidate_map[agent_id] for agent_id in selected_ids)
 
