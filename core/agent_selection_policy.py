@@ -9,7 +9,7 @@ from core.contracts.agent import AgentContract
 from core.contracts.agent_selection import AgentCandidate, AgentPlan
 from core.contracts.evidence import EvidenceRecord
 from core.contracts.work_unit import WorkUnit
-from runtime.governance import specialist_route, validate_specialist_route
+from runtime.governance import specialist_route
 
 
 @dataclass(frozen=True)
@@ -94,7 +94,7 @@ class SelectionFallback:
             candidates=deterministic.candidates,
         )
         if not 0.0 <= decision.confidence <= 1.0:
-            raise ValueError("LLM selector confidence must be between 0 and 1")
+            raise ValueError("selection strategy confidence must be between 0 and 1")
 
         candidate_map = {candidate.agent_id: candidate for candidate in deterministic.candidates}
         unknown = tuple(
@@ -142,7 +142,7 @@ class SelectionFallback:
                 *decision.reasons,
             ),
             policy_decisions=(
-                f"LLM fallback allowed below confidence {self.policy.confidence_threshold:.2f}",
+                f"secondary selection allowed below confidence {self.policy.confidence_threshold:.2f}",
                 "route passed deterministic governance validation",
             ),
             selection_mode="hybrid",
