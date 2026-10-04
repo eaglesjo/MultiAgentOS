@@ -47,7 +47,13 @@ class ProfileResolver:
             technology_profile_ids=profile_ids,
             agent_profile_ids=tuple(agent.id for agent in agents),
             metadata={
-                "agent_plan": {\n                    "selected": list(plan.selected),\n                    "excluded": list(plan.excluded),\n                    "requires_approval": plan.requires_approval,\n                    "rationale": list(plan.rationale),\n                },\n                "detection": [
+                "agent_plan": {
+                    "selected": list(plan.selected),
+                    "excluded": list(plan.excluded),
+                    "requires_approval": plan.requires_approval,
+                    "rationale": list(plan.rationale),
+                },
+                "detection": [
                     {
                         "profile": result.profile_id,
                         "confidence": result.confidence,
