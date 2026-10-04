@@ -143,27 +143,35 @@ class SelectionFallback:
                     ),
                     default=candidate_map[agent_id].score,
                 ),
-                margin=max(
-                    0.0,
-                    min(
-                        1.0,
-                        max(
-                            (
-                                candidate.score
-                                for candidate in deterministic.candidates
-                                if index in candidate.stage_indices
+                margin=(
+                    1.0
+                    if sum(
+                        1
+                        for candidate in deterministic.candidates
+                        if index in candidate.stage_indices
+                    ) <= 1
+                    else max(
+                        0.0,
+                        min(
+                            1.0,
+                            max(
+                                (
+                                    candidate.score
+                                    for candidate in deterministic.candidates
+                                    if index in candidate.stage_indices
+                                ),
+                                default=candidate_map[agent_id].score,
+                            ) - max(
+                                (
+                                    candidate.score
+                                    for candidate in deterministic.candidates
+                                    if index in candidate.stage_indices
+                                    and candidate.agent_id != agent_id
+                                ),
+                                default=0.0,
                             ),
-                            default=candidate_map[agent_id].score,
-                        ) - max(
-                            (
-                                candidate.score
-                                for candidate in deterministic.candidates
-                                if index in candidate.stage_indices
-                                and candidate.agent_id != agent_id
-                            ),
-                            default=0.0,
                         ),
-                    ),
+                    )
                 ),
                 evidence_coverage=(
                     sum(
