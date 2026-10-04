@@ -81,7 +81,7 @@ def run_acceptance() -> None:
 
         # Fresh-project bootstrap: the CLI must initialize the project without
         # requiring a provider credential.
-        _run(["multiagentos", "init", str(root), "--component", "all"])
+        _run(["multiagentos", "init", str(root), "--component", "all", "--approve"])
         if not (root / ".multiagentos" / "profile.json").is_file():
             raise RuntimeError("project bootstrap did not create profile.json")
 

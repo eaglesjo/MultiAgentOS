@@ -20,9 +20,19 @@ class ProjectInitializer:
         project_root: Path,
         detections: tuple[DetectionResult, ...],
         component: str = "all",
+        *,
+        approved: bool = False,
     ) -> Path:
         if component not in self.COMPONENTS:
             raise ValueError(f"unsupported component: {component}")
+
+        plan = build_agent_plan(project_root, detections)
+        if component != "agent-execution-runtime" and plan.requires_approval and not approved:
+            raise PermissionError(
+                "project detection requires approval before initialization; "
+                "run detect, review the agent plan, then rerun init with --approve"
+            )
+
         target = project_root / ".multiagentos"
         target.mkdir(parents=True, exist_ok=True)
         payload = {
@@ -35,6 +45,13 @@ class ProjectInitializer:
                 }
                 for result in detections
             ],
+            "agent_plan": {
+                "selected": list(plan.selected),
+                "excluded": list(plan.excluded),
+                "requires_approval": plan.requires_approval,
+                "approved": approved,
+                "rationale": list(plan.rationale),
+            },
         }
         config = target / "profile.json"
         config.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
@@ -110,7 +127,6 @@ The project-local MCP contract is recorded in `.multiagentos/mcp.json`. The defa
         if component == "agent-execution-runtime":
             return config
 
-        plan = build_agent_plan(project_root, detections)
         agents = tuple(
             agent for agent in build_agent_catalog(tuple(result.profile_id for result in detections))
             if agent.id in plan.selected
