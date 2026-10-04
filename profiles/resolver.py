@@ -7,6 +7,7 @@ from pathlib import Path
 from agents.catalog import build_agent_catalog
 from core.contracts.profile import AgentProfile, DetectionResult, ProjectProfile
 from profiles.detector import ProfileDetector
+from profiles.agent_plan import build_agent_plan
 
 
 class ProfileResolver:
@@ -25,7 +26,8 @@ class ProfileResolver:
         detections: tuple[DetectionResult, ...],
     ) -> tuple[ProjectProfile, tuple[AgentProfile, ...]]:
         profile_ids = tuple(result.profile_id for result in detections)
-        contracts = build_agent_catalog(profile_ids)
+        plan = build_agent_plan(project_root, detections)
+        contracts = tuple(agent for agent in build_agent_catalog(profile_ids) if agent.id in plan.selected)
         agents = tuple(
             AgentProfile(
                 id=agent.id,
@@ -45,7 +47,7 @@ class ProfileResolver:
             technology_profile_ids=profile_ids,
             agent_profile_ids=tuple(agent.id for agent in agents),
             metadata={
-                "detection": [
+                "agent_plan": {\n                    "selected": list(plan.selected),\n                    "excluded": list(plan.excluded),\n                    "requires_approval": plan.requires_approval,\n                    "rationale": list(plan.rationale),\n                },\n                "detection": [
                     {
                         "profile": result.profile_id,
                         "confidence": result.confidence,
