@@ -37,20 +37,20 @@ class AgentPlan:
 _PROFILE_SPECIALISTS = {
     "android-native": {
         "android-architect",
-        "kotlin-developer",
-        "jetpack-compose",
+        "android-developer",
         "gradle",
+        "ui-android",
     },
     "ios-native": {
         "ios-architect",
-        "swift-developer",
+        "ios-developer",
         "swiftui",
         "xcode",
+        "ui-ios",
     },
     "react-native": {
-        "architect",
-        "developer",
-        "ui",
+        "react-native-developer",
+        "ui-react-native",
         "navigation",
         "state-management",
     },
