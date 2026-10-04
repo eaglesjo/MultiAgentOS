@@ -78,6 +78,14 @@ class ProfileDetector:
                 evidence.append(marker)
                 marker_hits = True
 
+        if profile.id == "react-native":
+            if any(path.suffix in {".ts", ".tsx"} for path in files):
+                evidence.append("source:typescript")
+                file_hits = True
+            if any(path.suffix in {".js", ".jsx"} for path in files):
+                evidence.append("source:javascript")
+                file_hits = True
+
         # Platform structure is independent evidence and avoids treating a
         # single conventional file as proof of a complete native project.
         if profile.id == "android-native":
