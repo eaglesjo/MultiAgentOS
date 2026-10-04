@@ -21,10 +21,13 @@ class ProfileDetector:
         for profile in self.registry.list():
             evidence = self._evidence(project_root, profile)
             if evidence:
-                confidence = min(
-                    1.0,
-                    len(evidence) / max(1, len(profile.detect_files) + len(profile.detect_markers)),
+                file_evidence = any(item in profile.detect_files for item in evidence)
+                marker_evidence = any(
+                    item in profile.detect_markers
+                    or any(item.startswith(f"{marker}:") for marker in profile.detect_markers)
+                    for item in evidence
                 )
+                confidence = (0.5 if file_evidence else 0.0) + (0.5 if marker_evidence else 0.0)
                 results.append(DetectionResult(profile.id, confidence, tuple(evidence)))
         return tuple(sorted(results, key=lambda result: (-result.confidence, result.profile_id)))
 
