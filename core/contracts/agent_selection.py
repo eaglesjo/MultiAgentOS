@@ -25,6 +25,32 @@ class AgentCandidate:
 
 
 @dataclass(frozen=True)
+class StageConfidence:
+    """Auditable confidence for one governed route stage."""
+
+    stage_index: int
+    selected_agent_id: str
+    selected_score: float
+    best_score: float
+    margin: float
+    evidence_coverage: float
+
+    def validate(self) -> None:
+        if self.stage_index < 0:
+            raise ValueError("stage confidence stage_index must be non-negative")
+        if not self.selected_agent_id.strip():
+            raise ValueError("stage confidence selected_agent_id must not be empty")
+        for name, value in (
+            ("selected_score", self.selected_score),
+            ("best_score", self.best_score),
+            ("margin", self.margin),
+            ("evidence_coverage", self.evidence_coverage),
+        ):
+            if not 0.0 <= value <= 1.0:
+                raise ValueError(f"stage confidence {name} must be between 0 and 1")
+
+
+@dataclass(frozen=True)
 class AgentPlan:
     """Auditable result of Agent selection, before execution begins."""
 
@@ -34,6 +60,7 @@ class AgentPlan:
     candidates: tuple[AgentCandidate, ...] = ()
     evidence: tuple[EvidenceRecord, ...] = ()
     confidence: float = 0.0
+    stage_confidences: tuple[StageConfidence, ...] = ()
     reasons: tuple[str, ...] = ()
     policy_decisions: tuple[str, ...] = ()
     selection_mode: str = "deterministic"
@@ -49,6 +76,8 @@ class AgentPlan:
             raise ValueError("agent plan confidence must be between 0 and 1")
         if self.selection_mode not in {"deterministic", "model", "hybrid", "explicit"}:
             raise ValueError("unsupported agent plan selection mode")
+        for stage in self.stage_confidences:
+            stage.validate()
         for candidate in self.candidates:
             candidate.validate()
         for record in self.evidence:
