@@ -42,7 +42,7 @@ class CLITests(unittest.TestCase):
 
     def test_status_reports_agent_execution_runtime_only(self):
         with tempfile.TemporaryDirectory() as temp:
-            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime", "--approve"]), 0)
             status = project_status(Path(temp))
             self.assertTrue(status["initialized"])
             self.assertEqual(status["components"], ["agent-execution-runtime"])
@@ -55,7 +55,7 @@ class CLITests(unittest.TestCase):
 
     def test_status_reports_multi_agent_catalog(self):
         with tempfile.TemporaryDirectory() as temp:
-            self.assertEqual(main(["init", temp, "--component", "multi-agent"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "multi-agent", "--approve"]), 0)
             status = project_status(Path(temp))
             self.assertTrue(status["initialized"])
             self.assertEqual(status["components"], ["multi-agent"])
@@ -65,7 +65,7 @@ class CLITests(unittest.TestCase):
     def test_status_reports_durable_state(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime", "--approve"]), 0)
             state = root / ".multiagentos" / "state"
             checkpoints = root / ".multiagentos" / "checkpoints"
             state.mkdir(exist_ok=True)
@@ -86,7 +86,7 @@ class CLITests(unittest.TestCase):
     def test_run_uses_project_execution_config(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime", "--approve"]), 0)
             execution = root / ".multiagentos" / "execution.json"
             execution.write_text(json.dumps({
                 "version": 1,
@@ -107,7 +107,7 @@ class CLITests(unittest.TestCase):
     def test_run_supports_cli_agent_and_model_overrides(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime", "--approve"]), 0)
             self.assertEqual(
                 main([
                     "run", "--path", temp, "--agent", "cli-executor",
@@ -124,7 +124,7 @@ class CLITests(unittest.TestCase):
     def test_run_executes_command_and_persists_state(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime", "--approve"]), 0)
             self.assertEqual(
                 main(["run", "--path", temp, "--objective", "echo smoke test", "--", sys.executable, "-c", "print('ok')"]),
                 0,
@@ -137,7 +137,7 @@ class CLITests(unittest.TestCase):
     def test_resume_rejects_terminal_work_unit(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime", "--approve"]), 0)
             self.assertEqual(
                 main(["run", "--path", temp, "--objective", "terminal", "--", sys.executable, "-c", "print('done')"]),
                 0,
@@ -149,7 +149,7 @@ class CLITests(unittest.TestCase):
     def test_chat_uses_configured_chat_agent_and_persists_session(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime", "--approve"]), 0)
 
             import multiagentos.cli as cli_module
             original = cli_module.AgentExecutionRuntime.project_chat_adapter
@@ -180,7 +180,7 @@ class CLITests(unittest.TestCase):
     def test_chat_execute_runs_explicit_command_through_agent_execution_runtime(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
+            self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime", "--approve"]), 0)
 
             import multiagentos.cli as cli_module
             from core.chat_agent_bridge import ChatAgentResponse
@@ -225,7 +225,7 @@ class CLITests(unittest.TestCase):
 
     def test_init(self):
         with tempfile.TemporaryDirectory() as temp:
-            self.assertEqual(main(["init", temp]), 0)
+            self.assertEqual(main(["init", temp, "--approve"]), 0)
             self.assertTrue((Path(temp) / ".multiagentos" / "profile.json").exists())
             self.assertTrue((Path(temp) / ".multiagentos" / "agents.json").exists())
             self.assertTrue((Path(temp) / ".multiagentos" / "execution.json").exists())
@@ -235,7 +235,7 @@ class CLITests(unittest.TestCase):
     def test_init_bootstraps_project_runtime_contract(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            self.assertEqual(main(["init", temp]), 0)
+            self.assertEqual(main(["init", temp, "--approve"]), 0)
 
             self.assertTrue((root / "AGENTS.md").exists())
             self.assertTrue((root / ".multiagentos" / "mcp.json").exists())
@@ -259,7 +259,7 @@ class CLITests(unittest.TestCase):
             existing = root / "AGENTS.md"
             existing.write_text("# Existing project instructions\n", encoding="utf-8")
 
-            self.assertEqual(main(["init", temp]), 0)
+            self.assertEqual(main(["init", temp, "--approve"]), 0)
             self.assertEqual(existing.read_text(encoding="utf-8"), "# Existing project instructions\n")
 
 
@@ -270,7 +270,7 @@ class CLITests(unittest.TestCase):
             mcp_path.parent.mkdir(parents=True)
             mcp_path.write_text(json.dumps({"endpoint": "http://127.0.0.1:9000/mcp"}), encoding="utf-8")
 
-            self.assertEqual(main(["init", temp]), 0)
+            self.assertEqual(main(["init", temp, "--approve"]), 0)
             self.assertEqual(
                 json.loads(mcp_path.read_text(encoding="utf-8")),
                 {"endpoint": "http://127.0.0.1:9000/mcp"},
