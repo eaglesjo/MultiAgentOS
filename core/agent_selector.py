@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from agents.registry import build_registry
 from core.contracts.agent import AgentContract
-from core.contracts.agent_selection import AgentCandidate, AgentPlan, AgentSelection
+from core.contracts.agent_selection import AgentCandidate, AgentPlan, AgentSelection, StageConfidence
 from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.repository import RepositoryEvidence
 from core.contracts.work_unit import WorkUnit
@@ -212,19 +212,52 @@ class DeterministicAgentSelector:
                 for candidate in selected_candidates
             )
 
+        stage_confidences: list[StageConfidence] = []
         if explicit_agents:
             confidence = 1.0
-        else:
-            selected_scores = [candidate.score for candidate in selected_candidates]
-            confidence = sum(selected_scores) / len(selected_scores)
             for index, candidate in enumerate(selected_candidates):
-                stage_scores = [
-                    item.score for item in candidates if index in item.stage_indices
+                stage_confidences.append(
+                    StageConfidence(index, candidate.agent_id, 1.0, 1.0, 1.0, 1.0)
+                )
+        else:
+            for index, candidate in enumerate(selected_candidates):
+                stage_candidates = [
+                    item for item in candidates if index in item.stage_indices
                 ]
-                if stage_scores:
-                    best = max(stage_scores)
-                    confidence -= max(0.0, best - candidate.score) * 0.25
-            confidence = max(0.0, min(1.0, confidence))
+                scores = sorted((item.score for item in stage_candidates), reverse=True)
+                best = scores[0] if scores else candidate.score
+                second = scores[1] if len(scores) > 1 else 0.0
+                margin = max(0.0, min(1.0, best - second))
+                coverage = min(
+                    1.0,
+                    sum(
+                        1
+                        for record in records
+                        if record.id in candidate.evidence_ids
+                    )
+                    / max(1, len(records)),
+                )
+                stage_confidences.append(
+                    StageConfidence(
+                        index,
+                        candidate.agent_id,
+                        candidate.score,
+                        best,
+                        margin,
+                        coverage,
+                    )
+                )
+            confidence = (
+                sum(
+                    (stage.selected_score * 0.6)
+                    + (stage.margin * 0.25)
+                    + (stage.evidence_coverage * 0.15)
+                    for stage in stage_confidences
+                )
+                / len(stage_confidences)
+                if stage_confidences
+                else 0.0
+            )
 
 
         plan = AgentPlan(
@@ -234,6 +267,7 @@ class DeterministicAgentSelector:
             candidates=tuple(candidates),
             evidence=records,
             confidence=confidence,
+            stage_confidences=tuple(stage_confidences),
             reasons=reasons,
             policy_decisions=policy,
             selection_mode=mode,
