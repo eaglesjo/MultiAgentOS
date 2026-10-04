@@ -57,14 +57,16 @@ class AgentSelectionPolicy:
             agents.append(agent)
 
         expected = specialist_route(work_unit)
-        if selected_agents[0] != expected[0] or selected_agents[1] != expected[1]:
-            raise ValueError("selection policy requires the governed file-picker/planner prefix")
-        if selected_agents[-1] != expected[-1]:
-            raise ValueError("selection policy requires the governed reviewer suffix")
-        for agent in agents[2:-1]:
-            if agent.kind != "specialist":
+        if len(selected_agents) != len(expected):
+            raise ValueError("selection policy requires the governed route length")
+        for index, (expected_id, agent) in enumerate(zip(expected, agents, strict=True)):
+            expected_agent = registry.get(expected_id)
+            expected_agent.validate()
+            if agent.id == expected_id:
+                continue
+            if expected_agent.kind != "specialist" or agent.kind != "specialist":
                 raise ValueError(
-                    f"selection policy permits only specialists in route body: {agent.id}"
+                    f"selection policy does not permit replacing governed stage {index}: {expected_id}"
                 )
         return selected_agents
 
