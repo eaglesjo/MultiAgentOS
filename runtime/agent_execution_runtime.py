@@ -33,7 +33,9 @@ from core.tool_ledger import ToolInvocationStore
 from core.execution_state import ExecutionStateStore
 from core.recovery_audit import RecoveryAuditStore
 from core.orchestrator import OrchestrationResult, Orchestrator
-from core.agent_selection_policy import AgentSelectionPolicy, AgentSelectionStrategy
+from core.adaptive_agent_execution import AdaptiveAgentExecutionLoop, AdaptiveExecutionPolicy, ExecutionRound
+from core.agent_selection_policy import AgentSelectionPolicy, AgentSelectionStrategy, SelectionFallback
+from runtime.adaptive_agent_execution import RuntimeExecutionEvidenceCollector, RuntimeStageExecutor
 from core.routing import AIRouter, RoutingStrategy
 from profiles.detector import ProfileDetector
 from profiles.resolver import ProfileResolver
