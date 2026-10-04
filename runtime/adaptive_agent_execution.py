@@ -70,16 +70,24 @@ class RuntimeExecutionEvidenceCollector:
                             "agent_id": agent_id,
                             "event_sequence": sequence,
                             "tool_id": tool_id,
+                            "invocation_id": payload.get("invocation_id"),
                             "ok": ok,
                         },
                     )
                 )
 
+        event_invocations = {
+            str(item.metadata["invocation_id"])
+            for item in records
+            if item.source == "runtime.tool_result"
+            and item.metadata.get("invocation_id")
+        }
         records.extend(
             self._collect_tool_ledger(
                 work_unit,
                 agent_id=agent_id,
                 before_sequence=before_tool_sequence,
+                skip_invocations=event_invocations,
             )
         )
         return tuple(records)
@@ -90,12 +98,14 @@ class RuntimeExecutionEvidenceCollector:
         *,
         agent_id: str,
         before_sequence: int,
+        skip_invocations: set[str] | None = None,
     ) -> tuple[EvidenceRecord, ...]:
         if self.tool_ledger_store is None:
             return ()
         records: list[EvidenceRecord] = []
+        skip_invocations = skip_invocations or set()
         for item in self.tool_ledger_store.load(work_unit.id):
-            if item.sequence <= before_sequence:
+            if item.sequence <= before_sequence or item.invocation_id in skip_invocations:
                 continue
             if item.state not in {
                 ToolInvocationState.COMPLETED,
