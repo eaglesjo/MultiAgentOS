@@ -398,6 +398,8 @@ class DeterministicAgentSelector:
                     "best_score": stage.best_score,
                     "margin": stage.margin,
                     "evidence_coverage": stage.evidence_coverage,
+                    "selection_source": stage.selection_source,
+                    "model_confidence": stage.model_confidence,
                 }
                 for stage in plan.stage_confidences
             ],
