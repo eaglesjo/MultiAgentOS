@@ -7,7 +7,7 @@ from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.model_runtime import ModelResponse
 from core.contracts.work_unit import WorkUnit
 from core.routing import AIRouter
-from runtime.airouter_agent_selector import AIRouterLLMSelector
+from runtime.airouter_agent_selector import AIRouterBackedAgentSelector
 from runtime.model.ai_runtime import AIRuntime
 
 
