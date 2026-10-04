@@ -7,7 +7,9 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from core.contracts.classification import ProjectClassification
 from core.contracts.profile import DetectionResult
+from profiles.classifier import classify_project
 from profiles.detector import ProfileDetector
 
 
@@ -23,6 +25,7 @@ class WorkspaceSpec:
 class WorkspaceAnalysis:
     spec: WorkspaceSpec
     detections: tuple[DetectionResult, ...]
+    classification: ProjectClassification
 
 
 _IGNORED_DIRS = {
@@ -129,7 +132,10 @@ def analyze_workspaces(project_root: Path, detector: ProfileDetector | None = No
     return tuple(
         WorkspaceAnalysis(
             spec,
-            detector.detect(spec.path, recursive=(recursive_root or spec.id != "root")),
+            (detections := detector.detect(
+                spec.path, recursive=(recursive_root or spec.id != "root")
+            )),
+            classify_project(detections),
         )
         for spec in specs
     )
