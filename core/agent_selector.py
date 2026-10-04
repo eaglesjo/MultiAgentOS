@@ -228,15 +228,8 @@ class DeterministicAgentSelector:
                 best = scores[0] if scores else candidate.score
                 second = scores[1] if len(scores) > 1 else 0.0
                 margin = max(0.0, min(1.0, best - second))
-                coverage = min(
-                    1.0,
-                    sum(
-                        1
-                        for record in records
-                        if record.id in candidate.evidence_ids
-                    )
-                    / max(1, len(records)),
-                )
+                verified = sum(1 for record in records if record.kind is EvidenceKind.VERIFIED)
+                coverage = min(1.0, verified / max(1, len(records)))
                 stage_confidences.append(
                     StageConfidence(
                         index,
@@ -311,6 +304,17 @@ class DeterministicAgentSelector:
             "candidate_scores": {
                 candidate.agent_id: candidate.score for candidate in plan.candidates
             },
+            "stage_confidences": [
+                {
+                    "stage_index": stage.stage_index,
+                    "selected_agent_id": stage.selected_agent_id,
+                    "selected_score": stage.selected_score,
+                    "best_score": stage.best_score,
+                    "margin": stage.margin,
+                    "evidence_coverage": stage.evidence_coverage,
+                }
+                for stage in plan.stage_confidences
+            ],
         }
         return selection
 
