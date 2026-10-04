@@ -72,6 +72,17 @@ class ModelBackedAgentSelector:
         )
         decision = self._parse(execution.response.text, tuple(candidate.agent_id for candidate in candidates))
         if len(decision.selected_agents) != 1:
+            matches = tuple(
+                agent_id
+                for agent_id in decision.selected_agents
+                if agent_id in {candidate.agent_id for candidate in candidates}
+            )
+            if len(matches) == 1:
+                return SelectionDecision(
+                    selected_agents=matches,
+                    confidence=decision.confidence,
+                    reasons=decision.reasons,
+                )
             raise ValueError(
                 f"model-backed stage selector must return exactly one Agent for stage {stage_index}"
             )
