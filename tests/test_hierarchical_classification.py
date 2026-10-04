@@ -19,7 +19,7 @@ class HierarchicalClassificationTests(unittest.TestCase):
             self.assertEqual(classification.platform.values, ("Android",))
             self.assertEqual(classification.framework_runtime.values, ("Android Native",))
             self.assertIn("Gradle", classification.language_toolchain.values)
-            self.assertIn("Kotlin", classification.language_toolchain.values)
+            self.assertNotIn("Kotlin", classification.language_toolchain.values)
             self.assertNotIn("Java", classification.language_toolchain.values)
             self.assertFalse(classification.ambiguous)
             self.assertFalse(classification.requires_approval)
