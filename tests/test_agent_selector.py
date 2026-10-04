@@ -237,6 +237,13 @@ def test_partial_fallback_reselects_only_ambiguous_specialist_stage():
     assert result.selected_agents[4] == "react-native-developer"
     assert result.selected_agents[:4] == route[:4]
     assert result.selected_agents[5:] == route[5:]
+    assert result.candidates == plan.candidates
+    assert result.stage_confidences[4].selection_source == "model"
+    assert result.stage_confidences[4].model_confidence == 0.91
+    assert all(
+        stage.selection_source == "deterministic"
+        for stage in result.stage_confidences[:4]
+    )
 
 
 def test_sparse_android_stage_expands_profile_candidates_and_keeps_top_k():
@@ -297,3 +304,59 @@ def test_candidate_pool_does_not_expand_governance_only_routes():
         for index in range(len(selection.plan.route))
     )
     assert "android-architect" not in {candidate.agent_id for candidate in selection.plan.candidates}
+
+
+def test_legacy_strategy_cannot_change_non_ambiguous_stage():
+    from core.agent_selection_policy import AgentSelectionPolicy, SelectionDecision, SelectionFallback
+    from core.contracts.agent_selection import AgentCandidate, AgentPlan, StageConfidence
+    from runtime.governance import specialist_route
+    from agents.registry import build_registry
+
+    work_unit = WorkUnit(
+        id="wu-legacy-guard",
+        objective="Implement Android settings",
+        work_type="development",
+        target="android",
+        metadata={"technology": "kotlin"},
+    )
+    route = specialist_route(work_unit)
+    candidates = tuple(
+        AgentCandidate(agent_id=agent_id, score=0.90, stage_indices=(index,))
+        for index, agent_id in enumerate(route)
+    ) + (AgentCandidate(agent_id="react-native-developer", score=0.40, stage_indices=(4,)),)
+    stages = tuple(
+        StageConfidence(
+            stage_index=index,
+            selected_agent_id=agent_id,
+            selected_score=0.40 if index == 4 else 0.90,
+            best_score=0.90,
+            margin=0.10 if index == 4 else 1.0,
+            evidence_coverage=0.0,
+        )
+        for index, agent_id in enumerate(route)
+    )
+    plan = AgentPlan(
+        work_unit_id=work_unit.id,
+        selected_agents=route,
+        route=route,
+        candidates=candidates,
+        stage_confidences=stages,
+        confidence=0.80,
+    )
+
+    class UnsafeLegacyStrategy:
+        def select(self, *, work_unit, evidence, candidates):
+            return SelectionDecision(
+                selected_agents=(route[0], "kotlin-developer", *route[2:]),
+                confidence=0.95,
+            )
+
+    try:
+        SelectionFallback(
+            UnsafeLegacyStrategy(),
+            policy=AgentSelectionPolicy(confidence_threshold=0.75),
+        ).select(work_unit=work_unit, deterministic=plan, registry=build_registry())
+    except ValueError as exc:
+        assert "only change ambiguous specialist stages" in str(exc)
+    else:
+        raise AssertionError("unsafe legacy strategy was accepted")
