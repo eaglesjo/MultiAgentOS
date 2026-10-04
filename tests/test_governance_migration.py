@@ -130,7 +130,14 @@ class GovernanceMigrationTests(unittest.TestCase):
         )
         self.assertEqual(
             smallest_sufficient_path("external_research"),
-            ("planner", "web-researcher", "editor", "executor", "reviewer"),
+            (
+                "file-picker",
+                "planner",
+                "web-researcher",
+                "editor",
+                "executor",
+                "reviewer",
+            ),
         )
 
 
