@@ -261,6 +261,44 @@ class AgentExecutionRuntime:
     def run_multi_agent(self, project_root: Path, work_unit: WorkUnit, steps, agents: dict[str, AgentContract], models: list[ModelSpec], executors: dict[str, AgentExecutor], *, preferred_model_ids=None, verifiers=None, reviewers=None) -> MultiAgentResult:
         return self.multi_agent.run(project_root, work_unit, steps, agents, models, executors, preferred_model_ids=preferred_model_ids, verifiers=verifiers, reviewers=reviewers)
 
+    def run_auto(
+        self,
+        work_unit: WorkUnit,
+        models: list[ModelSpec],
+        executor: AgentExecutor,
+        *,
+        explicit_agents: tuple[str, ...] | None = None,
+        verifier: ResultVerifier | None = None,
+        reviewers=None,
+        executors_by_agent: dict[str, AgentExecutor] | None = None,
+        preferred_model_ids_by_agent: dict[str, list[str]] | None = None,
+        verifiers_by_agent: dict[str, ResultVerifier] | None = None,
+        reviewers_by_agent: dict[str, ResultReviewer] | None = None,
+        reviewer_runner=None,
+        preferred_model_ids: list[str] | None = None,
+        routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL,
+        artifact_store=None,
+        checkpoint=None,
+    ):
+        """Select a governed Agent route automatically, then execute it."""
+        return self.orchestrator.run_auto(
+            work_unit=work_unit,
+            models=models,
+            executor=executor,
+            explicit_agents=explicit_agents,
+            verifier=verifier,
+            reviewers=reviewers,
+            executors_by_agent=executors_by_agent,
+            preferred_model_ids_by_agent=preferred_model_ids_by_agent,
+            verifiers_by_agent=verifiers_by_agent,
+            reviewers_by_agent=reviewers_by_agent,
+            reviewer_runner=reviewer_runner,
+            preferred_model_ids=preferred_model_ids,
+            routing_strategy=routing_strategy,
+            artifact_store=artifact_store,
+            checkpoint=checkpoint,
+        )
+
     def repository_checkpoint(self, project_root: Path, *, metadata: dict[str, object] | None = None):
         return self.repository.checkpoint(project_root, metadata=metadata)
 
