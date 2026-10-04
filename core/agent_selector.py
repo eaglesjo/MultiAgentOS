@@ -1,4 +1,4 @@
-""""Deterministic, evidence-driven Agent selection."""
+"""Deterministic, evidence-driven Agent selection."""
 
 from __future__ import annotations
 
