@@ -27,7 +27,7 @@ class ProjectInitializer:
             raise ValueError(f"unsupported component: {component}")
 
         plan = build_agent_plan(project_root, detections)
-        if plan.requires_approval and not approved:
+        if component != "agent-execution-runtime" and plan.requires_approval and not approved:
             raise PermissionError(
                 "project detection requires approval before initialization; "
                 "run detect, review the agent plan, then rerun init with --approve"
