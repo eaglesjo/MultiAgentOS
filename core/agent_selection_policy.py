@@ -96,6 +96,21 @@ class SelectionFallback:
         if not 0.0 <= decision.confidence <= 1.0:
             raise ValueError("LLM selector confidence must be between 0 and 1")
 
+        candidate_map = {candidate.agent_id: candidate for candidate in deterministic.candidates}
+        unknown = tuple(
+            agent_id for agent_id in decision.selected_agents if agent_id not in candidate_map
+        )
+        if unknown:
+            raise ValueError(
+                "selection strategy returned Agent IDs outside the candidate pool: "
+                + ", ".join(unknown)
+            )
+        for index, agent_id in enumerate(decision.selected_agents):
+            if index not in candidate_map[agent_id].stage_indices:
+                raise ValueError(
+                    f"selection strategy assigned {agent_id} to incompatible stage {index}"
+                )
+
         selected = self.policy.validate(
             work_unit,
             decision.selected_agents,
@@ -107,6 +122,11 @@ class SelectionFallback:
                 score=decision.confidence,
                 reasons=decision.reasons or ("secondary selection selected this route",),
                 evidence_ids=tuple(record.id for record in deterministic.evidence),
+                stage_indices=next(
+                    candidate.stage_indices
+                    for candidate in deterministic.candidates
+                    if candidate.agent_id == agent_id
+                ),
             )
             for agent_id in selected
         )
