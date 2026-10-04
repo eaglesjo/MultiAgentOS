@@ -5,8 +5,13 @@ from pathlib import Path
 from agents.catalog import build_agent_catalog
 from core.contracts.ai import ModelSpec
 from core.contracts.evidence import EvidenceKind, EvidenceRecord
+from core.contracts.scope import ScopeLock
 from core.contracts.work_unit import WorkStatus, WorkUnit
-from runtime.governance import route_plan_steps, smallest_sufficient_path
+from runtime.governance import (
+    route_plan_steps,
+    smallest_sufficient_path,
+    specialist_route,
+)
 from runtime.governance_runtime import GovernanceRuntime
 from runtime.multi_agent import MultiAgentRuntime
 
@@ -22,16 +27,15 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
         work = WorkUnit(
             "wu-governance",
             "bounded change",
-            scope_lock=__import__("core.contracts.scope", fromlist=["ScopeLock"]).ScopeLock(
-                allowed_files=("src/a.py",)
-            ),
+            scope_lock=ScopeLock(allowed_files=("src/a.py",)),
         )
         runtime = GovernanceRuntime()
         runtime.validate_work_unit(work)
         steps = route_plan_steps(work)
-        plan = __import__("core.contracts.planning", fromlist=["WorkPlan"]).WorkPlan(
-            work.id, work.objective, steps
-        )
+        plan = __import__(
+            "core.contracts.planning",
+            fromlist=["WorkPlan"],
+        ).WorkPlan(work.id, work.objective, steps)
         runtime.validate_plan(work, plan)
         self.assertEqual(steps[-1].agent_id, "reviewer")
 
@@ -42,6 +46,129 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
             ("file-picker", "planner", "editor", "executor", "reviewer"),
         )
 
+    def test_catalog_exposes_platform_oriented_taxonomy(self):
+        agents = {agent.id: agent for agent in build_agent_catalog()}
+        self.assertEqual(agents["react-developer"].taxonomy.platform, "web")
+        self.assertEqual(agents["android-developer"].taxonomy.technology, "kotlin")
+        self.assertEqual(agents["ios-developer"].taxonomy.technology, "swift")
+        self.assertEqual(
+            agents["ui-android"].taxonomy.parent_id,
+            "ui-native",
+        )
+        self.assertEqual(
+            agents["ui-ios"].taxonomy.parent_id,
+            "ui-native",
+        )
+        self.assertEqual(
+            agents["ui-research-android"].taxonomy.specialization,
+            "ui",
+        )
+        self.assertEqual(
+            agents["development-research-react"].taxonomy.specialization,
+            "development",
+        )
+
+    def test_governance_agents_are_orthogonal_to_specialists(self):
+        agents = {agent.id: agent for agent in build_agent_catalog()}
+        self.assertEqual(agents["editor"].taxonomy.layer, "governance")
+        self.assertEqual(agents["executor"].taxonomy.layer, "governance")
+        self.assertEqual(agents["react-developer"].taxonomy.layer, "specialist")
+        self.assertEqual(agents["ui-agent"].taxonomy.domain, "ui")
+
+    def test_development_route_researches_before_platform_developer(self):
+        work = WorkUnit(
+            "wu-react",
+            "update React login",
+            work_type="development",
+            target="react",
+        )
+        self.assertEqual(
+            specialist_route(work),
+            (
+                "file-picker",
+                "planner",
+                "development-research-react",
+                "react-developer",
+                "editor",
+                "executor",
+                "reviewer",
+            ),
+        )
+
+    def test_react_native_development_route_is_explicit(self):
+        work = WorkUnit(
+            "wu-rn",
+            "update React Native login",
+            work_type="development",
+            target="react-native",
+        )
+        self.assertEqual(
+            specialist_route(work),
+            (
+                "file-picker",
+                "planner",
+                "development-research-react-native",
+                "react-native-developer",
+                "editor",
+                "executor",
+                "reviewer",
+            ),
+        )
+
+    def test_android_ui_route_uses_android_ui_research_and_compose_specialist(self):
+        work = WorkUnit(
+            "wu-android-ui",
+            "update Android login UI",
+            work_type="ui",
+            target="android",
+        )
+        self.assertEqual(
+            specialist_route(work),
+            (
+                "file-picker",
+                "planner",
+                "ui-research-android",
+                "ui-android",
+                "editor",
+                "executor",
+                "tester",
+                "reviewer",
+            ),
+        )
+
+    def test_ios_ui_route_uses_ios_ui_research_and_swiftui_specialist(self):
+        work = WorkUnit(
+            "wu-ios-ui",
+            "update iOS login UI",
+            work_type="ui",
+            target="ios",
+        )
+        self.assertEqual(
+            specialist_route(work),
+            (
+                "file-picker",
+                "planner",
+                "ui-research-ios",
+                "ui-ios",
+                "editor",
+                "executor",
+                "tester",
+                "reviewer",
+            ),
+        )
+
+    def test_web_ui_route_keeps_browser_agent_as_capability(self):
+        work = WorkUnit(
+            "wu-web-ui",
+            "update React web UI",
+            work_type="ui",
+            target="react",
+        )
+        route = specialist_route(work)
+        self.assertIn("ui-web", route)
+        self.assertIn("browser-agent", route)
+        self.assertNotEqual(route[2], "browser-agent")
+
     def test_native_runtime_executes_governance_route(self):
         work = WorkUnit("wu-route", "route a bounded change")
         agents = {agent.id: agent for agent in build_agent_catalog()}
@@ -50,7 +177,9 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
         model = ModelSpec(
             "local-default",
             "local",
-            capabilities=frozenset().union(*(agent.capabilities for agent in agents.values())),
+            capabilities=frozenset().union(
+                *(agent.capabilities for agent in agents.values())
+            ),
         )
 
         with tempfile.TemporaryDirectory() as directory:
@@ -124,7 +253,11 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
             work.transition(WorkStatus.READY_FOR_APPROVAL)
 
     def test_release_impact_without_verified_evidence_is_blocked(self):
-        work = WorkUnit("wu-no-evidence", "release-impacting change", release_impact="release")
+        work = WorkUnit(
+            "wu-no-evidence",
+            "release-impacting change",
+            release_impact="release",
+        )
         agents = {agent.id: agent for agent in build_agent_catalog()}
         executors = {agent_id: _Executor() for agent_id in agents}
         with tempfile.TemporaryDirectory() as directory:
