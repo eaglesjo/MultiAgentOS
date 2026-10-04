@@ -91,8 +91,12 @@ class ProfileDetector:
                 evidence.append("gradlew")
                 file_hits = True
             if any(path.suffix in {".kt", ".java"} for path in files):
-                evidence.append("source:kotlin-java")
-                file_hits = True
+                if any(path.suffix == ".kt" for path in files):
+                    evidence.append("source:kotlin")
+                    file_hits = True
+                if any(path.suffix == ".java" for path in files):
+                    evidence.append("source:java")
+                    file_hits = True
         elif profile.id == "ios-native":
             if (root / "ios").is_dir():
                 evidence.append("directory:ios")
@@ -104,8 +108,12 @@ class ProfileDetector:
                 evidence.append(".xcworkspace")
                 file_hits = True
             if any(path.suffix in {".swift", ".m", ".mm"} for path in files):
-                evidence.append("source:swift-objc")
-                file_hits = True
+                if any(path.suffix == ".swift" for path in files):
+                    evidence.append("source:swift")
+                    file_hits = True
+                if any(path.suffix in {".m", ".mm"} for path in files):
+                    evidence.append("source:objc")
+                    file_hits = True
 
         return list(dict.fromkeys(evidence)), file_hits, marker_hits
 
