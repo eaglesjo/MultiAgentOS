@@ -222,6 +222,8 @@ The current development environment has verified the following client boundary:
 
 This is a compatibility record for the verified environment, **not a universal guarantee for every ChatGPT account, plan, or future client build**.
 
+> **Execution boundary:** Process/shell execution is not currently part of the verified ChatGPT Free client path. The runtime contains process-capability infrastructure, but README support claims are limited to capabilities actually exposed and verified through the target client path.
+
 The cost-free local workflow does not depend on Secure MCP Tunnel:
 
 ```mermaid
@@ -342,7 +344,7 @@ MultiAgentOS
 Local MCP
         |
         v
-Project filesystem / shell / tests
+Project state / source changes / verification
 ```
 
 > **Cost-Free policy:** development must be possible without an OpenAI API key by using ChatGPT Free text chat as the AI engine and MultiAgentOS Local MCP as the controlled execution boundary.
@@ -494,7 +496,6 @@ The current release verification includes:
 - Native release artifacts published
 - Local Agent Execution Runtime filesystem READ / WRITE verified
 - `patch.apply` verified with filesystem readback
-- Terminal MCP foreground acceptance coverage added: `tools/list`, `shell.run`, project-root execution, stdout/stderr, exit code, and process-permission gating
 - GitHub-connected development path verified
 
 ### Verification boundary
@@ -531,20 +532,6 @@ flowchart TB
 This prevents a healthy tunnel from being incorrectly reported as proof of a hosted client-side MCP tool invocation.
 
 ---
-
-## Terminal MCP
-
-The local MCP server exposes `shell.run` only when the process capability is explicitly enabled with `--allow-process`.
-
-The currently verified contract is **foreground shell execution**:
-
-- MCP `tools/list` exposes `shell.run` only with process permission.
-- `shell.run` executes in the project root.
-- return code, stdout, and stderr are returned to the MCP caller.
-- process execution is denied when the capability is disabled.
-- the stdio MCP acceptance path invokes a real subprocess through `shell.run`.
-
-Background process start/status/output/termination is **not** part of this shell contract yet and must not be described as supported until a separate lifecycle implementation and E2E acceptance gate exist.
 
 ## Security and Permission Model
 
@@ -604,7 +591,7 @@ Do not place an administration key in a long-lived runtime configuration.
 
 The English README is the canonical technical overview. Localized READMEs should preserve the same architecture, terminology, and cost-free baseline.
 
-**[한국어](README.ko.md) · [日本語](README.ja.md) · [简体中文](README.zh-CN.md)**
+**[한국어](README.ko.md)**
 
 ---
 
