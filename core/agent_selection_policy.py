@@ -50,22 +50,22 @@ class AgentSelectionPolicy:
     ) -> tuple[str, ...]:
         if not selected_agents:
             raise ValueError("selection policy requires at least one Agent")
+        agents = []
         for agent_id in selected_agents:
             agent = registry.get(agent_id)
             agent.validate()
-            if agent.kind == "governance":
-                raise ValueError(
-                    f"selection policy cannot select governance agent as specialist route: {agent_id}"
-                )
+            agents.append(agent)
 
-        try:
-            check = validate_specialist_route(work_unit, selected_agents)
-        except ValueError as exc:
-            raise ValueError(f"selection policy rejected route: {exc}") from exc
-        if not check.passed:
-            raise ValueError(
-                "selection policy rejected route: " + "; ".join(check.findings)
-            )
+        expected = specialist_route(work_unit)
+        if selected_agents[0] != expected[0] or selected_agents[1] != expected[1]:
+            raise ValueError("selection policy requires the governed file-picker/planner prefix")
+        if selected_agents[-1] != expected[-1]:
+            raise ValueError("selection policy requires the governed reviewer suffix")
+        for agent in agents[2:-1]:
+            if agent.kind != "specialist":
+                raise ValueError(
+                    f"selection policy permits only specialists in route body: {agent.id}"
+                )
         return selected_agents
 
 
