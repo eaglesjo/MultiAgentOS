@@ -417,6 +417,9 @@ class MultiAgentWorkflow:
         if not stages:
             raise ValueError("multi-agent workflow requires at least one stage")
 
+        for agent in stages:
+            agent.validate()
+
         if start_stage_index < 0 or start_stage_index > len(stages):
             raise ValueError("start_stage_index must be within the stage list")
 
