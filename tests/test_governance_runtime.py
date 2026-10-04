@@ -47,7 +47,11 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
         agents = {agent.id: agent for agent in build_agent_catalog()}
         steps = MultiAgentRuntime.route_steps(work)
         executors = {agent_id: _Executor() for agent_id in agents}
-        model = ModelSpec("local-default", "local", capabilities=frozenset({"general"}))
+        model = ModelSpec(
+            "local-default",
+            "local",
+            capabilities=frozenset().union(*(agent.capabilities for agent in agents.values())),
+        )
 
         with tempfile.TemporaryDirectory() as directory:
             result = MultiAgentRuntime().run(
@@ -91,7 +95,15 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
                 work_unit=work,
                 steps=MultiAgentRuntime.route_steps(work),
                 agents=agents,
-                models=[ModelSpec("local-default", "local")],
+                models=[
+                    ModelSpec(
+                        "local-default",
+                        "local",
+                        capabilities=frozenset().union(
+                            *(agent.capabilities for agent in agents.values())
+                        ),
+                    )
+                ],
                 executors=executors,
                 evidence=evidence,
             )
