@@ -120,7 +120,7 @@ def test_low_confidence_deterministic_selection_uses_policy_safe_fallback():
     )
     selector = DeterministicAgentSelector(
         evidence_engine=EvidenceEngine(),
-        llm_selector=_LowConfidenceSelector(),
+        selection_strategy=_LowConfidenceSelector(),
         selection_policy=AgentSelectionPolicy(confidence_threshold=1.0),
     )
 
