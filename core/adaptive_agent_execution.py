@@ -13,7 +13,7 @@ from typing import Callable, Protocol
 from core.agent_selection_policy import SelectionFallback
 from core.contracts.agent_selection import AgentPlan
 from core.contracts.evidence import EvidenceRecord
-from core.contracts.work_unit import WorkUnit
+from core.contracts.work_unit import WorkStatus, WorkUnit
 
 
 @dataclass(frozen=True)
@@ -152,6 +152,9 @@ class AdaptiveAgentExecutionLoop:
 
             if self.selection_fallback is None:
                 return tuple(rounds)
+
+            if work_unit.status is WorkStatus.FAILED:
+                work_unit.transition(WorkStatus.EXECUTING)
 
             # Execution evidence is fed back only to the stages that failed or
             # produced low-confidence output; the route remains policy-governed.
