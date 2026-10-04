@@ -232,3 +232,54 @@ GitHub Actions에서도 저장소 CI를 검증합니다.
 ## License
 
 [LICENSE](LICENSE)를 참고하세요.
+
+
+---
+
+### Agent taxonomy 및 전문 라우팅
+
+MultiAgentOS는 **Governance / Execution**과 플랫폼별 전문 에이전트를 분리합니다.
+
+~~~mermaid
+flowchart TB
+    TASK["Task"]
+    TASK --> GOV["Governance / Execution"]
+    TASK --> RESEARCH["Research"]
+    TASK --> DEVELOPMENT["Development"]
+    TASK --> UI["UI"]
+
+    GOV --> FILE["File Picker"]
+    GOV --> PLAN["Planner"]
+    GOV --> EDIT["Editor"]
+    GOV --> EXEC["Executor"]
+    GOV --> REVIEW["Reviewer"]
+
+    RESEARCH --> DEV_R["Development Research"]
+    RESEARCH --> UI_R["UI Research"]
+
+    DEV_R --> REACT_R["React"]
+    DEV_R --> RN_R["React Native"]
+    DEV_R --> ANDROID_R["Android"]
+    DEV_R --> IOS_R["iOS"]
+
+    UI_R --> WEB_R["Web UI / React"]
+    UI_R --> RN_UI_R["React Native UI"]
+    UI_R --> ANDROID_UI_R["Android UI"]
+    UI_R --> IOS_UI_R["iOS UI"]
+
+    DEVELOPMENT --> REACT_D["React Developer"]
+    DEVELOPMENT --> RN_D["React Native Developer"]
+    DEVELOPMENT --> ANDROID_D["Android Developer"]
+    DEVELOPMENT --> IOS_D["iOS Developer"]
+
+    UI --> WEB["Web"]
+    UI --> CROSS["Cross-platform"]
+    UI --> NATIVE["Native"]
+    NATIVE --> ANDROID["Android"]
+    NATIVE --> IOS["iOS"]
+~~~
+
+플랫폼이 지정된 개발 작업은 구현 전에 해당 플랫폼의 Development Research를 거칠 수 있습니다. UI 작업은 플랫폼별 UI Research를 거치며 Browser Agent는 Web 검증 기능으로만 사용됩니다.
+
+자세한 내용은 [Agent Taxonomy and Routing](docs/AGENT_TAXONOMY.md) 및 [Agent Catalog](docs/AGENT_CATALOG.md)를 참고하세요.
+
