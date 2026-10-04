@@ -61,7 +61,7 @@ class ModelBackedAgentSelector:
                 for e in evidence
             ],
             "candidates": [
-                {"agent_id": c.agent_id, "score": c.score, "reasons": list(c.reasons)}
+                {"agent_id": c.agent_id, "score": c.score, "reasons": list(c.reasons), "stage_indices": list(c.stage_indices)}
                 for c in candidates
             ],
             "output_schema": {
