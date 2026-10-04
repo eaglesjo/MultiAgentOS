@@ -4,7 +4,7 @@
 
 MultiAgentOS는 **Agent Execution Runtime**을 중심으로 하는 로컬 우선 AI 개발 오케스트레이션 플랫폼입니다.
 
-Cost-Free 기본 경로에서는 **별도의 유료 AI API Key가 필요하지 않습니다.** MultiAgentOS는 이미 사용할 수 있는 AI 클라이언트와 GitHub, 로컬 프로젝트를 연결하고 실행 권한은 Agent Execution Runtime 안에 유지합니다.
+Cost-Free의 목표 경로는 **ChatGPT Free 텍스트 채팅 + MultiAgentOS + Local MCP**입니다. 별도의 OpenAI API Key를 MultiAgentOS 로컬 런타임의 필수 조건으로 두지 않으며, 실제 프로젝트 실행 권한은 Agent Execution Runtime 안에 유지합니다.
 
 ## MultiAgentOS가 하는 일
 
@@ -141,9 +141,24 @@ Secure MCP Tunnel은 외부에서 로컬 MCP에 접근해야 할 때만 사용�
 
 ## Cost-Free 기본 경로
 
-핵심은 간단합니다.
+핵심 경로는 다음과 같습니다.
 
-> **MultiAgentOS Cost-Free 기본 경로에는 별도의 유료 AI API Key가 필요하지 않습니다.**
+```text
+ChatGPT Free 텍스트 채팅
+        |
+        v
+MultiAgentOS
+        |
+        v
+Local MCP
+        |
+        v
+프로젝트 filesystem / shell / test
+```
+
+> **Cost-Free 정책:** OpenAI API 비용 없이 ChatGPT Free 텍스트 채팅을 AI 엔진으로 사용하고, MultiAgentOS Local MCP를 통제된 실행 경계로 사용하여 실제 개발 작업을 수행할 수 있어야 합니다.
+
+이는 ChatGPT의 모든 기능이 무제한이라는 뜻이 아니라, 일반적인 텍스트 기반 개발 작업의 AI 엔진 경로를 정의합니다.
 
 또한 다음도 기본적으로 필요하지 않습니다.
 
@@ -153,17 +168,35 @@ Secure MCP Tunnel은 외부에서 로컬 MCP에 접근해야 할 때만 사용�
 
 단, 실제 사용하는 AI 서비스의 플랜 및 사용량 제한은 그대로 적용됩니다. Cost-Free는 MultiAgentOS의 런타임 비용 구조를 의미하며 AI 서비스의 무제한 사용을 의미하지 않습니다.
 
-### 검증된 기본 기능
+### Terminal MCP 검증 범위
 
-- Agent Execution Runtime MCP stdio 초기화 및 tool discovery
-- filesystem READ / WRITE
-- `patch.apply`
-- `shell.run`
-- local MCP/runtime tests
-- runtime health/readiness
-- Secure MCP Tunnel readiness
+`--allow-process`를 명시한 Local MCP에서 현재 지원하는 shell 계약은 **foreground 실행**입니다.
+
+- `tools/list`에서 process 권한이 있을 때만 `shell.run` 노출
+- 프로젝트 루트에서 실제 shell 명령 실행
+- return code / stdout / stderr 반환
+- process 권한이 없으면 shell 도구 비노출
+- stdio MCP acceptance 경로에서 실제 subprocess 실행
+
+background process의 시작 / 상태 / 출력 스트리밍 / 종료 lifecycle은 아직 이 계약에 포함하지 않습니다. 별도의 lifecycle 구현과 E2E acceptance gate가 생기기 전에는 지원 기능으로 표현하지 않습니다.
 
 자세한 검증 기록은 [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)을 참고하세요.
+
+## Terminal MCP
+
+로컬 MCP에서 shell 실행을 명시적으로 허용하려면:
+
+```bash
+multiagentos mcp serve --path . --allow-process
+```
+
+Streamable HTTP도 동일합니다.
+
+```bash
+multiagentos mcp serve-http --path . --allow-process
+```
+
+`--allow-process`가 없으면 `shell.run`은 MCP tool 목록에 노출되지 않습니다.
 
 ## 빠른 시작
 
