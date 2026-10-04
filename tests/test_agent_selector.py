@@ -94,6 +94,8 @@ def test_repository_evidence_is_attached_and_changes_candidate_confidence():
     assert selection.plan.confidence > 0.5
     assert selection.plan.candidates
     assert all(0.0 <= item.score <= 1.0 for item in selection.plan.candidates)
+    assert any("android-developer" == item.agent_id for item in selection.plan.candidates)
+    assert any(item.stage_indices for item in selection.plan.candidates)
 
 
 class _LowConfidenceSelector:

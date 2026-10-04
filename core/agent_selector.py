@@ -89,13 +89,13 @@ class DeterministicAgentSelector:
         work_unit: WorkUnit,
         evidence: tuple[EvidenceRecord, ...],
     ) -> tuple[float, tuple[str, ...]]:
-        """Score a governed candidate from explicit taxonomy/evidence matches."""
+        """Score a candidate from explicit taxonomy/evidence matches."""
         taxonomy = agent.taxonomy
         target = (work_unit.target or str(work_unit.metadata.get("platform", ""))).lower()
         technology = str(work_unit.metadata.get("technology", "")).lower()
         statements = " ".join(record.statement.lower() for record in evidence)
         score = 0.40
-        reasons: list[str] = ["candidate is permitted by governed route"]
+        reasons: list[str] = ["candidate is compatible with the governed stage"]
 
         if taxonomy.platform and taxonomy.platform.lower() in target + " " + statements:
             score += 0.25
@@ -111,6 +111,61 @@ class DeterministicAgentSelector:
             reasons.append("verified repository evidence is available")
 
         return min(score, 1.0), tuple(reasons)
+
+    @staticmethod
+    def _compatible(expected: AgentContract, candidate: AgentContract) -> bool:
+        """Keep alternatives within the semantic role of the expected stage."""
+        if candidate.kind != expected.kind:
+            return False
+        if candidate.kind == "governance":
+            return candidate.id == expected.id
+        if candidate.taxonomy.domain != expected.taxonomy.domain:
+            return False
+        if expected.taxonomy.platform and candidate.taxonomy.platform != expected.taxonomy.platform:
+            return False
+        if expected.taxonomy.specialization and candidate.taxonomy.specialization != expected.taxonomy.specialization:
+            return False
+        if not expected.taxonomy.platform and candidate.taxonomy.platform:
+            return False
+        return True
+
+    def _candidate_pool(
+        self,
+        work_unit: WorkUnit,
+        evidence: tuple[EvidenceRecord, ...],
+        route: tuple[str, ...],
+    ) -> tuple[AgentCandidate, ...]:
+        """Build a policy-shaped candidate pool across every governed route stage."""
+        by_id: dict[str, tuple[float, tuple[str, ...], set[int]]] = {}
+
+        for stage_index, expected_id in enumerate(route):
+            expected = self.registry.get(expected_id)
+            expected.validate()
+            for candidate in self.registry.list():
+                candidate.validate()
+                if not self._compatible(expected, candidate):
+                    continue
+                score, reasons = self._score_agent(candidate, work_unit, evidence)
+                if candidate.id in by_id:
+                    old_score, old_reasons, indices = by_id[candidate.id]
+                    by_id[candidate.id] = (
+                        max(old_score, score),
+                        tuple(dict.fromkeys((*old_reasons, *reasons))),
+                        indices | {stage_index},
+                    )
+                else:
+                    by_id[candidate.id] = (score, reasons, {stage_index})
+
+        return tuple(
+            AgentCandidate(
+                agent_id=agent_id,
+                score=score,
+                reasons=reasons,
+                evidence_ids=tuple(record.id for record in evidence),
+                stage_indices=tuple(sorted(indices)),
+            )
+            for agent_id, (score, reasons, indices) in sorted(by_id.items())
+        )
 
     def select(
         self,
@@ -141,25 +196,36 @@ class DeterministicAgentSelector:
             )
             policy = ("route validated by existing governance policy",)
 
-        candidates: list[AgentCandidate] = []
-        for agent_id in selected_ids:
-            agent = self.registry.get(agent_id)
-            score, candidate_reasons = self._score_agent(agent, work_unit, records)
-            candidates.append(
+        candidates = list(self._candidate_pool(work_unit, records, selected_ids))
+        candidate_map = {candidate.agent_id: candidate for candidate in candidates}
+        selected_candidates = tuple(candidate_map[agent_id] for agent_id in selected_ids)
+
+        if explicit_agents:
+            selected_candidates = tuple(
                 AgentCandidate(
-                    agent_id=agent_id,
-                    score=1.0 if explicit_agents else score,
-                    reasons=reasons if explicit_agents else candidate_reasons,
-                    evidence_ids=tuple(record.id for record in records),
+                    agent_id=candidate.agent_id,
+                    score=1.0,
+                    reasons=reasons,
+                    evidence_ids=candidate.evidence_ids,
+                    stage_indices=candidate.stage_indices,
                 )
+                for candidate in selected_candidates
             )
 
-        confidence = 1.0 if explicit_agents else max(
-            (candidate.score for candidate in candidates),
-            default=0.5,
-        )
-        if any(record.kind is EvidenceKind.VERIFIED for record in records):
-            confidence = min(1.0, confidence + 0.05)
+        if explicit_agents:
+            confidence = 1.0
+        else:
+            selected_scores = [candidate.score for candidate in selected_candidates]
+            confidence = sum(selected_scores) / len(selected_scores)
+            for index, candidate in enumerate(selected_candidates):
+                stage_scores = [
+                    item.score for item in candidates if index in item.stage_indices
+                ]
+                if stage_scores:
+                    best = max(stage_scores)
+                    confidence -= max(0.0, best - candidate.score) * 0.25
+            confidence = max(0.0, min(1.0, confidence))
+
 
         plan = AgentPlan(
             work_unit_id=work_unit.id,
@@ -185,9 +251,11 @@ class DeterministicAgentSelector:
             candidates = list(plan.candidates)
             selected_ids = plan.selected_agents
             mode = plan.selection_mode
-            selection = AgentSelection(plan=plan, selected=tuple(candidates))
+            selected_map = {candidate.agent_id: candidate for candidate in candidates}
+            selected_candidates = tuple(selected_map[agent_id] for agent_id in selected_ids)
+            selection = AgentSelection(plan=plan, selected=selected_candidates)
         else:
-            selection = AgentSelection(plan=plan, selected=tuple(candidates))
+            selection = AgentSelection(plan=plan, selected=selected_candidates)
 
         selection.validate()
 
