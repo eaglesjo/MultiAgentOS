@@ -2,20 +2,22 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
 from core.contracts.agent import AgentContract
 from core.contracts.ai import ModelSpec
 from core.contracts.execution import AgentExecutor, ResultReviewer, ResultVerifier
+from core.contracts.evidence import EvidenceRecord
 from core.contracts.planning import PlanStep, WorkPlan
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.handoff import HandoffManager
 from core.orchestrator import OrchestrationResult, Orchestrator
 from core.planning import BasicPlanner
 from core.state import WorkStateStore
-from runtime.governance import validate_scope
+from runtime.governance import route_plan_steps
+from runtime.governance_runtime import GovernanceRuntime
 
 
 @dataclass(frozen=True)
@@ -41,10 +43,21 @@ class MultiAgentRuntime:
         orchestrator: Orchestrator | None = None,
         planner: BasicPlanner | None = None,
         handoffs: HandoffManager | None = None,
+        governance: GovernanceRuntime | None = None,
     ) -> None:
         self.orchestrator = orchestrator or Orchestrator()
         self.planner = planner or BasicPlanner()
         self.handoffs = handoffs or HandoffManager()
+        self.governance = governance or GovernanceRuntime()
+
+    @staticmethod
+    def route_steps(
+        work_unit: WorkUnit,
+        *,
+        work_type: str | None = None,
+    ) -> tuple[PlanStep, ...]:
+        """Return native PlanStep objects for the smallest sufficient route."""
+        return route_plan_steps(work_unit, work_type=work_type)
 
     def run(
         self,
@@ -58,25 +71,14 @@ class MultiAgentRuntime:
         preferred_model_ids: dict[str, list[str]] | None = None,
         verifiers: dict[str, ResultVerifier] | None = None,
         reviewers: dict[str, ResultReviewer] | None = None,
+        evidence: tuple[EvidenceRecord, ...] = (),
     ) -> MultiAgentResult:
-        """Adapt the legacy plan-shaped API onto the Orchestrator workflow boundary.
-
-        Planning and dependency validation stay here as an application adapter.
-        Execution orchestration is owned by Orchestrator -> MultiAgentWorkflow.
-        """
-        if work_unit.status is WorkStatus.HOLD:
-            raise PermissionError("WorkUnit is on HOLD; explicit authorization is required before execution")
-        scope_check = validate_scope(work_unit.scope_lock)
-        if not scope_check.passed:
-            raise ValueError("Invalid WorkUnit scope: " + "; ".join(scope_check.findings))
+        """Execute a governed plan through the existing Orchestrator boundary."""
+        self.governance.enforce_hold(work_unit)
+        self.governance.validate_work_unit(work_unit)
         step_list = list(steps)
         plan = self.planner.plan(work_unit, step_list)
-        plan.validate()
-        for step in plan.steps:
-            if not work_unit.scope_lock.contains(step.scope_lock):
-                raise ValueError(
-                    f"Plan step scope escapes WorkUnit scope: {step.id}"
-                )
+        self.governance.validate_plan(work_unit, plan)
         self._validate_agents(plan, agents, executors)
 
         completed: set[str] = set()
@@ -104,6 +106,30 @@ class MultiAgentRuntime:
             reviewers_by_agent=reviewers,
         )
 
+        artifacts = tuple(
+            artifact
+            for artifact in work_unit.metadata.get("artifacts", ())
+            if hasattr(artifact, "validate")
+        )
+        try:
+            self.governance.validate_artifacts(work_unit, artifacts)
+            self.governance.validate_evidence(
+                work_unit,
+                evidence,
+                require_verified=work_unit.release_impact != "none",
+            )
+        except ValueError:
+            if work_unit.status is WorkStatus.COMPLETED:
+                work_unit.transition(WorkStatus.BLOCKED)
+            store.save(work_unit)
+            raise
+
+        if work_unit.release_impact != "none":
+            self.governance.mark_execution_ready_for_approval(
+                work_unit,
+                evidence=evidence,
+            )
+
         handoffs = tuple(
             stage.handoff for stage in result.stages if stage.handoff is not None
         )
@@ -120,7 +146,12 @@ class MultiAgentRuntime:
                 for stage in result.stages
             ),
             handoffs=handoffs,
-            completed=work_unit.status is WorkStatus.COMPLETED,
+            completed=work_unit.status in {
+                WorkStatus.COMPLETED,
+                WorkStatus.READY_FOR_APPROVAL,
+                WorkStatus.USER_APPROVED,
+                WorkStatus.RELEASED,
+            },
         )
 
     @staticmethod
