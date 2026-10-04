@@ -21,6 +21,29 @@ MultiAgentOS는 **AI 협업**과 **실행 권한**을 분리합니다.
 
 Agent는 의도, 계획, 결과를 제공하지만 filesystem, process, patch, Git 실행 권한을 직접 소유하지 않습니다.
 
+## 프로젝트 설치
+
+MultiAgentOS는 IDE 확장이 아니라 **프로젝트에 설치되는 Agent Execution Runtime**입니다.
+
+```mermaid
+flowchart LR
+    IDE["IDE / Workspace"] --> AGENT["Coding Agent"]
+    AGENT --> MCP["Project MCP"]
+    MCP --> RUNTIME["MultiAgentOS Agent Execution Runtime"]
+    RUNTIME --> PROJECT["Real Project"]
+```
+
+프로젝트 루트에서 다음을 실행합니다.
+
+```bash
+multiagentos init .
+multiagentos status .
+```
+
+`init`은 프로젝트 프로필, 실행/채팅 설정, 멀티 에이전트 카탈로그, 프로젝트 MCP 계약, `AGENTS.md`, 런타임 상태 디렉터리를 준비합니다. 기존 `AGENTS.md`와 기존 프로젝트 MCP 설정은 덮어쓰지 않습니다.
+
+자세한 설치 계약은 [Project Installation](docs/PROJECT_INSTALLATION.md)을 참고하세요.
+
 ## 아키텍처
 
 ```mermaid

@@ -68,8 +68,8 @@ class CLITests(unittest.TestCase):
             self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             state = root / ".multiagentos" / "state"
             checkpoints = root / ".multiagentos" / "checkpoints"
-            state.mkdir()
-            checkpoints.mkdir()
+            state.mkdir(exist_ok=True)
+            checkpoints.mkdir(exist_ok=True)
             (state / "wu-1.json").write_text(json.dumps({
                 "id": "wu-1", "objective": "demo", "status": "executing"
             }), encoding="utf-8")
@@ -230,6 +230,51 @@ class CLITests(unittest.TestCase):
             self.assertTrue((Path(temp) / ".multiagentos" / "agents.json").exists())
             self.assertTrue((Path(temp) / ".multiagentos" / "execution.json").exists())
             self.assertTrue((Path(temp) / ".multiagentos" / "chat.json").exists())
+
+
+    def test_init_bootstraps_project_runtime_contract(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertEqual(main(["init", temp]), 0)
+
+            self.assertTrue((root / "AGENTS.md").exists())
+            self.assertTrue((root / ".multiagentos" / "mcp.json").exists())
+            self.assertTrue((root / ".multiagentos" / "state").is_dir())
+            self.assertTrue((root / ".multiagentos" / "checkpoints").is_dir())
+            self.assertTrue((root / ".multiagentos" / "sessions").is_dir())
+
+            mcp = json.loads((root / ".multiagentos" / "mcp.json").read_text(encoding="utf-8"))
+            self.assertEqual(mcp["transport"], "streamable-http")
+            self.assertEqual(mcp["endpoint"], "http://127.0.0.1:8000/mcp")
+            self.assertFalse(mcp["allow_write"])
+            self.assertFalse(mcp["allow_process"])
+
+            instructions = (root / "AGENTS.md").read_text(encoding="utf-8")
+            self.assertIn("execution and governance boundary", instructions)
+            self.assertIn(".multiagentos/profile.json", instructions)
+
+    def test_init_preserves_existing_project_instructions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            existing = root / "AGENTS.md"
+            existing.write_text("# Existing project instructions\n", encoding="utf-8")
+
+            self.assertEqual(main(["init", temp]), 0)
+            self.assertEqual(existing.read_text(encoding="utf-8"), "# Existing project instructions\n")
+
+
+    def test_init_preserves_existing_mcp_configuration(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            mcp_path = root / ".multiagentos" / "mcp.json"
+            mcp_path.parent.mkdir(parents=True)
+            mcp_path.write_text(json.dumps({"endpoint": "http://127.0.0.1:9000/mcp"}), encoding="utf-8")
+
+            self.assertEqual(main(["init", temp]), 0)
+            self.assertEqual(
+                json.loads(mcp_path.read_text(encoding="utf-8")),
+                {"endpoint": "http://127.0.0.1:9000/mcp"},
+            )
 
 
 if __name__ == "__main__":

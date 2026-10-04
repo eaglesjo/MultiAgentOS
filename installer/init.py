@@ -42,6 +42,66 @@ class ProjectInitializer:
             encoding="utf-8",
         )
 
+        # Project bootstrap is deliberately client-neutral: it prepares the
+        # runtime contract without installing an IDE extension or mutating an
+        # existing client-specific configuration.
+        (target / "state").mkdir(exist_ok=True)
+        (target / "checkpoints").mkdir(exist_ok=True)
+        (target / "sessions").mkdir(exist_ok=True)
+        mcp_config = target / "mcp.json"
+        if not mcp_config.exists():
+            mcp_config.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "transport": "streamable-http",
+                        "endpoint": "http://127.0.0.1:8000/mcp",
+                        "project_root": str(project_root.resolve()),
+                        "allow_write": False,
+                        "allow_process": False,
+                    },
+                    indent=2,
+                ) + "\n",
+                encoding="utf-8",
+            )
+
+        agents_md = project_root / "AGENTS.md"
+        if not agents_md.exists():
+            agents_md.write_text(
+                """# MultiAgentOS Project Runtime
+
+This project is initialized for MultiAgentOS. The project-local runtime is the execution and governance boundary for coding-agent work.
+
+## Runtime boundary
+
+- Treat the repository and working tree as the source of truth.
+- Use MultiAgentOS for project-scoped filesystem, patch, process, Git, and verification operations.
+- Keep agent reasoning/client responsibilities separate from runtime execution authority.
+- Do not introduce IDE-specific MultiAgentOS extensions or plugins as part of project runtime work.
+- Preserve existing project-specific agent instructions and client configuration.
+
+## Project profile
+
+The detected platform/profile is recorded in `.multiagentos/profile.json`. Agent routing should use the detected project profile together with task domain, platform, technology, and governance constraints.
+
+## Governance
+
+Keep changes scoped to the requested work unit. Do not silently expand scope, discard user work, force-push, or perform release/publication actions without explicit approval.
+
+## Local MCP
+
+The project-local MCP contract is recorded in `.multiagentos/mcp.json`. The default endpoint is `http://127.0.0.1:8000/mcp`; write and process capabilities remain explicit opt-ins.
+""",
+                encoding="utf-8",
+            )
+
+        runtime_ignore = target / ".gitignore"
+        if not runtime_ignore.exists():
+            runtime_ignore.write_text(
+                "state/\ncheckpoints/\nsessions/\n*.log\n",
+                encoding="utf-8",
+            )
+
         if component in {"agent-execution-runtime", "all"}:
             write_default_execution_config(project_root)
             write_default_chat_config(project_root)
