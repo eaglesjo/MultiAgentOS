@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from core.contracts.agent import AgentContract
-from core.contracts.agent_selection import AgentCandidate, AgentPlan
+from core.contracts.agent_selection import AgentCandidate, AgentPlan, StageConfidence
 from core.contracts.evidence import EvidenceRecord
 from core.contracts.work_unit import WorkUnit
 from runtime.governance import specialist_route
@@ -130,6 +130,52 @@ class SelectionFallback:
             )
             for agent_id in selected
         )
+        stage_confidences = tuple(
+            StageConfidence(
+                stage_index=index,
+                selected_agent_id=agent_id,
+                selected_score=candidate_map[agent_id].score,
+                best_score=max(
+                    (
+                        candidate.score
+                        for candidate in deterministic.candidates
+                        if index in candidate.stage_indices
+                    ),
+                    default=candidate_map[agent_id].score,
+                ),
+                margin=max(
+                    0.0,
+                    min(
+                        1.0,
+                        max(
+                            (
+                                candidate.score
+                                for candidate in deterministic.candidates
+                                if index in candidate.stage_indices
+                            ),
+                            default=candidate_map[agent_id].score,
+                        ) - max(
+                            (
+                                candidate.score
+                                for candidate in deterministic.candidates
+                                if index in candidate.stage_indices
+                                and candidate.agent_id != agent_id
+                            ),
+                            default=0.0,
+                        ),
+                    ),
+                ),
+                evidence_coverage=(
+                    sum(
+                        1
+                        for record in deterministic.evidence
+                        if record.kind.value == "verified"
+                    )
+                    / max(1, len(deterministic.evidence))
+                ),
+            )
+            for index, agent_id in enumerate(selected)
+        )
         plan = AgentPlan(
             work_unit_id=work_unit.id,
             selected_agents=selected,
@@ -137,6 +183,7 @@ class SelectionFallback:
             candidates=candidates,
             evidence=deterministic.evidence,
             confidence=decision.confidence,
+            stage_confidences=stage_confidences,
             reasons=(
                 "deterministic confidence below escalation threshold",
                 *decision.reasons,
