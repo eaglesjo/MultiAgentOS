@@ -15,6 +15,7 @@ from runtime.execution_config import load_execution_config
 from core.chat_agent_bridge import ChatAgentRequest
 from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
+from profiles.agent_plan import build_agent_plan
 from runtime.github_probe import probe
 from runtime.process import ProcessRuntime
 from runtime.status import project_status
@@ -794,16 +795,26 @@ def main(argv: list[str] | None = None) -> int:
     detections = detector.detect(root)
 
     if args.command == "detect":
+        plan = build_agent_plan(root, detections)
         print(
             json.dumps(
-                [
-                    {
-                        "profile": result.profile_id,
-                        "confidence": result.confidence,
-                        "evidence": list(result.evidence),
-                    }
-                    for result in detections
-                ],
+                {
+                    "project": root.name.strip() or "project",
+                    "detections": [
+                        {
+                            "profile": result.profile_id,
+                            "confidence": result.confidence,
+                            "evidence": list(result.evidence),
+                        }
+                        for result in detections
+                    ],
+                    "agent_plan": {
+                        "selected": list(plan.selected),
+                        "excluded": list(plan.excluded),
+                        "requires_approval": plan.requires_approval,
+                        "rationale": list(plan.rationale),
+                    },
+                },
                 indent=2,
             )
         )
