@@ -226,8 +226,12 @@ class DeterministicAgentSelector:
                 ]
                 scores = sorted((item.score for item in stage_candidates), reverse=True)
                 best = scores[0] if scores else candidate.score
-                second = scores[1] if len(scores) > 1 else 0.0
-                margin = max(0.0, min(1.0, best - second))
+                second = scores[1] if len(scores) > 1 else None
+                margin = (
+                    1.0
+                    if second is None
+                    else max(0.0, min(1.0, best - second))
+                )
                 verified = sum(1 for record in records if record.kind is EvidenceKind.VERIFIED)
                 coverage = min(1.0, verified / max(1, len(records)))
                 stage_confidences.append(
