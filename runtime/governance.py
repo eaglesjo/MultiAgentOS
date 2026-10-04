@@ -267,7 +267,11 @@ def route_plan_steps(
 ) -> tuple[PlanStep, ...]:
     """Build native PlanStep objects for governance + specialist routing."""
     effective_type = work_type or work_unit.work_type
-    if effective_type == "web_ui" and not (\n        work_unit.target or work_unit.metadata.get("platform")\n    ):\n        route = ROUTE_TEMPLATES["web_ui"]\n    elif effective_type in {"development", "simple"} and (
+    if effective_type == "web_ui" and not (
+        work_unit.target or work_unit.metadata.get("platform")
+    ):
+        route = ROUTE_TEMPLATES["web_ui"]
+    elif effective_type in {"development", "simple"} and (
         work_unit.target or work_unit.metadata.get("platform")
     ):
         route = specialist_route(work_unit)
