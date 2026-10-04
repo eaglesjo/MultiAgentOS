@@ -108,6 +108,8 @@ class GovernanceRuntimeLifecycleTests(unittest.TestCase):
         governance.release(work, authorized=True)
         self.assertEqual(work.status, WorkStatus.COMPLETED)
         self.assertTrue(work.metadata["released"])
+        with self.assertRaises(ValueError):
+            work.transition(WorkStatus.READY_FOR_APPROVAL)
 
     def test_release_impact_without_verified_evidence_is_blocked(self):
         work = WorkUnit("wu-no-evidence", "release-impacting change", release_impact="release")
