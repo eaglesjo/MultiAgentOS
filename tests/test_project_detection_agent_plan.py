@@ -39,6 +39,7 @@ class ProjectDetectionAgentPlanTests(unittest.TestCase):
             self.assertEqual(detections[0].profile_id, "react-native")
             plan = build_agent_plan(root, detections)
             self.assertIn("react-native-developer", plan.selected)
+            self.assertIn("ui-react-native", plan.selected)
             self.assertNotIn("android-developer", plan.selected)
             self.assertNotIn("ios-developer", plan.selected)
 
