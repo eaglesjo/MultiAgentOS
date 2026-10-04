@@ -45,6 +45,26 @@ class ModelBackedAgentSelector:
         )
         return self._parse(execution.response.text, candidate_ids)
 
+    def select_stage(
+        self,
+        *,
+        work_unit: WorkUnit,
+        evidence: tuple[EvidenceRecord, ...],
+        candidates: tuple[AgentCandidate, ...],
+        stage_index: int,
+    ) -> SelectionDecision:
+        """Select exactly one Agent for one ambiguous stage."""
+        decision = self.select(
+            work_unit=work_unit,
+            evidence=evidence,
+            candidates=candidates,
+        )
+        if len(decision.selected_agents) != 1:
+            raise ValueError(
+                f"model-backed stage selector must return exactly one Agent for stage {stage_index}"
+            )
+        return decision
+
     @staticmethod
     def _ranked_candidates(
         candidates: tuple[AgentCandidate, ...],
