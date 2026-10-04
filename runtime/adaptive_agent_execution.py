@@ -264,9 +264,7 @@ class RuntimeStageExecutor(StageExecutor):
             1
             for item in evidence
             if item.kind is EvidenceKind.FACT
-            and "failed" in item.statement
-            or item.kind is EvidenceKind.FACT
-            and "error" in item.statement
+            and ("failed" in item.statement or "error" in item.statement)
         )
         if failed:
             return max(0.0, verified / max(1, verified + failed))
