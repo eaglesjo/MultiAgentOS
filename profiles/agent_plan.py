@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agents.catalog import build_agent_catalog
+from core.contracts.classification import ProjectClassification
 from core.contracts.profile import DetectionResult
 from profiles.classifier import classify_project
 
@@ -32,7 +33,7 @@ class AgentPlan:
     selected: tuple[str, ...]
     excluded: tuple[str, ...]
     requires_approval: bool
-    classification: object | None = None
+    classification: ProjectClassification | None = None
     rationale: tuple[str, ...] = ()
 
 
