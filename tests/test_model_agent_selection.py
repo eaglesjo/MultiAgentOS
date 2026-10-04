@@ -5,7 +5,7 @@ from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.ai import ModelSpec
 from core.contracts.model_runtime import ModelResponse
 from core.contracts.work_unit import WorkUnit
-from runtime.agent_selection import AIRuntimeLLMSelector
+from runtime.agent_selection import ModelBackedAgentSelector
 from runtime.model.ai_runtime import AIRuntime
 
 
