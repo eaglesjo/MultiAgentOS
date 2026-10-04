@@ -68,8 +68,8 @@ class CLITests(unittest.TestCase):
             self.assertEqual(main(["init", temp, "--component", "agent-execution-runtime"]), 0)
             state = root / ".multiagentos" / "state"
             checkpoints = root / ".multiagentos" / "checkpoints"
-            state.mkdir()
-            checkpoints.mkdir()
+            state.mkdir(exist_ok=True)
+            checkpoints.mkdir(exist_ok=True)
             (state / "wu-1.json").write_text(json.dumps({
                 "id": "wu-1", "objective": "demo", "status": "executing"
             }), encoding="utf-8")
