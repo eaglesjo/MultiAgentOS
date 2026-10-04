@@ -378,11 +378,24 @@ No OpenAI API key is required for the local runtime.
 
 ### Initialize a project
 
+```mermaid
+flowchart LR
+    INSTALL["Install MultiAgentOS"] --> INIT["multiagentos init ."]
+    INIT --> PROFILE["Project profile"]
+    INIT --> CONFIG[".multiagentos"]
+    INIT --> AGENTS["AGENTS.md"]
+    CONFIG --> MCP["Project MCP"]
+    MCP --> RUNTIME["Agent Execution Runtime"]
+    RUNTIME --> PROJECT["Real project"]
+```
+
 ```bash
 cd your-project
 multiagentos init . --component all
 multiagentos status .
 ```
+
+See [Project Installation](docs/PROJECT_INSTALLATION.md) for the complete bootstrap contract.
 
 ### Run a task
 
@@ -549,6 +562,7 @@ Do not place an administration key in a long-lived runtime configuration.
 ## Documentation
 
 - [Getting Started](docs/GETTING_STARTED.md)
+- [Project Installation](docs/PROJECT_INSTALLATION.md)
 - [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
 - [ChatGPT Client Capability Matrix](docs/CHATGPT_CLIENT_CAPABILITIES.md)
 - [Agent Execution Runtime Connection Guide](docs/AGENT_EXECUTION_RUNTIME_CONNECTIONS.md)
