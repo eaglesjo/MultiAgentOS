@@ -48,10 +48,10 @@ class BuiltinToolBindings:
         patch=request.arguments.get("patch")
         if not isinstance(patch,str) or not patch.strip(): raise ValueError("patch must be a non-empty string")
         result=self.patch.apply(self.project_root,patch,approved=self._approved(request))
-        return {"command":result.command,"cwd":result.cwd,"returncode":result.returncode,"stdout":result.stdout,"stderr":result.stderr}
+        return {"returncode":result.returncode,"stdout":result.stdout,"stderr":result.stderr}
 
     def _shell(self, request: ToolRequest) -> object:
         command=request.arguments.get("command")
         if not isinstance(command,str) or not command.strip(): raise ValueError("command must be a non-empty string")
         result=self.shell.run(command)
-        return {"returncode":result.returncode,"stdout":result.stdout,"stderr":result.stderr}
+        return {"command":result.command,"cwd":result.cwd,"returncode":result.returncode,"stdout":result.stdout,"stderr":result.stderr}
