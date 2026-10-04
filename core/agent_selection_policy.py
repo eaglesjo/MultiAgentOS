@@ -95,10 +95,9 @@ class SelectionFallback:
         deterministic: AgentPlan,
         registry,
     ) -> AgentPlan:
-        if not self.policy.should_escalate(deterministic.confidence):
-            return deterministic
-
         stage_confidences = deterministic.stage_confidences
+        if not stage_confidences and not self.policy.should_escalate(deterministic.confidence):
+            return deterministic
         ambiguous = tuple(
             stage
             for stage in stage_confidences
