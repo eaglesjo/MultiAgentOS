@@ -16,6 +16,7 @@ from core.chat_agent_bridge import ChatAgentRequest
 from installer.init import ProjectInitializer
 from profiles.detector import ProfileDetector
 from profiles.agent_plan import build_agent_plan
+from profiles.classifier import classify_project
 from runtime.github_probe import probe
 from runtime.process import ProcessRuntime
 from runtime.status import project_status
@@ -802,6 +803,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "detect":
         plan = build_agent_plan(root, detections)
+        classification = classify_project(detections)
         print(
             json.dumps(
                 {
@@ -814,6 +816,27 @@ def main(argv: list[str] | None = None) -> int:
                         }
                         for result in detections
                     ],
+                    "classification": {
+                        "ambiguous": classification.ambiguous,
+                        "reasons": list(classification.reasons),
+                        "dimensions": {
+                            "platform": {
+                                "values": list(classification.platform.values),
+                                "confidence": classification.platform.confidence,
+                                "evidence": list(classification.platform.evidence),
+                            },
+                            "framework_runtime": {
+                                "values": list(classification.framework_runtime.values),
+                                "confidence": classification.framework_runtime.confidence,
+                                "evidence": list(classification.framework_runtime.evidence),
+                            },
+                            "language_toolchain": {
+                                "values": list(classification.language_toolchain.values),
+                                "confidence": classification.language_toolchain.confidence,
+                                "evidence": list(classification.language_toolchain.evidence),
+                            },
+                        },
+                    },
                     "agent_plan": {
                         "selected": list(plan.selected),
                         "excluded": list(plan.excluded),

@@ -9,7 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from agents.catalog import build_agent_catalog
+from core.contracts.classification import ProjectClassification
 from core.contracts.profile import DetectionResult
+from profiles.classifier import classify_project
 
 
 GOVERNANCE_AGENTS = (
@@ -31,6 +33,7 @@ class AgentPlan:
     selected: tuple[str, ...]
     excluded: tuple[str, ...]
     requires_approval: bool
+    classification: ProjectClassification | None = None
     rationale: tuple[str, ...] = ()
 
 
@@ -79,13 +82,20 @@ def build_agent_plan(
     selected.update(agent_id for agent_id in specialist_ids if agent_id in available)
 
     excluded = available - selected
-    requires_approval = not detections or confidence < approval_threshold
+    classification = classify_project(detections)
+    requires_approval = (
+        not detections
+        or confidence < approval_threshold
+        or classification.requires_approval
+    )
     rationale = (
         "governance agents are always available to preserve execution and review boundaries",
         "specialists are selected only from detected technology profiles",
     )
-    if requires_approval:
+    if confidence < approval_threshold:
         rationale += ("detection confidence is below the automatic activation threshold",)
+    if classification.ambiguous:
+        rationale += classification.reasons
 
     return AgentPlan(
         project_id=project_root.name.strip() or "project",
@@ -94,5 +104,6 @@ def build_agent_plan(
         selected=tuple(sorted(selected)),
         excluded=tuple(sorted(excluded)),
         requires_approval=requires_approval,
+        classification=classification,
         rationale=rationale,
     )
