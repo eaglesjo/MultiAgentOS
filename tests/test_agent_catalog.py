@@ -54,6 +54,15 @@ class AgentCatalogTests(unittest.TestCase):
         for agent in build_agent_catalog():
             agent.validate()
 
+
+    def test_catalog_parent_ids_resolve(self):
+        agents = {agent.id: agent for agent in build_agent_catalog()}
+
+        for agent in agents.values():
+            parent_id = agent.taxonomy.parent_id
+            if parent_id is not None:
+                self.assertIn(parent_id, agents)
+
     def test_governance_and_specialist_layers_are_disjoint_by_id(self):
         agents = build_agent_catalog()
 
