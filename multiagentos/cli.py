@@ -211,6 +211,7 @@ def _run_process(root: Path, work: WorkUnit, command: list[str]) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="multiagentos")
+    parser.add_argument("--version", action="version", version="%(prog)s 0.4.3")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     detect = subparsers.add_parser("detect", help="detect technology profiles")
