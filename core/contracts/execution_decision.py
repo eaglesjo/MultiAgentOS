@@ -138,7 +138,6 @@ class ExecutionDecision:
             "health_available": self.health_available,
             "quota_available": self.quota_available,
             "authorized": self.authorized,
-            "decision_id": self.decision_id,
             "routing_strategy": self.routing.strategy.value,
             "routing_candidates": [
                 {
