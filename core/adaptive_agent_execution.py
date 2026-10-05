@@ -134,6 +134,7 @@ class AdaptiveAgentExecutionLoop:
                 stage_indices = tuple(range(len(plan.route)))
             else:
                 stage_indices = retryable
+            work_unit.metadata["execution_attempt"] = attempt
             outcomes = self.executor.execute(
                 work_unit=work_unit,
                 plan=plan,
