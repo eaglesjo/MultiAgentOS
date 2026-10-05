@@ -7,6 +7,8 @@ specific Agent was authorized to execute with a specific Model at a stage.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import json
 
 from core.contracts.agent_selection import AgentPlan
 from core.contracts.work_unit import WorkUnit
@@ -30,6 +32,11 @@ class ExecutionDecision:
     health_available: bool = True
     quota_available: bool = True
     authorized: bool = False
+
+    @property
+    def decision_id(self) -> str:
+        payload = json.dumps(self.to_metadata(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @property
     def assignment(self) -> Assignment:
@@ -128,6 +135,7 @@ class ExecutionDecision:
             "health_available": self.health_available,
             "quota_available": self.quota_available,
             "authorized": self.authorized,
+            "decision_id": self.decision_id,
             "routing_strategy": self.routing.strategy.value,
             "routing_candidates": [
                 {
