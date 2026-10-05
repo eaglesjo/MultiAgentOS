@@ -1,308 +1,313 @@
+
 # MultiAgentOS
 
-> **Local-first, GitHub-native Agent Execution Runtime**
+> **Local-first Agent Execution Runtime for multi-agent software development**
 
-Build, inspect, patch, test, and operate real software projects through an AI-native execution boundary.
+MultiAgentOS is a provider-neutral Agent Execution Runtime for orchestrating real software development work.
 
-MultiAgentOS connects an AI client to a real project workspace while keeping **filesystem, patch, process, Git, and verification authority inside the Agent Execution Runtime**.
+It separates what an AI agent decides from what the runtime is authorized to execute. Work is represented as a governed WorkUnit, routed to compatible agents and models, executed through explicit runtime boundaries, and progressed through verification, review, and handoff.
+
+**Current release: 0.5.0**
 
 ---
 
 ## Why MultiAgentOS?
 
-AI clients provide reasoning, intent, plans, and results.
+AI clients and models are good at reasoning, planning, and generating proposed changes. A production development system also needs explicit responsibility boundaries, routing, execution state, verification, recovery, and auditability.
 
-**MultiAgentOS provides the execution boundary.**
+MultiAgentOS provides that execution model.
 
-```mermaid
+~~~mermaid
 flowchart TB
-    CLIENT["AI Client"] --> MCP["MCP"]
-    MCP --> RUNTIME["Agent Execution Runtime"]
-    RUNTIME --> FS["Filesystem"]
-    RUNTIME --> PATCH["Patch"]
-    RUNTIME --> PROCESS["Process"]
-    RUNTIME --> GIT["Git"]
-    FS --> PROJECT["Real Project"]
-    PATCH --> PROJECT
-    PROCESS --> PROJECT
-    GIT --> PROJECT
-    PROJECT --> GH["GitHub Repository"]
-```
+    TASK["Development Task"] --> PLAN["Plan"]
+    PLAN --> DELEGATE["Delegate"]
+    DELEGATE --> ASSIGN["Agent × Model Assignment"]
+    ASSIGN --> EXEC["Execute"]
+    EXEC --> VERIFY["Verify"]
+    VERIFY --> REVIEW["Review"]
+    REVIEW --> HANDOFF["Handoff"]
+    HANDOFF --> DONE["Completed"]
+~~~
 
-This separation makes local project execution explicit, inspectable, and policy-controlled instead of giving an AI client unrestricted operating-system access.
+The runtime remains provider-neutral: it does not require a specific model vendor, IDE, CLI, hosted agent platform, or coding client.
 
 ---
 
-## Core Capabilities
+## 0.5.0 at a glance
 
-| Capability | What it provides |
-| --- | --- |
-| **Agent Execution Runtime** | Durable execution and permission boundary for real project work |
-| **MCP** | Standard AI-to-runtime tool interface |
-| **Filesystem** | Project file READ / WRITE |
-| **Patch** | Structured source changes through `patch.apply` |
-| **Process** | Internal runtime capability; not part of the current ChatGPT Free verified client path |
-| **Git** | Repository-aware development operations |
-| **GitHub** | Remote repository and collaboration workflow |
-| **Project Isolation** | Independent MCP services and lifecycle per project |
-| **Secure MCP Tunnel** | Optional remote transport for supported clients |
+Version 0.5.0 formalizes **agent orchestration and specialist runtime architecture**.
 
-Write and process capabilities are explicit opt-ins. The default MCP surface is read-only.
+### Core execution model
 
----
+The canonical development loop is:
 
-## Architecture
+**Understand → Plan → Delegate → Orchestrate → Execute → Verify → Review → Learn/Handoff**
 
-### Local-first execution
+Orchestration is a core architectural responsibility. Specialist agents are composed into the orchestration flow rather than creating separate execution systems.
 
-```mermaid
-flowchart TB
-    CLIENT["AI Client"] --> MCP["MCP"]
-    MCP --> RUNTIME["Agent Execution Runtime"]
+### Agent taxonomy
 
-    RUNTIME --> FS["Filesystem"]
-    RUNTIME --> PATCH["Patch"]
-    RUNTIME --> PROCESS["Process / Tests"]
-    RUNTIME --> GIT["Git"]
+MultiAgentOS distinguishes two fundamental layers:
 
-    FS --> PROJECT["Local Project"]
-    PATCH --> PROJECT
-    PROCESS --> PROJECT
-    GIT --> PROJECT
+- **Governance / Execution** — controls how work is routed, edited, executed, monitored, debugged, and reviewed.
+- **Specialist** — describes the technical discipline or domain required by the work.
 
-    PROJECT --> GH["GitHub Repository"]
-```
-
-The local MCP server remains on loopback. The AI client does not receive unrestricted operating-system access; execution is mediated by the runtime policy.
-
-### Multi-agent execution
-
-```mermaid
-flowchart LR
-    REQUEST["Request"] --> ORCH["Orchestrator"]
-    ORCH --> WORKFLOW["MultiAgentWorkflow"]
-
-    WORKFLOW --> DEV["Developer"]
-    WORKFLOW --> TEST["Tester"]
-    WORKFLOW --> REVIEW["Reviewer"]
-
-    REVIEW --> DECISION{"Review passed?"}
-    DECISION -->|No| REWORK["Rework"]
-    REWORK --> DEV
-    DECISION -->|Yes| VERIFY["Verification"]
-
-    VERIFY --> RUNTIME["Agent Execution Runtime"]
-```
-
-`Orchestrator.run_workflow()` is the higher-level orchestration entry point. `MultiAgentWorkflow` owns stage, handoff, review, and rework semantics.
-
-The runtime remains the authority for permissions and execution.
-
-### Governance contracts
-
-MultiAgentOS keeps execution governance inside its own provider-neutral runtime contracts.
-
-```mermaid
-flowchart TB
-    WU["WorkUnit"] --> SCOPE["Scope Lock"]
-    WU --> ROLES["Execution roles"]
-    WU --> ART["Artifacts"]
-    WU --> EVID["Evidence"]
-    WU --> APPROVAL["Human approval"]
-    WU --> HOLD["HOLD safety"]
-
-    SCOPE --> RUNTIME["MultiAgentOS Runtime"]
-    ROLES --> RUNTIME
-    ART --> RUNTIME
-    EVID --> RUNTIME
-    APPROVAL --> RUNTIME
-    HOLD --> RUNTIME
-
-    RUNTIME --> TOOLS["MCP / Filesystem / Process / Git / GitHub"]
-```
-
-These governance contracts are native to MultiAgentOS; they are not dependent on another repository or project-specific Agent OS.
-
----
-
-### Agent taxonomy and specialist routing
-
-MultiAgentOS separates **Governance / Execution** from platform-oriented specialist agents.
+Specialists can be added when a real development responsibility requires them. The catalog is intentionally extensible rather than constrained to a minimal fixed set.
 
 ~~~mermaid
 flowchart TB
     TASK["Task"]
-
     TASK --> GOV["Governance / Execution"]
-    TASK --> RESEARCH["Research"]
-    TASK --> DEVELOPMENT["Development"]
-    TASK --> UI["UI"]
-
-    GOV --> FILE["File Picker"]
+    TASK --> SPEC["Specialists"]
     GOV --> PLAN["Planner"]
     GOV --> EDIT["Editor"]
     GOV --> EXEC["Executor"]
     GOV --> REVIEW["Reviewer"]
-
-    RESEARCH --> DEV_R["Development Research"]
-    RESEARCH --> UI_R["UI Research"]
-
-    DEV_R --> REACT_R["React"]
-    DEV_R --> RN_R["React Native"]
-    DEV_R --> ANDROID_R["Android"]
-    DEV_R --> IOS_R["iOS"]
-
-    UI_R --> WEB_R["Web UI / React"]
-    UI_R --> RN_UI_R["React Native UI"]
-    UI_R --> ANDROID_UI_R["Android UI"]
-    UI_R --> IOS_UI_R["iOS UI"]
-
-    DEVELOPMENT --> REACT_D["React Developer"]
-    DEVELOPMENT --> RN_D["React Native Developer"]
-    DEVELOPMENT --> ANDROID_D["Android Developer"]
-    DEVELOPMENT --> IOS_D["iOS Developer"]
-
-    UI --> WEB["Web"]
-    UI --> CROSS["Cross-platform"]
-    UI --> NATIVE["Native"]
-    NATIVE --> ANDROID["Android"]
-    NATIVE --> IOS["iOS"]
+    GOV --> DEBUG["Debugger"]
+    GOV --> BROWSER["Browser Agent"]
+    SPEC --> RESEARCH["Research"]
+    SPEC --> DEVELOPMENT["Development"]
+    SPEC --> UI["UI / UX"]
+    SPEC --> QUALITY["Quality"]
+    SPEC --> OPS["Operations"]
 ~~~
 
-A platform-aware development task can therefore run current platform research before implementation:
+### Expanded specialist disciplines
+
+0.5.0 expands the catalog across the responsibilities needed to deliver complete software products:
+
+| Area | Specialists |
+| --- | --- |
+| Architecture | software-architect |
+| Backend / API / Data | backend-developer, api-developer, database-engineer |
+| UX / UI | ux-designer, ui-designer, design-system-specialist, accessibility-specialist |
+| Quality | qa-engineer, security-engineer, performance-engineer |
+| Operations | devops-engineer |
+| Platform Development | react-developer, react-native-developer, android-developer, ios-developer |
+| Platform Research | React, React Native, Android, iOS development research |
+| UI Research | Web/React, React Native, Android/Compose, iOS/SwiftUI research |
+
+These roles are additive. They do not replace governance roles or introduce another orchestration layer.
+
+---
+
+## Orchestration
+
+A development WorkUnit moves through explicit execution stages:
 
 ~~~mermaid
 flowchart LR
-    TASK["Platform Development"] --> PLAN["Planner"]
-    PLAN --> RESEARCH["Development Research"]
-    RESEARCH --> DEV["Platform Developer"]
-    DEV --> EDIT["Editor"]
+    WU["WorkUnit"] --> ROUTE["Route"]
+    ROUTE --> ASSIGN["Assign Agent × Model"]
+    ASSIGN --> EXEC["Execute"]
+    EXEC --> VERIFY["Verify"]
+    VERIFY --> REVIEW["Review"]
+    REVIEW --> HANDOFF["Handoff"]
+    HANDOFF --> COMPLETE["Completed"]
+~~~
+
+The orchestration contract is responsible for:
+
+1. defining the work objective;
+2. resolving a compatible Agent × Model assignment;
+3. preventing execution before routing succeeds;
+4. invoking the execution adapter;
+5. optionally verifying the result;
+6. optionally reviewing the result;
+7. handing off validated work;
+8. moving failed work to an explicit failure state.
+
+Orchestrator, DelegationEngine, and MultiAgentWorkflow compose these responsibilities without tying the runtime to a particular AI provider.
+
+See [Orchestration](docs/ORCHESTRATION.md).
+
+---
+
+## Research before implementation
+
+Platform-specific work can require current technical research before implementation.
+
+~~~mermaid
+flowchart LR
+    TASK["Platform Task"] --> PLAN["Planner"]
+    PLAN --> RESEARCH["Platform Research"]
+    RESEARCH --> SPECIALIST["Platform Specialist"]
+    SPECIALIST --> EDIT["Editor"]
     EDIT --> EXEC["Executor"]
     EXEC --> REVIEW["Reviewer"]
 ~~~
 
-UI work similarly runs UI research before implementation and uses Browser Agent only where browser validation is relevant.
+Development research focuses on current APIs, compatibility, deprecations, migration guidance, and implementation patterns.
 
-See [Agent Taxonomy and Routing](docs/AGENT_TAXONOMY.md) and [Agent Catalog](docs/AGENT_CATALOG.md).
+UI research focuses on platform UI guidance, accessibility, layout, framework APIs, interaction patterns, and visual validation.
 
-## GitHub + Local Project
-
-MultiAgentOS treats the remote repository and the local working tree as complementary development surfaces.
-
-```mermaid
-flowchart TB
-    CLIENT["AI Client"]
-
-    CLIENT --> GH["GitHub Repository"]
-    CLIENT --> MCP["Local MCP"]
-
-    MCP --> RUNTIME["Agent Execution Runtime"]
-    RUNTIME --> PROJECT["Local Project"]
-```
-
-The GitHub path provides durable repository state.
-
-The local MCP path provides controlled access to the actual working tree.
-
-These are separate capabilities and can be used independently.
+This keeps research as a specialist responsibility inside the same orchestration model.
 
 ---
 
-## ChatGPT Web in the Verified Setup
+## Agent × Model execution
 
-The current development environment has verified the following client boundary:
+Agent selection and model selection are separate but coordinated decisions.
 
-| Client | GitHub | Local MultiAgentOS MCP | Status |
-| --- | --- | --- | --- |
-| **ChatGPT Web** | Yes | Yes | **Verified** |
-| **ChatGPT Mobile App** | Yes | No | **Verified** |
-| **ChatGPT Desktop** | Not evaluated | Not evaluated | Outside current scope |
-
-This is a compatibility record for the verified environment, **not a universal guarantee for every ChatGPT account, plan, or future client build**.
-
-> **Execution boundary:** Process/shell execution is not currently part of the verified ChatGPT Free client path. The runtime contains process-capability infrastructure, but README support claims are limited to capabilities actually exposed and verified through the target client path.
-
-The cost-free local workflow does not depend on Secure MCP Tunnel:
-
-```mermaid
+~~~mermaid
 flowchart TB
-    WEB["ChatGPT Web"]
+    WORK["WorkUnit"] --> AGENT["Agent Selection"]
+    AGENT --> MODEL["Model Resolution"]
+    MODEL --> ASSIGN["Agent × Model Assignment"]
+    ASSIGN --> DECISION["Execution Decision"]
+    DECISION --> RUNTIME["Agent Execution Runtime"]
+~~~
 
-    WEB -->|GitHub connection| GH["GitHub Repository"]
-    WEB -->|Local MCP| MCP["127.0.0.1:8000/mcp"]
-    MCP --> PROJECT["Local Project"]
-```
+Agents may declare capabilities, tools, permissions, supported model IDs, metadata, taxonomy, and scope awareness.
+
+Model resolution can incorporate capability, health, and quota information while preserving provider-neutral runtime contracts.
 
 ---
 
-## Secure MCP Tunnel
+## Execution governance
 
-Secure MCP Tunnel is an **optional remote connectivity layer** for supported clients that need to reach a private local MCP server.
+MultiAgentOS keeps execution authority behind an explicit runtime boundary.
 
-```mermaid
+~~~mermaid
 flowchart TB
-    CLIENT["Supported Remote Client"]
-    TUNNEL["OpenAI Secure MCP Tunnel"]
-    TC["tunnel-client"]
-    MCP["MultiAgentOS MCP"]
-    RUNTIME["Agent Execution Runtime"]
-    PROJECT["Local Project"]
+    INTENT["Agent Intent"] --> REQUEST["Execution Request"]
+    REQUEST --> POLICY["Runtime Policy"]
+    POLICY --> FS["Filesystem"]
+    POLICY --> PATCH["Patch"]
+    POLICY --> PROCESS["Process"]
+    POLICY --> GIT["Git"]
+    POLICY --> PROJECT["Project State"]
+~~~
 
-    CLIENT --> TUNNEL
-    TUNNEL --> TC
-    TC --> MCP
-    MCP --> RUNTIME
-    RUNTIME --> PROJECT
-```
+The runtime is responsible for enforcing scope, permissions, authorization, and execution state.
 
-The local MCP server can remain loopback-only. The tunnel client establishes the outbound connection.
+MCP and Tool capabilities remain **execution boundaries**. They are not separate product-architecture layers that replace orchestration.
 
-### Important boundary
+Write and process capabilities are explicit runtime concerns and should be enabled only where the project workflow requires them.
 
-A healthy tunnel proves that the **tunnel infrastructure is connected**. It does not by itself prove that a particular ChatGPT account or plan can invoke every MCP capability.
+---
 
-For the current cost-free baseline:
+## Recovery, replay, and idempotency
 
-| Layer | State |
+0.5.0 retains the runtime safety guarantees developed in the 0.4.x line.
+
+### Durable execution state
+
+WorkUnit state is persisted with the information required to resume execution safely, including work scope, target, environment, artifact classification, release impact, and hold state.
+
+### Recovery identity
+
+Recovered tool invocations preserve audit identity across recovery:
+
+- decision_id
+- agent_id
+- model_id
+- invocation_id
+- idempotency_key
+
+### Replay policy
+
+Replay is classified explicitly:
+
+| Policy | Meaning |
 | --- | --- |
-| Agent Execution Runtime | **PASS** |
-| Local MCP | **PASS** |
-| Secure MCP Tunnel lifecycle | **READY** |
-| Control-plane polling | **PASS** |
-| ChatGPT hosted remote MCP write | **Plan-gated / not part of baseline acceptance** |
+| **SAFE** | Automatic recovery replay is permitted |
+| **REVIEW_REQUIRED** | Human approval is required before replay |
+| **NEVER** | Replay is prohibited |
 
-Do not treat the optional hosted tunnel path as a prerequisite for local development.
+Replay safety is distinct from whether an operation is read-only or mutating.
 
-See [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md).
+### Idempotency
+
+Tool invocations can carry stable idempotency keys. The runtime rejects reuse of an idempotency key for an existing invocation within its WorkUnit rather than silently executing the same request again.
+
+The runtime does not claim distributed exactly-once semantics merely from the presence of an idempotency key; the receiving system must also honor the key when external side effects are involved.
 
 ---
 
-## Project-Scoped Runtime
+## Local-first project execution
 
-Multiple projects can run independently.
+MultiAgentOS is designed around the real project workspace.
 
-```mermaid
+~~~mermaid
 flowchart TB
-    A["Project A"]
-    A --> A_MCP["MCP Service"]
-    A --> A_RUNTIME["Runtime"]
-    A --> A_TUNNEL["Tunnel (optional)"]
-    A --> A_LOGS["Logs"]
-    A --> A_PERM["Permissions"]
+    CLIENT["AI Client / Coding Agent"] --> RUNTIME["MultiAgentOS Agent Execution Runtime"]
+    RUNTIME --> PROJECT["Local Project"]
+    PROJECT --> GIT["Git"]
+    GIT --> GITHUB["GitHub Repository"]
+~~~
 
-    B["Project B"]
-    B --> B_MCP["MCP Service"]
-    B --> B_RUNTIME["Runtime"]
-    B --> B_TUNNEL["Tunnel (optional)"]
-    B --> B_LOGS["Logs"]
-    B --> B_PERM["Permissions"]
-```
+The repository provides durable source history and collaboration. The local runtime provides controlled access to the actual working tree.
 
-Each managed project receives its own service identity derived from its resolved project path.
+These are complementary capabilities rather than interchangeable execution surfaces.
 
-Example:
+---
 
-```bash
+## Project initialization
+
+Install the runtime:
+
+~~~bash
+python3 -m pip install "multiagentos[mcp-http]"
+~~~
+
+Initialize a project:
+
+~~~bash
+cd your-project
+multiagentos init . --component all
+multiagentos status .
+~~~
+
+Run a governed task:
+
+~~~bash
+multiagentos run \
+  --path . \
+  --objective "run tests" \
+  -- python -m unittest discover -s tests -v
+~~~
+
+Start a local MCP endpoint when a client needs the runtime boundary:
+
+~~~bash
+multiagentos mcp serve-http --path .
+~~~
+
+For a project that explicitly requires write access:
+
+~~~bash
+multiagentos mcp serve-http \
+  --path . \
+  --allow-write
+~~~
+
+The default endpoint is:
+
+~~~text
+http://127.0.0.1:8000/mcp
+~~~
+
+Project configuration is stored under:
+
+~~~text
+.multiagentos/
+├── components.json
+├── execution.json
+├── chat.json
+├── agents.json
+└── state/
+~~~
+
+Credentials and provider API keys are not persisted in project configuration.
+
+---
+
+## Project-scoped runtime services
+
+Multiple projects can be managed independently.
+
+~~~bash
 multiagentos mcp install \
   --path /absolute/path/to/project1 \
   --port 8000 \
@@ -312,288 +317,79 @@ multiagentos mcp install \
   --path /absolute/path/to/project2 \
   --port 8001 \
   --allow-write
-```
+~~~
 
-Inspect or remove a project-scoped service:
+Inspect or remove a managed service:
 
-```bash
+~~~bash
 multiagentos mcp status --path /absolute/path/to/project1
 multiagentos mcp uninstall --path /absolute/path/to/project1
-```
+~~~
 
-Supported OS-native lifecycle management includes:
-
-- macOS: per-user `launchd`
-- Windows: per-user Task Scheduler
+The repository supports OS-native lifecycle management, including per-user services on macOS and Windows.
 
 ---
 
-## Cost-Free Development Baseline
+## Verification and release gate
 
-The core user-facing path is:
+Version 0.5.0 was released only after the release candidate passed the repository's release validation.
 
-```text
-ChatGPT Free text chat
-        |
-        v
-MultiAgentOS
-        |
-        v
-Local MCP
-        |
-        v
-Project state / source changes / verification
-```
+The release gate covered:
 
-> **Cost-Free policy:** development must be possible without an OpenAI API key by using ChatGPT Free text chat as the AI engine and MultiAgentOS Local MCP as the controlled execution boundary.
+- the full contract test suite;
+- installation smoke validation;
+- MCP Streamable HTTP inspection;
+- package build and artifact validation;
+- native package matrix validation for Windows x64, Ubuntu amd64, macOS Intel x64, and macOS ARM64;
+- specialist catalog contract coverage;
+- recovery, replay-policy, tool identity, and idempotency regression coverage.
 
-This policy does not claim that every ChatGPT feature is unlimited. It defines the intended AI-engine path for ordinary text-based development work.
+The 0.5.0 tag is the formal release marker for this version.
 
-The baseline is designed around:
+For the current verification command:
 
-```mermaid
-flowchart TB
-    INSTALL["Install MultiAgentOS"]
-    INIT["Initialize project"]
-    MCP["Agent Execution Runtime MCP"]
-    CLIENT["AI Client"]
+~~~bash
+python -m unittest discover -s tests -v
+~~~
 
-    INSTALL --> INIT --> MCP --> CLIENT
-
-    CLIENT --> READ["READ"]
-    CLIENT --> PATCH["PATCH"]
-    CLIENT --> TEST["TEST"]
-    CLIENT --> VERIFY["VERIFY"]
-
-    READ --> GH["GitHub"]
-    PATCH --> GH
-    TEST --> GH
-    VERIFY --> GH
-```
-
-“Cost-Free” describes the **MultiAgentOS runtime architecture**. It does not mean that an AI product has unlimited usage or that every optional AI service is free.
-
-Paid AI providers remain optional.
-
-See [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md).
-
----
-
-## Quick Start
-
-### Install
-
-For the Streamable HTTP MCP server:
-
-```bash
-python3 -m pip install "multiagentos[mcp-http]"
-```
-
-No OpenAI API key is required for the local runtime.
-
-### Initialize a project
-
-```mermaid
-flowchart LR
-    INSTALL["Install MultiAgentOS"] --> INIT["multiagentos init ."]
-    INIT --> PROFILE["Project profile"]
-    INIT --> CONFIG[".multiagentos"]
-    INIT --> AGENTS["AGENTS.md"]
-    CONFIG --> MCP["Project MCP"]
-    MCP --> RUNTIME["Agent Execution Runtime"]
-    RUNTIME --> PROJECT["Real project"]
-```
-
-```bash
-cd your-project
-multiagentos init . --component all
-multiagentos status .
-```
-
-See [Project Installation](docs/PROJECT_INSTALLATION.md) for the complete bootstrap contract.
-
-### Run a task
-
-```bash
-multiagentos run \
-  --path . \
-  --objective "run tests" \
-  -- python -m unittest discover -s tests -v
-```
-
-### Start a Chat Agent session
-
-```bash
-multiagentos chat \
-  --path . \
-  --objective "inspect the current project"
-```
-
-### Start local MCP
-
-Read-only:
-
-```bash
-multiagentos mcp serve-http --path .
-```
-
-Read/write:
-
-```bash
-multiagentos mcp serve-http \
-  --path . \
-  --allow-write
-```
-
-The default endpoint is:
-
-```text
-http://127.0.0.1:8000/mcp
-```
-
-### Install as a persistent macOS service
-
-```bash
-multiagentos mcp install --path . --allow-write
-multiagentos mcp status --path .
-```
-
-The service is managed by `launchd` and can survive login/reboot.
-
----
-
-## Configuration
-
-Project configuration lives under:
-
-```text
-.multiagentos/
-├── components.json
-├── execution.json
-├── chat.json
-├── agents.json
-└── state/
-```
-
-Credentials and provider API keys are not written into project configuration.
-
----
-
-## Verification
-
-### MultiAgentOS v0.4.3 release verification record
-
-The following results are the recorded verification evidence for the v0.4.3 release:
-
-- **309 tests passed**
-- **3 tests skipped on macOS**
-- macOS managed MCP service verified after reboot/login
-- Project-scoped Secure MCP Tunnel lifecycle verified
-- Tunnel-client control-plane polling verified
-- Python wheel and source distribution build verified
-- Native release artifacts published
-- Local Agent Execution Runtime filesystem READ / WRITE verified
-- `patch.apply` verified with filesystem readback
-- GitHub-connected development path verified
-
-These bullets are a release verification record, not a claim that the same test count has been freshly executed for every later `main` commit. Current `main` changes are validated by the repository's GitHub Actions workflows.
-
-### Verification boundary
-
-The repository deliberately distinguishes:
-
-```mermaid
-flowchart TB
-    LOCAL["Local Runtime Verification"]
-    LOCAL --> MCP["MCP"]
-    LOCAL --> FS["Filesystem"]
-    LOCAL --> PATCH["Patch"]
-    LOCAL --> PROCESS["Process"]
-    LOCAL --> GH["GitHub"]
-
-    VERIFIED["Verified"]
-    MCP --> VERIFIED
-    FS --> VERIFIED
-    PATCH --> VERIFIED
-    PROCESS --> VERIFIED
-    GH --> VERIFIED
-
-    TUNNEL["Optional Hosted Tunnel"]
-    TUNNEL --> LIFECYCLE["Tunnel lifecycle"]
-    TUNNEL --> POLL["Control-plane polling"]
-    TUNNEL --> REMOTE["Remote client capability"]
-
-    DEP["Environment / plan dependent"]
-    LIFECYCLE --> DEP
-    POLL --> DEP
-    REMOTE --> DEP
-```
-
-This prevents a healthy tunnel from being incorrectly reported as proof of a hosted client-side MCP tool invocation.
-
----
-
-## Security and Permission Model
-
-MultiAgentOS keeps execution authority behind an explicit runtime boundary.
-
-```mermaid
-flowchart TB
-    INTENT["AI Intent"]
-    REQUEST["MCP Tool Request"]
-    POLICY["Execution Policy"]
-
-    INTENT --> REQUEST --> POLICY
-
-    POLICY --> READ["filesystem.read"]
-    POLICY --> WRITE["filesystem.write"]
-    POLICY --> PATCH["patch.apply"]
-    POLICY --> PROCESS["process / shell"]
-
-    READ --> PROJECT["Real Project"]
-    WRITE --> PROJECT
-    PATCH --> PROJECT
-    PROCESS --> PROJECT
-```
-
-Write and process capabilities require explicit opt-in.
-
-For the tunnel path, keep credentials separated:
-
-```text
-CONTROL_PLANE_TUNNEL_ID
-    → identifies the tunnel
-
-CONTROL_PLANE_API_KEY
-    → runtime credential used by tunnel-client
-
-OPENAI_ADMIN_KEY
-    → tunnel administration only
-```
-
-Do not place an administration key in a long-lived runtime configuration.
+GitHub Actions remains the authoritative CI execution environment for repository-wide release validation.
 
 ---
 
 ## Documentation
 
+### Architecture
+
+- [Orchestration](docs/ORCHESTRATION.md)
+- [Agent Taxonomy and Routing](docs/AGENT_TAXONOMY.md)
+- [Agent Catalog](docs/AGENT_CATALOG.md)
+- [Architecture Decisions](docs/ARCHITECTURE_DECISIONS.md)
+
+### Runtime and project setup
+
 - [Getting Started](docs/GETTING_STARTED.md)
 - [Project Installation](docs/PROJECT_INSTALLATION.md)
-- [Cost-Free Development Baseline](docs/COSTFREE_DEVELOPMENT.md)
-- [ChatGPT Client Capability Matrix](docs/CHATGPT_CLIENT_CAPABILITIES.md)
 - [Agent Execution Runtime Connection Guide](docs/AGENT_EXECUTION_RUNTIME_CONNECTIONS.md)
+- [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
+
+### Optional connectivity and platform integration
+
 - [Secure MCP Tunnel Setup](docs/MCP_TUNNEL.md)
 - [macOS MCP Service](docs/MACOS_MCP_SERVICE.md)
 - [macOS Tunnel Service](docs/MACOS_TUNNEL_SERVICE.md)
-- [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
-- [Architecture Decisions](docs/ARCHITECTURE_DECISIONS.md)
-- [Agent Plugin Marketplace](docs/PLUGIN_MARKETPLACE.md)
+- [ChatGPT Client Capability Matrix](docs/CHATGPT_CLIENT_CAPABILITIES.md)
 
-The English README is the canonical technical overview. Localized READMEs should preserve the same architecture, terminology, and cost-free baseline.
+MCP, Tool, and remote connectivity documentation describes existing execution boundaries and integrations. It does not define additional product-architecture layers.
 
-**[한국어](README.ko.md)**
+The English README is the canonical technical overview.
+
+**[한국어 README](README.ko.md)**
 
 ---
+
+## Release history
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete release history.
 
 ## License
 
