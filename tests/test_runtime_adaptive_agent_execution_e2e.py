@@ -54,15 +54,15 @@ class _Fallback:
 
 
 class _RuntimeExecutor:
-    def __init__(self, events, ledger):
-        self.events = events
-        self.ledger = ledger
+    def __init__(self, event_store, ledger_store):
+        self.event_store = event_store
+        self.ledger_store = ledger_store
         self.calls = []
 
     def execute(self, *, agent, model_id, work_unit):
         self.calls.append(agent.id)
         if agent.id == "android-developer":
-            self.events.append(
+            self.event_store.append(
                 RuntimeEvent(
                     kind=RuntimeEventKind.TOOL_RESULT,
                     work_unit_id=work_unit.id,
@@ -73,7 +73,7 @@ class _RuntimeExecutor:
                     },
                 )
             )
-            self.ledger.append(
+            self.ledger_store.append(
                 ToolInvocationRecord(
                     invocation_id="inv-failed",
                     work_unit_id=work_unit.id,
@@ -97,21 +97,7 @@ def test_runtime_adapter_drives_failed_stage_into_specialist_reselection(tmp_pat
     )
     event_store = RuntimeEventStore(tmp_path / "events")
     ledger_store = ToolInvocationStore(tmp_path / "tool-ledger")
-    events = []
-    original_append = event_store.append
-    event_store.append = lambda event: (
-        events.append(event),
-        original_append(event),
-    )[1]
-
-    ledger = []
-    original_ledger_append = ledger_store.append
-    ledger_store.append = lambda record: (
-        ledger.append(record),
-        original_ledger_append(record),
-    )[1]
-
-    fake = _RuntimeExecutor(events, ledger)
+    fake = _RuntimeExecutor(event_store, ledger_store)
     stage_executor = RuntimeStageExecutor(
         agents={
             "android-developer": _agent("android-developer"),
