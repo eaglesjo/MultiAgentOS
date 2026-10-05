@@ -108,6 +108,6 @@ def test_run_requires_exactly_one_execution_mode(tmp_path):
             ]
         )
     except ValueError as exc:
-        assert str(exc) == "Specify exactly one of --model or --command"
+        assert str(exc) == "Specify at least one of --model or --command"
     else:
         raise AssertionError("run should require --model or --command")
