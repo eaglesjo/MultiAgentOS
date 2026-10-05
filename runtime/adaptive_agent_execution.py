@@ -20,6 +20,8 @@ from core.contracts.work_unit import WorkUnit
 from core.agent_model_resolver import AgentModelResolver, AgentModelResolution
 from core.delegation import DelegationEngine
 from core.state import RuntimeEventStore
+from runtime.health import ModelHealthRegistry
+from runtime.quota import QuotaIntelligence
 from core.tool_ledger import ToolInvocationStore
 from core.contracts.tool_ledger import ToolInvocationState
 from core.routing import RoutingStrategy
@@ -149,6 +151,8 @@ class RuntimeStageExecutor(StageExecutor):
     capability_registry: object | None = None
     quota_snapshots: dict[str, object] | None = None
     health_snapshots: dict[str, object] | None = None
+    health_registry: ModelHealthRegistry | None = None
+    quota_intelligence: QuotaIntelligence | None = None
     preferred_model_ids_by_agent: dict[str, list[str]] | None = None
     preferred_model_ids: list[str] | None = None
     routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL
@@ -180,6 +184,7 @@ class RuntimeStageExecutor(StageExecutor):
 
             before_events = self._last_event_sequence(work_unit)
             before_tools = self._last_tool_sequence(work_unit)
+            resolved_model_id: str | None = None
             try:
                 resolution = self.model_resolver.resolve(
                     agent,
@@ -193,11 +198,13 @@ class RuntimeStageExecutor(StageExecutor):
                     health_snapshots=self.health_snapshots,
                 )
                 self._record_resolution(work_unit, stage_index, resolution)
+                resolved_model_id = resolution.model_id
                 output = executor.execute(
                     agent=agent,
                     model_id=resolution.model_id,
                     work_unit=work_unit,
                 )
+                self._record_model_success(resolution.model_id, output)
                 evidence = (
                     self.evidence_collector.collect(
                         work_unit,
@@ -222,6 +229,8 @@ class RuntimeStageExecutor(StageExecutor):
                     )
                 )
             except Exception as exc:
+                if resolved_model_id is not None:
+                    self._record_model_failure(resolved_model_id, agent, exc)
                 evidence = (
                     self.evidence_collector.collect(
                         work_unit,
@@ -248,6 +257,21 @@ class RuntimeStageExecutor(StageExecutor):
                     if work_unit.status is WorkStatus.EXECUTING:
                         work_unit.transition(WorkStatus.FAILED)
         return tuple(outcomes)
+
+    def _record_model_success(self, model_id: str, output: object) -> None:
+        model = next((item for item in self.models if item.id == model_id), None)
+        if model is None:
+            return
+        if self.health_registry is not None:
+            self.health_registry.record_success(model_id, model.provider_id)
+        metadata = getattr(output, "metadata", None)
+        if self.quota_intelligence is not None and isinstance(metadata, dict):
+            self.quota_intelligence.observe_response(model, metadata)
+
+    def _record_model_failure(self, model_id: str, agent: AgentContract, exc: Exception) -> None:
+        model = next((item for item in self.models if item.id == model_id), None)
+        if model is not None and self.health_registry is not None:
+            self.health_registry.record_failure(model_id, model.provider_id, exc)
 
     @staticmethod
     def _record_resolution(
