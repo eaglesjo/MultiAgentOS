@@ -64,6 +64,14 @@ class ToolAuthorizationPolicy:
             findings.append("execution decision is not authorized")
         if decision.agent_id != agent.id:
             findings.append("tool Agent does not match execution decision")
+        if (
+            agent.tools
+            and tool.name not in agent.tools
+            and f"{tool.server_id}:{tool.name}" not in agent.tools
+        ):
+            findings.append(
+                f"MCP tool is not granted to Agent: {tool.server_id}:{tool.name}"
+            )
         missing = tool.permissions - agent.permissions
         if missing:
             findings.append(
