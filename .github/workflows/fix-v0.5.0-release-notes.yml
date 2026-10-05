@@ -1,0 +1,96 @@
+name: Fix v0.5.0 release notes
+
+on:
+  push:
+    branches:
+      - "ops/fix-v0.5.0-release-notes"
+
+permissions:
+  contents: write
+
+jobs:
+  update-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update v0.5.0 release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > release-notes.md <<'EOF'
+# MultiAgentOS v0.5.0
+
+## Agent orchestration and specialist runtime architecture
+
+MultiAgentOS 0.5.0 establishes the Agent Execution Runtime as a local-first orchestration system for multi-agent software development.
+
+### What's new
+
+- Expanded the specialist Agent catalog across:
+  - Software Architecture
+  - Backend and API Development
+  - Database Engineering
+  - UX / UI Design
+  - Design Systems
+  - Accessibility
+  - QA
+  - Security
+  - Performance
+  - DevOps / Operations
+- Preserved a clear separation between Governance / Execution Agents and Specialist Agents.
+- Formalized the orchestration lifecycle:
+
+  `Understand → Plan → Delegate → Orchestrate → Execute → Verify → Review → Learn / Handoff`
+
+- Preserved provider-neutral Agent × Model execution.
+- Strengthened Agent selection, capability matching, model resolution, health, and quota feedback.
+- Preserved durable WorkUnit state and execution governance.
+- Strengthened recovery and audit identity across interrupted tool execution.
+- Enforced replay policy for recovery:
+  - SAFE
+  - REVIEW_REQUIRED
+  - NEVER
+- Enforced idempotency keys for tool invocation recovery and duplicate execution prevention.
+- Formalized platform-aware research and development specialist routing.
+- Retained MCP and Tool capabilities as existing execution boundaries without expanding them into separate product architecture layers.
+
+### Architecture
+
+MultiAgentOS 0.5.0 centers the product architecture on:
+
+**WorkUnit → Agent Selection → Agent × Model Assignment → Orchestration → Execution → Verification → Review → Handoff**
+
+The architecture remains local-first and provider-neutral, allowing different Agents and Models to participate without coupling the runtime to a specific AI vendor, IDE, CLI, or hosted agent platform.
+
+### Scope decisions
+
+- Orchestration remains a core architectural capability.
+- Specialist Agents are expanded according to actual software-development responsibilities rather than minimizing the number of Agents.
+- MCP and Tool are execution boundaries, not additional product architecture layers.
+- Cost-free positioning is not part of the product architecture. Provider and deployment costs remain operational concerns.
+
+### Verification
+
+The 0.5.0 release passed the release validation gate, including:
+
+- Full test suite
+- Agent catalog and orchestration contract coverage
+- Recovery and replay-policy regression coverage
+- Tool audit identity and idempotency coverage
+- Package installation validation
+- Native package validation for:
+  - macOS Apple Silicon
+  - macOS Intel
+  - Ubuntu amd64
+  - Windows x64
+
+### Release artifacts
+
+- macOS Apple Silicon installer
+- macOS Intel installer
+- Windows x64 installer
+- Ubuntu amd64 package
+- Python wheel
+- Source archive
+EOF
+
+          gh release edit v0.5.0 --title "MultiAgentOS v0.5.0" --notes-file release-notes.md
