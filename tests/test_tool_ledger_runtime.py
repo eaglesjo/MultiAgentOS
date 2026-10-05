@@ -373,14 +373,20 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
 
     def test_tool_calling_rejects_reuse_of_completed_idempotency_key(self):
         class Adapter:
+            def __init__(self):
+                self.calls = 0
+
             def generate_with_tools(self, model, request, tools):
-                return ModelResponse(
-                    text="", model_id=model.id,
-                    metadata={"tool_calls": [{
-                        "id": "write-1", "name": "external.write",
-                        "arguments": {"value": 1}, "idempotency_key": "idem-1",
-                    }]},
-                )
+                self.calls += 1
+                if self.calls == 1:
+                    return ModelResponse(
+                        text="", model_id=model.id,
+                        metadata={"tool_calls": [{
+                            "id": "write-1", "name": "external.write",
+                            "arguments": {"value": 1}, "idempotency_key": "idem-1",
+                        }]},
+                    )
+                return ModelResponse(text="done", model_id=model.id)
         with tempfile.TemporaryDirectory() as temp:
             store = ToolInvocationStore(Path(temp) / "tool-ledger")
             executions = []
