@@ -124,3 +124,30 @@ def test_tool_authorization_enforces_existing_mcp_profile():
 
     assert authorization.authorized is False
     assert len(authorization.findings) >= 2
+
+
+def test_tool_authorization_enforces_agent_tool_allowlist():
+    from core.contracts.tool_authorization import ToolAuthorizationPolicy
+
+    decision, agent = _decision()
+    restricted_agent = AgentContract(
+        id=agent.id,
+        role=agent.role,
+        kind=agent.kind,
+        permissions=agent.permissions,
+        tools=frozenset({"repo:read_other"}),
+    )
+    tool = MCPTool(
+        name="read_repo",
+        server_id="repo",
+        permissions=frozenset({"repo.read"}),
+    )
+
+    authorization = ToolAuthorizationPolicy.authorize(
+        decision=decision,
+        agent=restricted_agent,
+        tool=tool,
+    )
+
+    assert authorization.authorized is False
+    assert "not granted to Agent" in authorization.findings[0]
