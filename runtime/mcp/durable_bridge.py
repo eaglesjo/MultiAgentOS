@@ -147,6 +147,7 @@ class MCPDurableExecutionBridge:
                 "call_id": record.call_id,
                 "invocation_id": record.invocation_id,
                 "idempotency_key": record.idempotency_key,
+                "approved": recovery_authorized,
             },
         )
         granted_permissions = frozenset(
