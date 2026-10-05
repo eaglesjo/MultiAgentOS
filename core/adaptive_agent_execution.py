@@ -165,9 +165,10 @@ class AdaptiveAgentExecutionLoop:
                 if outcome.stage_index in retryable
                 for record in outcome.evidence
             )
-            merged_evidence = tuple(
-                dict.fromkeys((*plan.evidence, *execution_evidence))
-            )
+            merged_evidence_by_id = {}
+            for record in (*plan.evidence, *execution_evidence):
+                merged_evidence_by_id[record.id] = record
+            merged_evidence = tuple(merged_evidence_by_id.values())
             deterministic = self.selector.select(
                 work_unit,
                 evidence=merged_evidence,
