@@ -10,7 +10,7 @@ from pathlib import Path
 from mcp import Client, StdioServerParameters
 from mcp.client.session import ClientSession
 from mcp.client.stdio import stdio_client
-from mcp.types import Request
+from mcp.types import Request, RequestParams, Result
 from pydantic import ConfigDict, Field, TypeAdapter
 from typing import Literal
 
@@ -62,12 +62,12 @@ if __name__ == "__main__":
     test_official_mcp_sdk_stdio_compatibility()
 
 
-class RecoveryParams(__import__("mcp.types", fromlist=["RequestParams"]).RequestParams):
+class RecoveryParams(RequestParams):
     model_config = ConfigDict(populate_by_name=True)
     work_unit_id: str = Field(alias="workUnitId")
 
 
-class RecoveryResult(__import__("mcp.types", fromlist=["Result"]).Result):
+class RecoveryResult(Result):
     model_config = ConfigDict(populate_by_name=True)
     work_unit_id: str = Field(alias="workUnitId")
     disposition: str
@@ -77,7 +77,7 @@ class RecoveryResult(__import__("mcp.types", fromlist=["Result"]).Result):
     human_decision: str | None = Field(default=None, alias="humanDecision")
 
 
-class RecoveryRequest(__import__("mcp.types", fromlist=["Request"]).Request[RecoveryParams, Literal["runtime/recover"]]):
+class RecoveryRequest(Request[RecoveryParams, Literal["runtime/recover"]]):
     method: Literal["runtime/recover"] = "runtime/recover"
     params: RecoveryParams
 
