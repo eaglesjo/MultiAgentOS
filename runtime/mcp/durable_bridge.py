@@ -125,7 +125,10 @@ class MCPDurableExecutionBridge:
         else:
             plan_safe_override = False
 
-        if plan.disposition is not RecoveryDisposition.RESUME or (not plan.safe_to_resume and not plan_safe_override):
+        if (
+            plan.disposition is not RecoveryDisposition.RESUME
+            and not (recovery_authorized and plan.disposition is RecoveryDisposition.REVIEW_REQUIRED)
+        ) or (not plan.safe_to_resume and not plan_safe_override):
             raise ValueError(f"MCP work unit is not safely resumable: {plan.reason}")
 
         unresolved = self.ledger_store.unresolved(work_unit_id)
