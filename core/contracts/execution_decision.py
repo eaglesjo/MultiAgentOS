@@ -35,7 +35,11 @@ class ExecutionDecision:
 
     @property
     def decision_id(self) -> str:
-        payload = json.dumps(self.to_metadata(), sort_keys=True, separators=(",", ":"))
+        payload = json.dumps(
+            self._metadata_without_id(),
+            sort_keys=True,
+            separators=(",", ":"),
+        )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @property
@@ -120,8 +124,7 @@ class ExecutionDecision:
         decision.validate()
         return decision
 
-    def to_metadata(self) -> dict[str, object]:
-        """Return a stable JSON-compatible audit representation."""
+    def _metadata_without_id(self) -> dict[str, object]:
         return {
             "work_unit_id": self.work_unit_id,
             "stage_index": self.stage_index,
@@ -153,3 +156,9 @@ class ExecutionDecision:
                 for candidate in self.routing.candidates
             ],
         }
+
+    def to_metadata(self) -> dict[str, object]:
+        """Return a stable JSON-compatible audit representation."""
+        metadata = dict(self._metadata_without_id())
+        metadata["decision_id"] = self.decision_id
+        return metadata
