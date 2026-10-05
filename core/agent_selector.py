@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from agents.registry import build_registry
 from agents.catalog import build_agent_catalog
 from core.contracts.agent import AgentContract
+from runtime.agent_capability import AgentCapabilityRegistry
 from core.contracts.agent_selection import AgentCandidate, AgentPlan, AgentSelection, StageConfidence
 from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.repository import RepositoryEvidence
@@ -121,6 +122,48 @@ class DeterministicAgentSelector:
         return min(score, 1.0), tuple(reasons)
 
     @staticmethod
+    def _stage_capability_requirements(
+        work_unit: WorkUnit,
+        stage_agent_id: str,
+    ) -> tuple[frozenset[str], frozenset[str], frozenset[str]]:
+        raw = work_unit.metadata.get("agent_requirements", {})
+        if not isinstance(raw, dict):
+            return frozenset(), frozenset(), frozenset()
+        requirement = raw.get(stage_agent_id, {})
+        if not isinstance(requirement, dict):
+            return frozenset(), frozenset(), frozenset()
+
+        def normalize(key: str) -> frozenset[str]:
+            value = requirement.get(key, ())
+            if isinstance(value, str):
+                return frozenset({value})
+            if isinstance(value, (list, tuple, set, frozenset)):
+                return frozenset(str(item) for item in value if str(item).strip())
+            return frozenset()
+
+        return normalize("capabilities"), normalize("tools"), normalize("permissions")
+
+    @classmethod
+    def _capability_compatible(
+        cls,
+        work_unit: WorkUnit,
+        stage_agent_id: str,
+        candidate: AgentContract,
+        capability_registry: AgentCapabilityRegistry,
+    ) -> bool:
+        capabilities, tools, permissions = cls._stage_capability_requirements(
+            work_unit, stage_agent_id
+        )
+        if not (capabilities or tools or permissions):
+            return True
+        return capability_registry.match(
+            candidate.id,
+            capabilities=capabilities,
+            tools=tools,
+            permissions=permissions,
+        ).compatible
+
+    @staticmethod
     def _compatible(expected: AgentContract, candidate: AgentContract) -> bool:
         """Keep alternatives within the semantic role of the expected stage."""
         if candidate.kind != expected.kind:
@@ -186,6 +229,7 @@ class DeterministicAgentSelector:
         if allow_expansion:
             self._expand_candidate_registry(work_unit, route)
         by_id: dict[str, tuple[float, tuple[str, ...], set[int]]] = {}
+        capability_registry = AgentCapabilityRegistry(self.registry)
 
         for stage_index, expected_id in enumerate(route):
             expected = self.registry.get(expected_id)
@@ -193,6 +237,10 @@ class DeterministicAgentSelector:
             for candidate in self.registry.list():
                 candidate.validate()
                 if not self._compatible(expected, candidate):
+                    continue
+                if not self._capability_compatible(
+                    work_unit, expected_id, candidate, capability_registry
+                ):
                     continue
                 score, reasons = self._score_agent(candidate, work_unit, evidence)
                 if candidate.id in by_id:
@@ -220,6 +268,14 @@ class DeterministicAgentSelector:
             limited = stage_candidates[: self.candidate_pool_policy.top_k]
             if expected_score is not None and expected_id not in {agent_id for agent_id, _ in limited}:
                 limited.append((expected_id, expected_score))
+            if not limited:
+                capabilities, tools, permissions = self._stage_capability_requirements(
+                    work_unit, expected_id
+                )
+                if capabilities or tools or permissions:
+                    raise LookupError(
+                        f"No Agent satisfies capability requirements for stage {expected_id}"
+                    )
             ranked_by_stage[stage_index] = limited
 
         allowed_by_stage = {

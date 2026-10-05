@@ -360,3 +360,59 @@ def test_legacy_strategy_cannot_change_non_ambiguous_stage():
         assert "only change ambiguous specialist stages" in str(exc)
     else:
         raise AssertionError("unsafe legacy strategy was accepted")
+
+
+
+def test_selector_uses_agent_capability_requirements_to_bound_specialist_candidates():
+    work_unit = WorkUnit(
+        id="wu-capability-gate",
+        objective="Implement React Native screen",
+        work_type="development",
+        target="react-native",
+        metadata={
+            "technology": "react-native",
+            "agent_requirements": {
+                "react-native-developer": {
+                    "capabilities": ["code", "react-native"],
+                    "tools": ["filesystem.write"],
+                }
+            },
+        },
+    )
+
+    selection = DeterministicAgentSelector().select(work_unit)
+    stage_index = selection.plan.route.index("react-native-developer")
+    candidates = {
+        item.agent_id
+        for item in selection.plan.candidates
+        if stage_index in item.stage_indices
+    }
+
+    assert "react-native-developer" in candidates
+    assert "android-developer" not in candidates
+    assert "ios-developer" not in candidates
+
+
+def test_selector_fails_clearly_when_stage_capability_requirements_have_no_match():
+    work_unit = WorkUnit(
+        id="wu-capability-missing",
+        objective="Implement unsupported specialist work",
+        work_type="development",
+        target="android",
+        metadata={
+            "technology": "kotlin",
+            "agent_requirements": {
+                "android-developer": {
+                    "capabilities": ["code", "quantum-computing"],
+                }
+            },
+        },
+    )
+
+    try:
+        DeterministicAgentSelector().select(work_unit)
+    except LookupError as exc:
+        assert "android-developer" in str(exc)
+        assert "capability requirements" in str(exc)
+    else:
+        raise AssertionError("expected capability-gated selection to fail")
