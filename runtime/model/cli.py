@@ -17,6 +17,20 @@ class CLIModelAdapter:
     policy: ExecutionPolicy = ExecutionPolicy()
     timeout: float = 300
 
+    def generate_with_tools(
+        self,
+        model: ModelSpec,
+        request: ModelRequest,
+        tools: tuple[object, ...],
+    ) -> ModelResponse:
+        """Run a CLI model that does not implement native tool calling.
+
+        The generic CLI adapter is still a valid execution adapter when the
+        requested work does not require model-directed tool calls. The runtime
+        supplies the same normalized prompt and records an empty tool round.
+        """
+        return self.generate(model, request)
+
     def generate(self, model: ModelSpec, request: ModelRequest) -> ModelResponse:
         if not self.policy.permits("process"):
             raise PermissionError("Model CLI execution is disabled by policy")
