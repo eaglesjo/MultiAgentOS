@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.0] - 2026-10-05
+
+### Agent orchestration and specialist runtime architecture
+
+- Expanded the specialist catalog across architecture, backend/API/data, UX/UI, quality, security, performance, and operations.
+- Preserved governance and specialist responsibilities as separate taxonomy layers.
+- Kept orchestration as the core execution model: planning, delegation, execution, verification, review, and handoff.
+- Preserved provider-neutral Agent × Model execution, recovery, audit identity, replay policy, and idempotency guarantees from the 0.4.x runtime line.
+- Formalized platform-aware research and development specialist routing as the canonical agent taxonomy.
+- Kept MCP and Tool capabilities as existing execution boundaries without expanding them as product architecture.
+- Removed cost-free positioning from the core product architecture; deployment and provider cost remain operational concerns.
+
+### Verification
+
+- Specialist catalog contract coverage added for the expanded development disciplines.
+- Recovery, replay-policy, tool identity, and idempotency regression coverage retained.
+- Release gate requires the full test suite plus package/install validation before publishing the 0.5.0 release.
+
+
 ## [0.4.3] - 2026-10-03
 
 ### Project-scoped local MCP and Secure MCP Tunnel lifecycle
