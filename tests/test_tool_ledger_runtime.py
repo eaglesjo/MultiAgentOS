@@ -281,5 +281,80 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
             self.assertTrue(unresolved[0].requires_recovery_review)
 
 
+
+    def test_execution_decision_identity_is_persisted_in_ledger_and_events(self):
+        class Adapter:
+            def generate_with_tools(self, model, request, tools):
+                if request.metadata.get("tool_history"):
+                    return ModelResponse(text="done", model_id=model.id)
+                return ModelResponse(
+                    text="",
+                    model_id=model.id,
+                    metadata={
+                        "tool_calls": [
+                            {
+                                "id": "read-1",
+                                "name": "filesystem.read",
+                                "arguments": {"path": "README.md"},
+                            }
+                        ]
+                    },
+                )
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            ledger = ToolInvocationStore(root / "tool-ledger")
+            from core.state import RuntimeEventStore
+
+            events = RuntimeEventStore(root / "events")
+            tools = ToolRuntime()
+            tools.register(
+                ToolSpec("filesystem.read", "read a file", ToolSideEffect.READ),
+                lambda request: "content",
+            )
+            runtime = ToolCallingRuntime(
+                models={"model-a": ModelSpec("model-a", "provider-a", frozenset({"code"}))},
+                adapters={"model-a": Adapter()},
+                tools=tools,
+                ledger_store=ledger,
+                event_sink=events.append,
+                agent_id="agent-a",
+            )
+            runtime.execute(
+                ModelRequest(
+                    prompt="inspect",
+                    metadata={
+                        "execution_decision": {
+                            "decision_id": "decision-123",
+                            "agent_id": "agent-a",
+                            "model_id": "model-a",
+                        }
+                    },
+                ),
+                model_id="model-a",
+                work_unit_id="work-1",
+            )
+
+            records = ledger.load("work-1")
+            assert len(records) == 1
+            assert records[0].decision_id == "decision-123"
+            assert records[0].agent_id == "agent-a"
+            assert records[0].model_id == "model-a"
+
+            stored_events = events.load("work-1")
+            tool_call = next(
+                event for event in stored_events
+                if event["kind"] == "tool_call"
+            )
+            tool_result = next(
+                event for event in stored_events
+                if event["kind"] == "tool_result"
+            )
+            assert tool_call["payload"]["decision_id"] == "decision-123"
+            assert tool_call["payload"]["agent_id"] == "agent-a"
+            assert tool_call["payload"]["model_id"] == "model-a"
+            assert tool_result["payload"]["decision_id"] == "decision-123"
+
+
 if __name__ == "__main__":
     unittest.main()

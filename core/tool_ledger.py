@@ -38,6 +38,9 @@ class ToolInvocationStore:
             "result_reference": record.result_reference,
             "error": redact_sensitive(record.error),
             "idempotency_key": record.idempotency_key,
+            "decision_id": record.decision_id,
+            "agent_id": record.agent_id,
+            "model_id": record.model_id,
         }
         with path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
@@ -69,6 +72,9 @@ class ToolInvocationStore:
                 result_reference=raw.get("result_reference"),
                 error=raw.get("error"),
                 idempotency_key=raw.get("idempotency_key"),
+                decision_id=raw.get("decision_id"),
+                agent_id=raw.get("agent_id"),
+                model_id=raw.get("model_id"),
             )
             latest[record.invocation_id] = record
         return tuple(sorted(latest.values(), key=lambda item: item.sequence))

@@ -45,3 +45,17 @@ When an `ExecutionDecision` is supplied:
 
 Therefore a retry that creates a new `ExecutionDecision` cannot silently reuse the
 authorization of the previous attempt.
+
+
+## Durable audit trace
+
+When an Agent × Model execution supplies its `ExecutionDecision` to the tool-calling runtime, the exact
+`decision_id`, Agent ID, and Model ID are copied into each durable `ToolInvocationRecord` and into
+the corresponding `TOOL_CALL` / `TOOL_RESULT` runtime-event payloads.
+
+The observability layer exposes the same identity chain as `tool_decision_timeline`. This makes a
+tool invocation independently traceable back to the authorization decision that permitted that
+execution attempt.
+
+Direct standalone MCP service calls that do not originate from an authorized Agent execution do not
+invent a decision ID; they remain explicitly outside the Agent × Model authorization chain.

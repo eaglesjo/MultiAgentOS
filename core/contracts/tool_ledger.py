@@ -28,6 +28,9 @@ class ToolInvocationRecord:
     result_reference: str | None = None
     error: str | None = None
     idempotency_key: str | None = None
+    decision_id: str | None = None
+    agent_id: str | None = None
+    model_id: str | None = None
 
     @property
     def idempotency_contract(self) -> IdempotencyContract:
