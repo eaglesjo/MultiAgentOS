@@ -49,6 +49,10 @@ class MCPToolProxy:
             raise KeyError(f"MCP session mismatch for {request.server_id}")
 
         authorization_metadata: dict[str, object] | None = None
+        if decision is not None and agent is None:
+            raise MCPAuthorizationError(
+                "execution decision requires an Agent for MCP authorization"
+            )
         if agent is not None:
             tool = next(
                 (item for item in client.list_tools() if item.name == request.tool_name),
