@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -19,7 +20,7 @@ def main() -> None:
     )
 
     def crash_execute(*args, **kwargs):
-        raise SystemExit(97)
+        os._exit(97)
 
     server.durable_bridge.tool_runtime.execute = crash_execute
     server.run(host="127.0.0.1", port=port)
