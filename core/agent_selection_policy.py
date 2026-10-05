@@ -237,9 +237,9 @@ class SelectionFallback:
             candidates=deterministic.candidates,
             evidence=deterministic.evidence,
             confidence=(
-                sum(stage.score for stage in merged_stage_confidences)
-                / len(merged_stage_confidences)
-                if merged_stage_confidences
+                sum(model_confidence_by_stage.values())
+                / len(model_confidence_by_stage)
+                if model_confidence_by_stage
                 else deterministic.confidence
             ),
             stage_confidences=merged_stage_confidences,
