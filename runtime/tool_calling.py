@@ -409,6 +409,14 @@ class ToolCallingRuntime:
                     ))
                 audit_agent_id = record.agent_id or self.agent_id
                 audit_model_id = record.model_id or model_id
+                if record.replay_policy.disposition is ReplayDisposition.NEVER:
+                    raise ToolExecutionError(
+                        f"tool invocation cannot be replayed: {record.tool_id}"
+                    )
+                if record.replay_policy.requires_human_review and not approved:
+                    raise ToolExecutionError(
+                        f"human recovery approval required to replay tool: {record.tool_id}"
+                    )
                 if self.event_sink is not None:
                     self.event_sink(RuntimeEvent(
                         kind=RuntimeEventKind.TOOL_CALL,
