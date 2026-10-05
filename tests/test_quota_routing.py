@@ -6,7 +6,7 @@ from core.routing import AIRouter
 
 
 def agent():
-    return AgentContract(id="coder", name="coder", capabilities=frozenset({"code"}), model_ids=())
+    return AgentContract(id="coder", role="coder", capabilities=frozenset({"code"}), model_ids=())
 
 
 def test_router_skips_exhausted_quota(tmp_path):
