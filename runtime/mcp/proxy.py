@@ -4,7 +4,7 @@ from core.contracts.agent import AgentContract
 from core.contracts.execution_decision import ExecutionDecision
 from core.contracts.mcp import MCPTool, MCPToolCall, MCPToolResult
 from runtime.mcp.client import MCPClient
-from runtime.mcp.policy import MCPToolAuthorizer
+from runtime.mcp.policy import MCPAuthorizationError, MCPToolAuthorizer
 
 
 class MCPToolProxy:
