@@ -112,6 +112,12 @@ class ToolCallingRuntime:
             raise ToolExecutionError(f"model adapter does not support tool calling: {model_id}")
         current, results = request, []
         history: list[dict[str, object]] = list(request.metadata.get("tool_history", ()))
+        execution_audit = request.metadata.get("execution_decision")
+        if not isinstance(execution_audit, dict):
+            execution_audit = {}
+        decision_id = execution_audit.get("decision_id")
+        audit_agent_id = execution_audit.get("agent_id", self.agent_id)
+        audit_model_id = execution_audit.get("model_id", model_id)
         cursor_sequence = initial_cursor_sequence
         conversation_revision = initial_conversation_revision
         for offset in range(self.max_rounds):
@@ -214,9 +220,12 @@ class ToolCallingRuntime:
                         replay_policy=policy,
                         sequence=self.ledger_store.next_sequence(work_unit_id),
                         idempotency_key=invocation_id,
+                        decision_id=decision_id if isinstance(decision_id, str) else None,
+                        agent_id=audit_agent_id if isinstance(audit_agent_id, str) else None,
+                        model_id=audit_model_id if isinstance(audit_model_id, str) else None,
                     ))
                 if self.event_sink is not None:
-                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_CALL, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "invocation_id": invocation_id, "tool_id": call["tool_id"], "arguments": call["arguments"], "round": round_number}))
+                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_CALL, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "invocation_id": invocation_id, "tool_id": call["tool_id"], "arguments": call["arguments"], "round": round_number, "decision_id": decision_id, "agent_id": audit_agent_id, "model_id": audit_model_id}))
                 if self.ledger_store is not None and work_unit_id is not None:
                     self.ledger_store.append(ToolInvocationRecord(
                         invocation_id=invocation_id,
@@ -227,6 +236,9 @@ class ToolCallingRuntime:
                         replay_policy=policy,
                         sequence=self.ledger_store.next_sequence(work_unit_id),
                         idempotency_key=invocation_id,
+                        decision_id=decision_id if isinstance(decision_id, str) else None,
+                        agent_id=audit_agent_id if isinstance(audit_agent_id, str) else None,
+                        model_id=audit_model_id if isinstance(audit_model_id, str) else None,
                     ))
                 result = self.tools.execute(
                     ToolRequest(call["tool_id"], call["arguments"], session_id=session.id if session else None, work_unit_id=work_unit_id, metadata={"call_id": call["call_id"], "invocation_id": invocation_id}),
@@ -246,9 +258,12 @@ class ToolCallingRuntime:
                         result_reference=invocation_id if result.ok else None,
                         error=result.error,
                         idempotency_key=invocation_id,
+                        decision_id=decision_id if isinstance(decision_id, str) else None,
+                        agent_id=audit_agent_id if isinstance(audit_agent_id, str) else None,
+                        model_id=audit_model_id if isinstance(audit_model_id, str) else None,
                     ))
                 if self.event_sink is not None:
-                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_RESULT, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "invocation_id": invocation_id, "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error, "round": round_number}))
+                    self.event_sink(RuntimeEvent(kind=RuntimeEventKind.TOOL_RESULT, session_id=session.id if session else None, work_unit_id=work_unit_id, payload={"call_id": call["call_id"], "invocation_id": invocation_id, "tool_id": result.tool_id, "ok": result.ok, "output": result.output, "error": result.error, "round": round_number, "decision_id": decision_id, "agent_id": audit_agent_id, "model_id": audit_model_id}))
                 if self.cursor_store is not None and work_unit_id is not None:
                     cursor_sequence += 1
                     conversation_revision = self.cursor_store.append_message(
