@@ -79,6 +79,18 @@ class ToolInvocationStore:
             latest[record.invocation_id] = record
         return tuple(sorted(latest.values(), key=lambda item: item.sequence))
 
+    def find_by_idempotency_key(
+        self, work_unit_id: str, idempotency_key: str
+    ) -> tuple[ToolInvocationRecord, ...]:
+        """Return durable invocation records using the same idempotency key."""
+        if not idempotency_key:
+            return ()
+        return tuple(
+            record
+            for record in self.load(work_unit_id)
+            if record.idempotency_key == idempotency_key
+        )
+
     def unresolved(self, work_unit_id: str) -> tuple[ToolInvocationRecord, ...]:
         return tuple(
             record
