@@ -10,8 +10,9 @@ from pathlib import Path
 from mcp import Client, StdioServerParameters
 from mcp.client.session import ClientSession
 from mcp.client.stdio import stdio_client
-from mcp.types import Request
-from pydantic import TypeAdapter
+from mcp.types import Request, RequestParams, Result
+from pydantic import ConfigDict, Field, TypeAdapter
+from typing import Literal
 
 
 def test_official_mcp_sdk_stdio_compatibility() -> None:
@@ -61,6 +62,26 @@ if __name__ == "__main__":
     test_official_mcp_sdk_stdio_compatibility()
 
 
+class RecoveryParams(RequestParams):
+    model_config = ConfigDict(populate_by_name=True)
+    work_unit_id: str = Field(alias="workUnitId")
+
+
+class RecoveryResult(Result):
+    model_config = ConfigDict(populate_by_name=True)
+    work_unit_id: str = Field(alias="workUnitId")
+    disposition: str
+    replayed: bool
+    invocation_id: str | None = Field(default=None, alias="invocationId")
+    idempotency_key: str | None = Field(default=None, alias="idempotencyKey")
+    human_decision: str | None = Field(default=None, alias="humanDecision")
+
+
+class RecoveryRequest(Request[RecoveryParams, Literal["runtime/recover"]]):
+    method: Literal["runtime/recover"] = "runtime/recover"
+    params: RecoveryParams
+
+
 def test_official_mcp_sdk_low_level_custom_recovery() -> None:
     asyncio.run(_exercise_low_level_recovery())
 
@@ -105,18 +126,17 @@ async def _exercise_low_level_recovery() -> None:
                     state_files[0].read_text(encoding="utf-8")
                 )["id"]
 
-                request = Request(
-                    method="runtime/recover",
-                    params={"workUnitId": work_unit_id},
+                request = RecoveryRequest(
+                    params=RecoveryParams(work_unit_id=work_unit_id),
                 )
                 response = await session.send_request(
                     request,
-                    TypeAdapter(dict[str, object]),
+                    RecoveryResult,
                 )
 
-                assert response["workUnitId"] == work_unit_id
-                assert response["disposition"] == "completed"
-                assert response["replayed"] is False
+                assert response.work_unit_id == work_unit_id
+                assert response.disposition == "completed"
+                assert response.replayed is False
 
 
 if __name__ == "__main__":

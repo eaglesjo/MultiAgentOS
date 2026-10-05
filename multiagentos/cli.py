@@ -685,6 +685,8 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(getattr(args, "path", None) or getattr(args, "path_arg", None) or ".").expanduser().resolve()
 
     if args.command == "run":
+        if not args.model and not args.process_command:
+            raise ValueError("Specify at least one of --model or --command")
         work = WorkUnit(
             id=args.work_unit_id or uuid.uuid4().hex,
             objective=args.objective,

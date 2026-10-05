@@ -89,12 +89,12 @@ class AgentExecutionRuntimeMCPServer:
             notes=notes,
         )
         return {
-            "work_unit_id": result["work_unit_id"],
+            "workUnitId": result["work_unit_id"],
             "disposition": result["disposition"],
             "replayed": result["replayed"],
-            "invocation_id": result.get("invocation_id"),
-            "idempotency_key": result.get("idempotency_key"),
-            "human_decision": result.get("human_decision"),
+            "invocationId": result.get("invocation_id"),
+            "idempotencyKey": result.get("idempotency_key"),
+            "humanDecision": result.get("human_decision"),
         }
 
     def handle(self, message: dict[str, object]) -> dict[str, object] | None:

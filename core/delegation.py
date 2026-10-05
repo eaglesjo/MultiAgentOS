@@ -14,6 +14,11 @@ class Delegation:
     agent_id: str
     assignment: Assignment
 
+    @property
+    def model_id(self) -> str:
+        """Compatibility accessor for the resolved model assignment."""
+        return self.assignment.model_id
+
 
 class DelegationEngine:
     def __init__(self, router: AIRouter | None = None) -> None:

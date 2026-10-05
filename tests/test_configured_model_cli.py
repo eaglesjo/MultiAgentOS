@@ -15,7 +15,7 @@ def test_models_run_executes_declared_cli_adapter(tmp_path, capsys):
                 "models": [
                     {
                         "id": "echo-model",
-                        "capabilities": ["execution"],
+                        "capabilities": ["execution", "validation"],
                         "metadata": {
                             "adapter_id": "echo-cli",
                             "adapter_kind": "cli",

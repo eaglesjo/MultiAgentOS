@@ -554,7 +554,7 @@ class AgentExecutionRuntime:
         unresolved_ledger = self.tool_ledger_store(project_root).unresolved(work_unit_id)
         if unresolved_ledger:
             pending_calls = [record.invocation_id for record in unresolved_ledger]
-        if last_kind == "completed":
+        if last_kind == "completed" and work_unit.status is WorkStatus.COMPLETED:
             execution_state = "completed"
         elif pending_calls:
             execution_state = "tool_in_flight"

@@ -8,20 +8,28 @@ from core.contracts.work_unit import WorkUnit
 from core.agent_selection_policy import AgentSelectionPolicy
 from core.routing import AIRouter
 from runtime.airouter_agent_selector import AIRouterBackedAgentSelector
+from runtime.agent_selection import ModelBackedAgentSelector
 from runtime.model.ai_runtime import AIRuntime
 
 
 class _Adapter:
     def generate(self, model, request):
+        import json
+
+        payload = json.loads(request.prompt)
+        stage_index = payload.get("stage_index")
+        candidates = payload.get("candidate_pool", [])
+        if stage_index is None:
+            selected = [item["agent_id"] for item in candidates]
+        else:
+            ranked = payload.get("stage_rankings", {}).get(str(stage_index), [])
+            selected = [ranked[0]["agent_id"]] if ranked else [candidates[0]["agent_id"]]
         return ModelResponse(
-            text=(
-                '{"selected_agents":['
-                '"file-picker","planner","development",'
-                '"development-research-android","android-developer",'
-                '"editor","executor","reviewer"],'
-                '"confidence":0.94,'
-                '"reasons":["Model confirmed the deterministic Android route"]}'
-            ),
+            text=json.dumps({
+                "selected_agents": selected,
+                "confidence": 0.94,
+                "reasons": ["Model confirmed the deterministic Android stage"],
+            }),
             model_id=model.id,
         )
 
