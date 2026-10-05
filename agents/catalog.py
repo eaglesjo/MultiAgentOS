@@ -1,6 +1,7 @@
 """Built-in governance and specialist agent definitions."""
 
 from core.contracts.agent import AgentContract, AgentTaxonomy
+from agents.development_specialists import _DEVELOPMENT_SPECIALISTS as _ADDITIONAL_DEVELOPMENT_SPECIALISTS
 
 
 # These are intentionally specialist roles. Governance roles are defined below
@@ -288,6 +289,7 @@ def _build_definition_map() -> dict[str, tuple[set[str], set[str], AgentTaxonomy
             AgentTaxonomy(layer="governance"),
         )
     definitions.update(_DEVELOPMENT_SPECIALISTS)
+    definitions.update(_ADDITIONAL_DEVELOPMENT_SPECIALISTS)
     definitions.update(_UI_SPECIALISTS)
     definitions.update(_RESEARCH_SPECIALISTS)
     definitions.update(_ROUTING_NODES)

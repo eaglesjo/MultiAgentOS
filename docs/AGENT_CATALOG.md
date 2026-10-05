@@ -169,6 +169,20 @@ flowchart LR
 
 The runtime composes these specialist stages with the existing governance stages instead of creating a second orchestration system.
 
+## Expanded development specialists
+
+The specialist catalog also covers cross-cutting disciplines required to deliver complete software products. These are additive specialist roles, not new orchestration layers.
+
+| Area | Agents |
+| --- | --- |
+| Architecture | `software-architect` |
+| Backend / API / Data | `backend-developer`, `api-developer`, `database-engineer` |
+| UX / UI | `ux-designer`, `ui-designer`, `design-system-specialist`, `accessibility-specialist` |
+| Quality | `qa-engineer`, `security-engineer`, `performance-engineer` |
+| Operations | `devops-engineer` |
+
+These roles are selected by capability and task scope. They do not replace the existing governance roles; orchestration composes governance and specialist stages into one execution route.
+
 ## Existing profile specialists
 
 The existing React Native, Android Native, and iOS Native profile specialists remain available for compatibility. Their taxonomy now maps them into the same platform/domain model.

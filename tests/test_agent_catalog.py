@@ -29,6 +29,31 @@ class AgentCatalogTests(unittest.TestCase):
         self.assertEqual(agents["tester"].taxonomy.specialization, "general")
 
 
+    def test_development_specialists_cover_core_delivery_disciplines(self):
+        agents = {agent.id: agent for agent in build_agent_catalog()}
+
+        expected_domains = {
+            "software-architect": ("development", "architecture"),
+            "backend-developer": ("development", "backend"),
+            "api-developer": ("development", "api"),
+            "database-engineer": ("development", "database"),
+            "ux-designer": ("ui", "ux"),
+            "ui-designer": ("ui", "design"),
+            "design-system-specialist": ("ui", "design-system"),
+            "accessibility-specialist": ("ui", "accessibility"),
+            "qa-engineer": ("testing", "qa"),
+            "security-engineer": ("quality", "security"),
+            "performance-engineer": ("quality", "performance"),
+            "devops-engineer": ("operations", "devops"),
+        }
+
+        for agent_id, (domain, specialization) in expected_domains.items():
+            self.assertIn(agent_id, agents)
+            agent = agents[agent_id]
+            self.assertEqual(agent.kind, "specialist")
+            self.assertEqual(agent.taxonomy.domain, domain)
+            self.assertEqual(agent.taxonomy.specialization, specialization)
+
     def test_agent_contract_rejects_kind_taxonomy_mismatch(self):
         from core.contracts.agent import AgentContract, AgentTaxonomy
 
