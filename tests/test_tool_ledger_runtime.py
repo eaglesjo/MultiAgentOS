@@ -11,7 +11,7 @@ from core.contracts.recovery import RecoveryDisposition
 from core.tool_ledger import ToolInvocationStore
 from core.execution_state import ExecutionStateStore
 from core.contracts.execution_cursor import ExecutionCursor
-from runtime.tool_calling import ToolCallingRuntime, ToolRuntime
+from runtime.tool_calling import ToolCallingRuntime, ToolExecutionError, ToolRuntime
 
 
 class DurableToolLedgerRuntimeTests(unittest.TestCase):
@@ -354,6 +354,93 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
             assert tool_call["payload"]["agent_id"] == "agent-a"
             assert tool_call["payload"]["model_id"] == "model-a"
             assert tool_result["payload"]["decision_id"] == "decision-123"
+
+    def test_store_finds_invocations_by_idempotency_key(self):
+        with tempfile.TemporaryDirectory() as temp:
+            store = ToolInvocationStore(Path(temp) / "tool-ledger")
+            from core.contracts.replay import ReplayDisposition, ReplayPolicy
+            from core.contracts.tool_ledger import ToolInvocationRecord
+            policy = ReplayPolicy(ReplayDisposition.SAFE, reason="read-only")
+            store.append(ToolInvocationRecord(
+                "inv-1", "work-1", "filesystem.read", {},
+                ToolInvocationState.COMPLETED, policy, 1, idempotency_key="idem-1",
+            ))
+            self.assertEqual(
+                tuple(item.invocation_id for item in store.find_by_idempotency_key("work-1", "idem-1")),
+                ("inv-1",),
+            )
+            self.assertEqual(store.find_by_idempotency_key("work-1", "missing"), ())
+
+    def test_tool_calling_rejects_reuse_of_completed_idempotency_key(self):
+        class Adapter:
+            def __init__(self):
+                self.calls = 0
+
+            def generate_with_tools(self, model, request, tools):
+                self.calls += 1
+                if self.calls == 1:
+                    return ModelResponse(
+                        text="", model_id=model.id,
+                        metadata={"tool_calls": [{
+                            "id": "write-1", "name": "external.write",
+                            "arguments": {"value": 1}, "idempotency_key": "idem-1",
+                        }]},
+                    )
+                return ModelResponse(text="done", model_id=model.id)
+        with tempfile.TemporaryDirectory() as temp:
+            store = ToolInvocationStore(Path(temp) / "tool-ledger")
+            executions = []
+            tools = ToolRuntime()
+            tools.register(
+                ToolSpec("external.write", "write a value", ToolSideEffect.WRITE),
+                lambda request: executions.append(request) or "mutated",
+            )
+            runtime = ToolCallingRuntime(
+                models={"model-a": ModelSpec("model-a", "provider-a", frozenset({"code"}))},
+                adapters={"model-a": Adapter()}, tools=tools, ledger_store=store,
+            )
+            runtime.execute(ModelRequest(prompt="write", metadata={}), model_id="model-a", work_unit_id="work-1")
+            # Use a fresh adapter for the second top-level execution so the
+            # duplicate key reaches the runtime's idempotency guard.
+            runtime.adapters["model-a"] = Adapter()
+            with self.assertRaisesRegex(ToolExecutionError, "idempotency key already used"):
+                runtime.execute(ModelRequest(prompt="retry", metadata={}), model_id="model-a", work_unit_id="work-1")
+            self.assertEqual(len(executions), 1)
+            self.assertEqual(store.load("work-1")[0].state, ToolInvocationState.COMPLETED)
+
+    def test_tool_calling_rejects_reuse_of_unresolved_idempotency_key_before_handler(self):
+        class Adapter:
+            def generate_with_tools(self, model, request, tools):
+                return ModelResponse(
+                    text="", model_id=model.id,
+                    metadata={"tool_calls": [{
+                        "id": "write-1", "name": "external.write",
+                        "arguments": {"value": 1}, "idempotency_key": "idem-1",
+                    }]},
+                )
+        with tempfile.TemporaryDirectory() as temp:
+            from core.contracts.replay import ReplayDisposition, ReplayPolicy
+            from core.contracts.tool_ledger import ToolInvocationRecord
+            store = ToolInvocationStore(Path(temp) / "tool-ledger")
+            store.append(ToolInvocationRecord(
+                "inv-existing", "work-1", "external.write", {"value": 1},
+                ToolInvocationState.STARTED,
+                ReplayPolicy(ReplayDisposition.REVIEW_REQUIRED, reason="unknown side effect"),
+                1, call_id="write-0", idempotency_key="idem-1",
+            ))
+            executions = []
+            tools = ToolRuntime()
+            tools.register(
+                ToolSpec("external.write", "write a value", ToolSideEffect.WRITE),
+                lambda request: executions.append(request) or "mutated",
+            )
+            runtime = ToolCallingRuntime(
+                models={"model-a": ModelSpec("model-a", "provider-a", frozenset({"code"}))},
+                adapters={"model-a": Adapter()}, tools=tools, ledger_store=store,
+            )
+            with self.assertRaisesRegex(ToolExecutionError, "idempotency key already used"):
+                runtime.execute(ModelRequest(prompt="retry", metadata={}), model_id="model-a", work_unit_id="work-1")
+            self.assertEqual(executions, [])
 
 
 if __name__ == "__main__":
