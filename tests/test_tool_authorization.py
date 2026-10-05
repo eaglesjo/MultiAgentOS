@@ -1,13 +1,4 @@
-from core.contracts.agent import AgentContract
-from core.contracts.agent_selection import AgentPlan
-from core.contracts.ai import ModelSpec
-from core.contracts.execution_decision import ExecutionDecision
-from core.contracts.mcp import MCPTool, MCPToolProfile, ToolSideEffect
-from core.contracts.work_unit import WorkUnit
-from core.agent_model_resolver import AgentModelResolver
-
-
-def _decision() -> tuple[ExecutionDecision, AgentContract]:
+from core.contracts.agent import AgentContract\nfrom core.contracts.agent_selection import AgentCandidate, AgentPlan, StageConfidence\nfrom core.contracts.ai import ModelSpec\nfrom core.contracts.execution_decision import ExecutionDecision\nfrom core.contracts.mcp import MCPTool, MCPToolProfile, ToolSideEffect\nfrom core.contracts.work_unit import WorkUnit\n\n\ndef _decision() -> tuple[ExecutionDecision, AgentContract]:
     agent = AgentContract(
         id="developer",
         role="Developer",
@@ -15,9 +6,29 @@ def _decision() -> tuple[ExecutionDecision, AgentContract]:
         permissions=frozenset({"repo.read"}),
     )
     work_unit = WorkUnit(id="wu-tool-auth", objective="inspect repository")
-    from core.agent_selector import AgentSelector
-    plan = AgentSelector({agent.id: agent}).select(work_unit)
-    resolution = AgentModelResolver().resolve(
+    candidate = AgentCandidate(
+        agent_id=agent.id,
+        score=1.0,
+        stage_indices=(0,),
+    )
+    confidence = StageConfidence(
+        stage_index=0,
+        selected_agent_id=agent.id,
+        selected_score=1.0,
+        best_score=1.0,
+        margin=1.0,
+        evidence_coverage=0.0,
+    )
+    plan = AgentPlan(
+        work_unit_id=work_unit.id,
+        selected_agents=(agent.id,),
+        route=(agent.id,),
+        candidates=(candidate,),
+        confidence=1.0,
+        stage_confidences=(confidence,),
+    )
+    from core.routing import AIRouter
+    resolution = AIRouter().explain(
         agent,
         [ModelSpec("model-a", "test", frozenset())],
     )
@@ -25,11 +36,12 @@ def _decision() -> tuple[ExecutionDecision, AgentContract]:
         work_unit=work_unit,
         plan=plan,
         stage_index=0,
-        routing=resolution.explanation,
+        routing=resolution,
         attempt=1,
         governance_passed=True,
     )
     return decision, agent
+
 
 
 def test_tool_authorization_binds_exact_execution_decision():
