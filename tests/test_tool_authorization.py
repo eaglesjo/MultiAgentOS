@@ -1,4 +1,12 @@
-from core.contracts.agent import AgentContract\nfrom core.contracts.agent_selection import AgentCandidate, AgentPlan, StageConfidence\nfrom core.contracts.ai import ModelSpec\nfrom core.contracts.execution_decision import ExecutionDecision\nfrom core.contracts.mcp import MCPTool, MCPToolProfile, ToolSideEffect\nfrom core.contracts.work_unit import WorkUnit\n\n\ndef _decision() -> tuple[ExecutionDecision, AgentContract]:
+from core.contracts.agent import AgentContract
+from core.contracts.agent_selection import AgentCandidate, AgentPlan, StageConfidence
+from core.contracts.ai import ModelSpec
+from core.contracts.execution_decision import ExecutionDecision
+from core.contracts.mcp import MCPTool, MCPToolProfile, ToolSideEffect
+from core.contracts.work_unit import WorkUnit
+
+
+def _decision() -> tuple[ExecutionDecision, AgentContract]:
     agent = AgentContract(
         id="developer",
         role="Developer",
