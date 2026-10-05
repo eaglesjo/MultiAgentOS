@@ -6,8 +6,6 @@ Build, inspect, patch, test, and operate real software projects through an AI-na
 
 MultiAgentOS connects an AI client to a real project workspace while keeping **filesystem, patch, process, Git, and verification authority inside the Agent Execution Runtime**.
 
-> **Cost-Free Baseline:** The target user-facing AI path is **ChatGPT Free text chat + MultiAgentOS + Local MCP**. MultiAgentOS does not require a separate paid OpenAI API key for the local runtime.
-
 ---
 
 ## Why MultiAgentOS?
