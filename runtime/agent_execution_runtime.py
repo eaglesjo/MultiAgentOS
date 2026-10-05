@@ -362,6 +362,21 @@ class AgentExecutionRuntime:
             event_store=self.event_store(root),
             tool_ledger_store=self.tool_ledger_store(root),
         )
+        capability_registry = CapabilityRegistry(
+            CapabilityStore(root / ".multiagentos" / "capabilities")
+        )
+        quota_store = QuotaStore(root / ".multiagentos" / "quota")
+        quota_snapshots = {
+            model.id: quota_store.load(model.id)
+            for model in models
+            if quota_store.exists(model.id)
+        }
+        health_store = ModelHealthStore(root / ".multiagentos" / "health")
+        health_snapshots = {
+            model.id: health_store.load(model.id)
+            for model in models
+            if health_store.exists(model.id)
+        }
         stage_executor = RuntimeStageExecutor(
             agents={agent.id: agent for agent in registry.list()},
             models=models,
@@ -369,6 +384,9 @@ class AgentExecutionRuntime:
             preferred_model_ids_by_agent=preferred_model_ids_by_agent,
             preferred_model_ids=preferred_model_ids,
             routing_strategy=routing_strategy,
+            capability_registry=capability_registry,
+            quota_snapshots=quota_snapshots,
+            health_snapshots=health_snapshots,
             evidence_collector=collector,
             confidence_resolver=confidence_resolver,
         )
