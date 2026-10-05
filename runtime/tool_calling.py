@@ -209,7 +209,15 @@ class ToolCallingRuntime:
                         next_tool_call_id=call["call_id"],
                     ))
                 policy = self._replay_policy(call["tool_id"])
+                idempotency_key = str(call.get("idempotency_key") or invocation_id)
                 if self.ledger_store is not None and work_unit_id is not None:
+                    existing = self.ledger_store.find_by_idempotency_key(work_unit_id, idempotency_key)
+                    if existing:
+                        latest = existing[-1]
+                        raise ToolExecutionError(
+                            f"idempotency key already used for tool invocation: {idempotency_key} "
+                            f"(state={latest.state.value}, tool={latest.tool_id})"
+                        )
                     self.ledger_store.append(ToolInvocationRecord(
                         invocation_id=invocation_id,
                         work_unit_id=work_unit_id,
@@ -219,7 +227,7 @@ class ToolCallingRuntime:
                         state=ToolInvocationState.REQUESTED,
                         replay_policy=policy,
                         sequence=self.ledger_store.next_sequence(work_unit_id),
-                        idempotency_key=invocation_id,
+                        idempotency_key=idempotency_key,
                         decision_id=decision_id if isinstance(decision_id, str) else None,
                         agent_id=audit_agent_id if isinstance(audit_agent_id, str) else None,
                         model_id=audit_model_id if isinstance(audit_model_id, str) else None,
@@ -235,13 +243,13 @@ class ToolCallingRuntime:
                         state=ToolInvocationState.STARTED,
                         replay_policy=policy,
                         sequence=self.ledger_store.next_sequence(work_unit_id),
-                        idempotency_key=invocation_id,
+                        idempotency_key=idempotency_key,
                         decision_id=decision_id if isinstance(decision_id, str) else None,
                         agent_id=audit_agent_id if isinstance(audit_agent_id, str) else None,
                         model_id=audit_model_id if isinstance(audit_model_id, str) else None,
                     ))
                 result = self.tools.execute(
-                    ToolRequest(call["tool_id"], call["arguments"], session_id=session.id if session else None, work_unit_id=work_unit_id, metadata={"call_id": call["call_id"], "invocation_id": invocation_id}),
+                    ToolRequest(call["tool_id"], call["arguments"], session_id=session.id if session else None, work_unit_id=work_unit_id, metadata={"call_id": call["call_id"], "invocation_id": invocation_id, "idempotency_key": idempotency_key}),
                     granted_permissions=granted_permissions, approved=approved,
                 )
                 results.append(result)
@@ -257,7 +265,7 @@ class ToolCallingRuntime:
                         sequence=self.ledger_store.next_sequence(work_unit_id),
                         result_reference=invocation_id if result.ok else None,
                         error=result.error,
-                        idempotency_key=invocation_id,
+                        idempotency_key=idempotency_key,
                         decision_id=decision_id if isinstance(decision_id, str) else None,
                         agent_id=audit_agent_id if isinstance(audit_agent_id, str) else None,
                         model_id=audit_model_id if isinstance(audit_model_id, str) else None,
@@ -597,5 +605,10 @@ class ToolCallingRuntime:
             args = item.get("arguments", {})
             if not isinstance(args, dict):
                 raise ToolExecutionError(f"tool call arguments must be an object: {tool_id}")
-            out.append({"call_id": str(item.get("call_id", item.get("id", f"call-{i+1}"))), "tool_id": tool_id, "arguments": dict(args)})
+            out.append({
+                "call_id": str(item.get("call_id", item.get("id", f"call-{i+1}"))),
+                "tool_id": tool_id,
+                "arguments": dict(args),
+                "idempotency_key": item.get("idempotency_key"),
+            })
         return tuple(out)
