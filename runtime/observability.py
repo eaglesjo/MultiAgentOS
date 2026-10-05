@@ -29,6 +29,7 @@ class ExecutionEvidenceSummary:
     timeline: tuple[dict[str, Any], ...]
     decision_count: int
     decision_timeline: tuple[dict[str, Any], ...]
+    tool_decision_timeline: tuple[dict[str, Any], ...]
 
 
 class ExecutionObservability:
@@ -95,6 +96,18 @@ class ExecutionObservability:
             else:
                 execution_state = "executing"
 
+        tool_decision_timeline = tuple(
+            {
+                "invocation_id": item.invocation_id,
+                "tool_id": item.tool_id,
+                "decision_id": item.decision_id,
+                "agent_id": item.agent_id,
+                "model_id": item.model_id,
+                "state": item.state.value,
+            }
+            for item in tools[-timeline_limit:]
+        )
+
         decision_timeline = tuple(
             {
                 "category": item.get("category"),
@@ -119,6 +132,7 @@ class ExecutionObservability:
             timeline=timeline,
             decision_count=len(decisions),
             decision_timeline=decision_timeline,
+            tool_decision_timeline=tool_decision_timeline,
         )
 
     def as_dict(self, work_unit_id: str, *, timeline_limit: int = 20) -> dict[str, Any]:
@@ -137,4 +151,5 @@ class ExecutionObservability:
             "timeline": summary.timeline,
             "decision_count": summary.decision_count,
             "decision_timeline": summary.decision_timeline,
+            "tool_decision_timeline": summary.tool_decision_timeline,
         }
