@@ -118,3 +118,64 @@ def test_runtime_stage_executor_respects_model_health():
     )
 
     assert executor.calls == [(agent.id, "healthy")]
+
+
+def test_runtime_stage_executor_records_model_success(tmp_path):
+    from runtime.health import ModelHealthRegistry, ModelHealthStore
+
+    agent = AgentContract(
+        id="developer",
+        role="Developer",
+        kind="specialist",
+        taxonomy=AgentTaxonomy(domain="development"),
+    )
+    executor = _Executor()
+    health_store = ModelHealthStore(tmp_path / "health")
+    stage_executor = RuntimeStageExecutor(
+        agents={agent.id: agent},
+        models=[ModelSpec("model-a", "test", frozenset())],
+        executors={agent.id: executor},
+        health_registry=ModelHealthRegistry(health_store),
+    )
+
+    stage_executor.execute(
+        work_unit=WorkUnit(id="wu-feedback-success", objective="implement"),
+        plan=_plan(agent.id),
+        stage_indices=(0,),
+    )
+
+    health = health_store.load("model-a")
+    assert health.successes == 1
+    assert health.consecutive_failures == 0
+
+
+def test_runtime_stage_executor_records_model_failure(tmp_path):
+    from runtime.health import ModelHealthRegistry, ModelHealthStore
+
+    class _FailingExecutor(_Executor):
+        def execute(self, *, agent, model_id, work_unit):
+            raise RuntimeError("rate_limit exceeded")
+
+    agent = AgentContract(
+        id="developer",
+        role="Developer",
+        kind="specialist",
+        taxonomy=AgentTaxonomy(domain="development"),
+    )
+    health_store = ModelHealthStore(tmp_path / "health")
+    stage_executor = RuntimeStageExecutor(
+        agents={agent.id: agent},
+        models=[ModelSpec("model-a", "test", frozenset())],
+        executors={agent.id: _FailingExecutor()},
+        health_registry=ModelHealthRegistry(health_store),
+    )
+
+    outcomes = stage_executor.execute(
+        work_unit=WorkUnit(id="wu-feedback-failure", objective="implement"),
+        plan=_plan(agent.id),
+        stage_indices=(0,),
+    )
+
+    assert outcomes[0].success is False
+    health = health_store.load("model-a")
+    assert health.consecutive_failures == 1
