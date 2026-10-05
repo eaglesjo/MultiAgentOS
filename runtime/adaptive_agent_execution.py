@@ -17,6 +17,7 @@ from core.contracts.ai import ModelSpec
 from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.execution import AgentExecutor
 from core.contracts.work_unit import WorkUnit
+from core.agent_model_resolver import AgentModelResolver, AgentModelResolution
 from core.delegation import DelegationEngine
 from core.state import RuntimeEventStore
 from core.tool_ledger import ToolInvocationStore
@@ -144,6 +145,10 @@ class RuntimeStageExecutor(StageExecutor):
     models: list[ModelSpec]
     executors: dict[str, AgentExecutor]
     delegation: DelegationEngine = field(default_factory=DelegationEngine)
+    model_resolver: AgentModelResolver = field(default_factory=AgentModelResolver)
+    capability_registry: object | None = None
+    quota_snapshots: dict[str, object] | None = None
+    health_snapshots: dict[str, object] | None = None
     preferred_model_ids_by_agent: dict[str, list[str]] | None = None
     preferred_model_ids: list[str] | None = None
     routing_strategy: RoutingStrategy | str = RoutingStrategy.POOL
@@ -176,18 +181,21 @@ class RuntimeStageExecutor(StageExecutor):
             before_events = self._last_event_sequence(work_unit)
             before_tools = self._last_tool_sequence(work_unit)
             try:
-                delegation = self.delegation.delegate(
-                    work_unit,
+                resolution = self.model_resolver.resolve(
                     agent,
                     self.models,
-                    (self.preferred_model_ids_by_agent or {}).get(
+                    capability_registry=self.capability_registry,
+                    preferred_model_ids=(self.preferred_model_ids_by_agent or {}).get(
                         agent_id, self.preferred_model_ids
                     ),
-                    self.routing_strategy,
+                    strategy=self.routing_strategy,
+                    quota_snapshots=self.quota_snapshots,
+                    health_snapshots=self.health_snapshots,
                 )
+                self._record_resolution(work_unit, stage_index, resolution)
                 output = executor.execute(
                     agent=agent,
-                    model_id=delegation.assignment.model_id,
+                    model_id=resolution.model_id,
                     work_unit=work_unit,
                 )
                 evidence = (
@@ -210,7 +218,7 @@ class RuntimeStageExecutor(StageExecutor):
                         success=True,
                         confidence=confidence,
                         evidence=evidence,
-                        reason=f"execution completed using model {delegation.assignment.model_id}",
+                        reason=f"execution completed using model {resolution.model_id}",
                     )
                 )
             except Exception as exc:
@@ -240,6 +248,40 @@ class RuntimeStageExecutor(StageExecutor):
                     if work_unit.status is WorkStatus.EXECUTING:
                         work_unit.transition(WorkStatus.FAILED)
         return tuple(outcomes)
+
+    @staticmethod
+    def _record_resolution(
+        work_unit: WorkUnit,
+        stage_index: int,
+        resolution: AgentModelResolution,
+    ) -> None:
+        history = work_unit.metadata.setdefault("agent_model_resolutions", [])
+        if not isinstance(history, list):
+            history = []
+            work_unit.metadata["agent_model_resolutions"] = history
+        history.append(
+            {
+                "stage_index": stage_index,
+                "agent_id": resolution.agent_id,
+                "model_id": resolution.model_id,
+                "strategy": resolution.explanation.strategy.value,
+                "candidates": [
+                    {
+                        "model_id": candidate.model_id,
+                        "provider_id": candidate.provider_id,
+                        "selected": candidate.selected,
+                        "compatible": candidate.compatible,
+                        "health_available": candidate.health_available,
+                        "quota_available": candidate.quota_available,
+                        "capability_score": candidate.capability_score,
+                        "quota_score": candidate.quota_score,
+                        "missing_capabilities": sorted(candidate.missing_capabilities),
+                        "rejection_reasons": list(candidate.rejection_reasons),
+                    }
+                    for candidate in resolution.explanation.candidates
+                ],
+            }
+        )
 
     def _confidence(
         self,
