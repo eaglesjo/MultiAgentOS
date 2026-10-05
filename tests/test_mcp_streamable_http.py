@@ -193,6 +193,9 @@ async def _exercise_http_write_policy() -> None:
 class RecoveryParams(types.RequestParams):
     model_config = ConfigDict(populate_by_name=True)
     work_unit_id: str = Field(alias="workUnitId")
+    session_id: str | None = Field(default=None, alias="sessionId")
+    human_decision: str | None = Field(default=None, alias="humanDecision")
+    notes: str = ""
 
 
 class RecoveryResult(types.Result):
