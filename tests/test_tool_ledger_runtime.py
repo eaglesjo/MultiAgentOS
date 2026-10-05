@@ -400,6 +400,9 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
                 adapters={"model-a": Adapter()}, tools=tools, ledger_store=store,
             )
             runtime.execute(ModelRequest(prompt="write", metadata={}), model_id="model-a", work_unit_id="work-1")
+            # Use a fresh adapter for the second top-level execution so the
+            # duplicate key reaches the runtime's idempotency guard.
+            runtime.adapters["model-a"] = Adapter()
             with self.assertRaisesRegex(ToolExecutionError, "idempotency key already used"):
                 runtime.execute(ModelRequest(prompt="retry", metadata={}), model_id="model-a", work_unit_id="work-1")
             self.assertEqual(len(executions), 1)
