@@ -59,6 +59,7 @@ def test_runtime_stage_executor_records_model_routing_explanation():
         id="developer",
         role="Developer",
         kind="specialist",
+        capabilities=frozenset({"tools"}),
         taxonomy=AgentTaxonomy(domain="development"),
     )
     executor = _Executor()
