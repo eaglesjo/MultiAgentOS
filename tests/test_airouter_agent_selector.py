@@ -35,7 +35,7 @@ def test_airouter_selects_model_before_llm_agent_selection():
         models={"selector-model": model},
         adapters={"selector-model": _SelectorAdapter()},
     )
-    selector = AIRouterLLMSelector(
+    selector = AIRouterBackedAgentSelector(
         router=AIRouter(),
         runtime=runtime,
         selector_agent=selector_agent,
