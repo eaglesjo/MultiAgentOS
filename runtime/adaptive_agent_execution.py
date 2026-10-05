@@ -16,6 +16,7 @@ from core.contracts.agent_selection import AgentPlan
 from core.contracts.ai import ModelSpec
 from core.contracts.evidence import EvidenceKind, EvidenceRecord
 from core.contracts.execution import AgentExecutor
+from core.contracts.execution_decision import ExecutionDecision
 from core.contracts.work_unit import WorkUnit
 from core.agent_model_resolver import AgentModelResolver, AgentModelResolution
 from core.delegation import DelegationEngine
@@ -198,10 +199,25 @@ class RuntimeStageExecutor(StageExecutor):
                     health_snapshots=self.health_snapshots,
                 )
                 self._record_resolution(work_unit, stage_index, resolution)
-                resolved_model_id = resolution.model_id
+                decision = self._execution_decision(
+                    work_unit=work_unit,
+                    plan=plan,
+                    stage_index=stage_index,
+                    resolution=resolution,
+                )
+                self._record_execution_decision(work_unit, decision)
+                if not decision.authorized:
+                    raise PermissionError(
+                        "execution denied by governance policy: "
+                        + "; ".join(
+                            decision.governance_findings
+                            or ("execution decision is not authorized",)
+                        )
+                    )
+                resolved_model_id = decision.model_id
                 output = executor.execute(
                     agent=agent,
-                    model_id=resolution.model_id,
+                    model_id=decision.model_id,
                     work_unit=work_unit,
                 )
                 self._record_model_success(resolution.model_id, output)
@@ -257,6 +273,51 @@ class RuntimeStageExecutor(StageExecutor):
                     if work_unit.status is WorkStatus.EXECUTING:
                         work_unit.transition(WorkStatus.FAILED)
         return tuple(outcomes)
+
+    @staticmethod
+    def _execution_decision(
+        *,
+        work_unit: WorkUnit,
+        plan: AgentPlan,
+        stage_index: int,
+        resolution: AgentModelResolution,
+    ) -> ExecutionDecision:
+        plan.validate()
+        if stage_index >= len(plan.route):
+            raise ValueError(f"stage index out of range: {stage_index}")
+        selected_agent = plan.route[stage_index]
+        candidate_ids = {
+            candidate.agent_id
+            for candidate in plan.candidates
+            if stage_index in candidate.stage_indices
+        }
+        findings: list[str] = []
+        if selected_agent not in candidate_ids:
+            findings.append("selected Agent is outside the governed candidate pool")
+        stage = next(
+            (item for item in plan.stage_confidences if item.stage_index == stage_index),
+            None,
+        )
+        if stage is not None and stage.selected_agent_id != selected_agent:
+            findings.append("stage confidence does not match selected Agent")
+        governance_passed = not findings
+        return ExecutionDecision.authorize(
+            work_unit=work_unit,
+            plan=plan,
+            stage_index=stage_index,
+            routing=resolution.explanation,
+            attempt=int(work_unit.metadata.get("execution_attempt", 1)),
+            governance_passed=governance_passed,
+            governance_findings=tuple(findings),
+        )
+
+    @staticmethod
+    def _record_execution_decision(work_unit: WorkUnit, decision: ExecutionDecision) -> None:
+        history = work_unit.metadata.setdefault("execution_decisions", [])
+        if not isinstance(history, list):
+            history = []
+            work_unit.metadata["execution_decisions"] = history
+        history.append(decision.to_metadata())
 
     def _record_model_success(self, model_id: str, output: object) -> None:
         model = next((item for item in self.models if item.id == model_id), None)
