@@ -403,6 +403,27 @@ class ToolCallingRuntime:
                         sequence=self.ledger_store.next_sequence(work_unit_id),
                         call_id=record.call_id,
                         idempotency_key=record.idempotency_key,
+                        decision_id=record.decision_id,
+                        agent_id=record.agent_id,
+                        model_id=record.model_id,
+                    ))
+                audit_agent_id = record.agent_id or self.agent_id
+                audit_model_id = record.model_id or model_id
+                if self.event_sink is not None:
+                    self.event_sink(RuntimeEvent(
+                        kind=RuntimeEventKind.TOOL_CALL,
+                        session_id=session.id if session else None,
+                        work_unit_id=work_unit_id,
+                        payload={
+                            "call_id": record.call_id,
+                            "invocation_id": record.invocation_id,
+                            "tool_id": record.tool_id,
+                            "idempotency_key": record.idempotency_key,
+                            "decision_id": record.decision_id,
+                            "agent_id": audit_agent_id,
+                            "model_id": audit_model_id,
+                            "resumed": True,
+                        },
                     ))
                 result = self.tools.execute(
                     ToolRequest(
@@ -413,6 +434,10 @@ class ToolCallingRuntime:
                         metadata={
                             "call_id": call["call_id"],
                             "invocation_id": record.invocation_id,
+                            "idempotency_key": record.idempotency_key,
+                            "decision_id": record.decision_id,
+                            "agent_id": audit_agent_id,
+                            "model_id": audit_model_id,
                             "resume": True,
                         },
                     ),
@@ -432,6 +457,9 @@ class ToolCallingRuntime:
                     result_reference=record.invocation_id if result.ok else None,
                     error=result.error,
                     idempotency_key=record.idempotency_key,
+                    decision_id=record.decision_id,
+                    agent_id=record.agent_id,
+                    model_id=record.model_id,
                 ))
                 payload = {
                     "call_id": call["call_id"],
@@ -440,7 +468,19 @@ class ToolCallingRuntime:
                     "output": result.output,
                     "error": result.error,
                     "invocation_id": record.invocation_id,
+                    "idempotency_key": record.idempotency_key,
+                    "decision_id": record.decision_id,
+                    "agent_id": audit_agent_id,
+                    "model_id": audit_model_id,
+                    "resumed": True,
                 }
+                if self.event_sink is not None:
+                    self.event_sink(RuntimeEvent(
+                        kind=RuntimeEventKind.TOOL_RESULT,
+                        session_id=session.id if session else None,
+                        work_unit_id=work_unit_id,
+                        payload=payload,
+                    ))
                 round_results.append(payload)
                 conversation_revision = self.cursor_store.append_message(
                     work_unit_id,
