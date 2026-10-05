@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from core.contracts.checkpoint import WorkflowCheckpoint
+from core.contracts.scope import ScopeLock
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.agent_execution_runtime import RuntimeEvent, SessionSpec, SessionState
 from core.security import redact_sensitive
@@ -19,18 +20,31 @@ class WorkStateStore:
         self.checkpoint_root.mkdir(parents=True, exist_ok=True)
 
     def save(self, work_unit: WorkUnit) -> Path:
+        work_unit.scope_lock.validate()
         path = self.root / f"{work_unit.id}.json"
-        payload = {
-            "id": work_unit.id,
-            "objective": work_unit.objective,
-            "status": work_unit.status.value,
-            "inputs": work_unit.inputs,
-            "artifacts": work_unit.artifacts,
-            "assigned_agents": work_unit.assigned_agents,
-            "metadata": work_unit.metadata,
-        }
+        payload = redact_sensitive(
+            {
+                "id": work_unit.id,
+                "objective": work_unit.objective,
+                "status": work_unit.status.value,
+                "inputs": work_unit.inputs,
+                "artifacts": work_unit.artifacts,
+                "assigned_agents": work_unit.assigned_agents,
+                "metadata": work_unit.metadata,
+                "work_type": work_unit.work_type,
+                "target": work_unit.target,
+                "environment": work_unit.environment,
+                "artifact_class": work_unit.artifact_class,
+                "release_impact": work_unit.release_impact,
+                "scope_lock": {
+                    "allowed_files": list(work_unit.scope_lock.allowed_files),
+                    "excluded_files": list(work_unit.scope_lock.excluded_files),
+                },
+                "hold_reason": work_unit.hold_reason,
+            }
+        )
         path.write_text(
-            json.dumps(payload, indent=2, default=str) + "\n",
+            json.dumps(payload, indent=2, ensure_ascii=False, default=str) + "\n",
             encoding="utf-8",
         )
         return path
@@ -44,6 +58,12 @@ class WorkStateStore:
     def load(self, work_unit_id: str) -> WorkUnit:
         path = self.root / f"{work_unit_id}.json"
         data = json.loads(path.read_text(encoding="utf-8"))
+        raw_scope = data.get("scope_lock", {})
+        scope_lock = ScopeLock(
+            allowed_files=tuple(str(value) for value in raw_scope.get("allowed_files", ())),
+            excluded_files=tuple(str(value) for value in raw_scope.get("excluded_files", ())),
+        )
+        scope_lock.validate()
         return WorkUnit(
             id=data["id"],
             objective=data["objective"],
@@ -52,6 +72,13 @@ class WorkStateStore:
             artifacts=list(data.get("artifacts", [])),
             assigned_agents=list(data.get("assigned_agents", [])),
             metadata=dict(data.get("metadata", {})),
+            work_type=str(data.get("work_type", "development")),
+            target=str(data.get("target", "")),
+            environment=str(data.get("environment", "")),
+            artifact_class=str(data.get("artifact_class", "")),
+            release_impact=str(data.get("release_impact", "none")),
+            scope_lock=scope_lock,
+            hold_reason=str(data.get("hold_reason", "")),
         )
 
     def save_checkpoint(self, checkpoint: WorkflowCheckpoint) -> Path:
