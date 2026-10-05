@@ -103,6 +103,31 @@ class AgentSelectionPolicy:
                 )
         return selected_agents
 
+    def validate_reselection(
+        self,
+        work_unit: WorkUnit,
+        baseline_agents: tuple[str, ...],
+        selected_agents: tuple[str, ...],
+        registry,
+    ) -> tuple[str, ...]:
+        """Validate a stage-scoped reselection without rebuilding the governed route."""
+        if len(selected_agents) != len(baseline_agents):
+            raise ValueError("reselection must preserve the governed route length")
+        for index, (before_id, after_id) in enumerate(
+            zip(baseline_agents, selected_agents, strict=True)
+        ):
+            before = registry.get(before_id)
+            after = registry.get(after_id)
+            before.validate()
+            after.validate()
+            if before_id == after_id:
+                continue
+            if before.kind != "specialist" or after.kind != "specialist":
+                raise ValueError(
+                    f"reselection does not permit replacing non-specialist stage {index}: {before_id}"
+                )
+        return selected_agents
+
 
 class SelectionFallback:
     """Invoke a secondary selector only when deterministic confidence is low."""
@@ -209,8 +234,9 @@ class SelectionFallback:
                     f"selection strategy assigned {agent_id} to incompatible stage {index}"
                 )
 
-        selected = self.policy.validate(
+        selected = self.policy.validate_reselection(
             work_unit,
+            deterministic.selected_agents,
             selected_ids,
             registry,
         )
