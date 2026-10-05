@@ -17,7 +17,7 @@ def _write_config(root):
                 "models": [
                     {
                         "id": "echo-model",
-                        "capabilities": ["execution"],
+                        "capabilities": ["execution", "validation"],
                         "metadata": {
                             "adapter_id": "echo-cli",
                             "adapter_kind": "cli",
