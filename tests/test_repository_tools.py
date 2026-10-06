@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from core.contracts.mcp import MCPTool
 from core.contracts.agent_execution_runtime import ToolRequest, ToolSideEffect
-from runtime.repository_tools import GitToolBindings, MCPToolBindings
+from runtime.repository_tools import GitHubToolBindings, GitToolBindings, MCPToolBindings
 from runtime.policy import ExecutionPolicy
 from runtime.tool_calling import ToolRuntime
 
@@ -44,3 +44,69 @@ class RepositoryToolTests(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
+
+
+class FakeGitHubRuntime:
+    def __init__(self):
+        self.missions = []
+
+    def run_actions_mission(self, mission):
+        self.missions.append(mission)
+        evidence = type(
+            "Evidence",
+            (),
+            {
+                "mission_id": mission.id,
+                "run_id": 42,
+                "status": "completed",
+                "conclusion": "success",
+                "source_sha": mission.source_sha,
+                "head_sha": "main-tip-sha",
+                "url": "https://example/run/42",
+                "artifacts": ("execution-mission-evidence",),
+                "logs_available": True,
+                "disposition": type("Disposition", (), {"value": "succeeded"})(),
+            },
+        )()
+        return type("Result", (), {"evidence": evidence})()
+
+
+class GitHubMissionToolTests(unittest.TestCase):
+    def test_github_actions_tool_is_exposed(self):
+        tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(tools, github)
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {
+                    "repository": "owner/repo",
+                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
+                    "operation": "test",
+                },
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.output["mission_id"], "mission-work-123")
+        self.assertEqual(github.missions[0].operation.value, "test")
+
+    def test_github_actions_tool_is_policy_blocked_by_default(self):
+        tools = ToolRuntime(ExecutionPolicy())
+        GitHubToolBindings(tools, FakeGitHubRuntime())
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {
+                    "repository": "owner/repo",
+                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
+                    "operation": "test",
+                },
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("github.actions", result.error)
+
