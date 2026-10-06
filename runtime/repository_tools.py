@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from core.contracts.mcp import MCPToolCall
 from core.contracts.agent_execution_runtime import ToolRequest, ToolSideEffect, ToolSpec
 from runtime.git import GitRuntime
+from runtime.github import GitHubRuntime
 from runtime.mcp.client import MCPClient
 from runtime.tool_calling import ToolRuntime
 
