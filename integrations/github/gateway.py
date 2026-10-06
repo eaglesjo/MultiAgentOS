@@ -188,13 +188,21 @@ class GitHubGatewayClient:
         runs = self._run(
             "run", "list", "--repo", full_name,
             "--workflow", workflow,
-            "--branch", ref,
-            "--limit", "1",
+            "--commit", ref,
+            "--event", "workflow_dispatch",
+            "--limit", "10",
             "--json", "databaseId,status,conclusion,headSha,url",
         )
         if not runs:
             raise RuntimeError("GitHub Actions dispatch succeeded but no run was returned")
-        item = runs[0]
+        item = next(
+            (candidate for candidate in runs if candidate.get("headSha") == ref),
+            runs[0],
+        )
+        if item.get("headSha") != ref:
+            raise RuntimeError(
+                "GitHub Actions dispatch returned a run for a different source SHA"
+            )
         return WorkflowRun(
             item["databaseId"],
             item["status"],
