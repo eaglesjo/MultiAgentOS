@@ -80,7 +80,7 @@ class GitHubToolBindings:
                 frozenset({"github.actions"}),
                 {
                     "type": "object",
-                    "required": ["repository", "source_sha", "operation"],
+                    "required": ["repository", "operation"],
                     "properties": {
                         "repository": {"type": "string"},
                         "source_sha": {"type": "string"},
@@ -99,8 +99,8 @@ class GitHubToolBindings:
         repository = request.arguments.get("repository")
         source_sha = request.arguments.get("source_sha")
         operation = request.arguments.get("operation")
-        if not all(isinstance(value, str) and value.strip() for value in (repository, source_sha, operation)):
-            raise ValueError("repository, source_sha, and operation must be non-empty strings")
+        if not all(isinstance(value, str) and value.strip() for value in (repository, operation)):
+            raise ValueError("repository and operation must be non-empty strings")
         try:
             mission_operation = MissionOperation(operation)
         except ValueError as exc:
@@ -121,6 +121,10 @@ class GitHubToolBindings:
 
         workflow = request.arguments.get("workflow", "execution-mission.yml")
         ref = request.arguments.get("ref", "main")
+        if source_sha is None:
+            source_sha = self.github.gateway.get_branch(repository, ref).sha
+        if not isinstance(source_sha, str) or not source_sha.strip():
+            raise ValueError("source_sha must resolve to a non-empty commit SHA")
         if not isinstance(workflow, str) or not workflow.strip():
             raise ValueError("workflow must be a non-empty string")
         if not isinstance(ref, str) or not ref.strip():
