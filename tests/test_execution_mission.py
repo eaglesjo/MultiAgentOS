@@ -1,0 +1,76 @@
+import unittest
+
+from core.contracts.execution_mission import (
+    ExecutionEvidence,
+    ExecutionMission,
+    MissionOperation,
+    verify_execution_evidence,
+)
+from core.contracts.github import WorkflowArtifact, WorkflowRun
+from runtime.github_actions import GitHubActionsMissionRuntime
+from runtime.policy import ExecutionPolicy
+
+
+class FakeGateway:
+    def __init__(self):
+        self.dispatched = []
+        self.polls = 0
+
+    def dispatch_workflow(self, repository, workflow, ref, inputs):
+        self.dispatched.append((repository, workflow, ref, inputs))
+        return WorkflowRun(42, "in_progress", None, inputs["source_sha"], "https://example/run/42")
+
+    def get_workflow_run(self, repository, run_id):
+        self.polls += 1
+        return WorkflowRun(
+            run_id, "completed", "success",
+            self.dispatched[0][3]["source_sha"], "https://example/run/42"
+        )
+
+    def list_workflow_artifacts(self, repository, run_id):
+        return [WorkflowArtifact(7, "mission-evidence-abc123")]
+
+
+class ExecutionMissionTests(unittest.TestCase):
+    def mission(self):
+        return ExecutionMission(
+            id="mission-abc123",
+            repository="eaglesjo/MultiAgentOS",
+            source_sha="0123456789abcdef0123456789abcdef01234567",
+            workflow="execution-mission.yml",
+            operation=MissionOperation.TEST,
+            expected_artifacts=("mission-evidence-abc123",),
+        )
+
+    def test_policy_blocks_actions_by_default(self):
+        gateway = FakeGateway()
+        runtime = GitHubActionsMissionRuntime(gateway)
+        with self.assertRaises(PermissionError):
+            runtime.run(self.mission())
+
+    def test_dispatch_and_verify_exact_source(self):
+        gateway = FakeGateway()
+        policy = ExecutionPolicy(allow_github_actions=True)
+        runtime = GitHubActionsMissionRuntime(
+            gateway, policy, poll_interval_seconds=0, sleep=lambda _: None
+        )
+        result = runtime.run(self.mission())
+        self.assertEqual(result.evidence.run_id, 42)
+        self.assertEqual(result.evidence.conclusion, "success")
+        self.assertEqual(gateway.dispatched[0][2], self.mission().source_sha)
+
+    def test_source_mismatch_is_rejected(self):
+        mission = self.mission()
+        evidence = ExecutionEvidence(
+            mission_id=mission.id,
+            run_id=42,
+            status="completed",
+            conclusion="success",
+            head_sha="f" * 40,
+        )
+        with self.assertRaises(ValueError):
+            verify_execution_evidence(mission, evidence)
+
+
+if __name__ == "__main__":
+    unittest.main()
