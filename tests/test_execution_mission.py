@@ -16,6 +16,10 @@ class FakeGateway:
         self.dispatched = []
         self.polls = 0
 
+    def get_repository(self, repository):
+        from core.contracts.github import GitHubRepository
+        return GitHubRepository(repository, "main", False)
+
     def dispatch_workflow(self, repository, workflow, ref, inputs):
         self.dispatched.append((repository, workflow, ref, inputs))
         return WorkflowRun(42, "in_progress", None, inputs["source_sha"], "https://example/run/42")
@@ -57,7 +61,10 @@ class ExecutionMissionTests(unittest.TestCase):
         result = runtime.run(self.mission())
         self.assertEqual(result.evidence.run_id, 42)
         self.assertEqual(result.evidence.conclusion, "success")
-        self.assertEqual(gateway.dispatched[0][2], self.mission().source_sha)
+        self.assertEqual(gateway.dispatched[0][2], "main")
+        self.assertEqual(
+            gateway.dispatched[0][3]["source_sha"], self.mission().source_sha
+        )
 
     def test_source_mismatch_is_rejected(self):
         mission = self.mission()
