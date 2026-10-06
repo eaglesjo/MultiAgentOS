@@ -89,6 +89,6 @@ The remote path is selected only when it is actually needed. It does not replace
 
 ## Provenance
 
-This design incorporates the bounded-mission, exact-source, evidence-verification, diagnose-before-retry, and bounded-cleanup principles researched from the public `luna-chat-coder` repository. The implementation is native to MultiAgentOS and contains no dependency on that repository or its naming.
+This design incorporates bounded-mission, exact-source, evidence-verification, diagnose-before-retry, and bounded-lifecycle principles from prior repository-development research. The implementation is native to MultiAgentOS and has no external runtime dependency for these capabilities.
 
 GitHub's current Actions guidance also supports explicit workflow inputs, least-privilege `GITHUB_TOKEN` permissions, immutable action references, and careful control over who may trigger manual workflows.
