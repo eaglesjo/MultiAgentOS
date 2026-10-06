@@ -108,5 +108,35 @@ class GitHubMissionToolTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("github.actions", result.error)
 
+
+class ExecutionRouteToolTests(unittest.TestCase):
+    def test_route_prefers_local(self):
+        tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
+        GitHubToolBindings(tools, FakeGitHubRuntime())
+        result = tools.execute(
+            ToolRequest("execution.route.select", {"local_available": True}),
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.output["route"], "local")
+
+    def test_route_falls_back_to_github_actions_after_local_failure(self):
+        tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
+        GitHubToolBindings(tools, FakeGitHubRuntime())
+        result = tools.execute(
+            ToolRequest("execution.route.select", {"local_available": True, "local_failed": True}),
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.output["route"], "github_actions")
+
+    def test_route_blocks_when_no_route_is_permitted(self):
+        tools = ToolRuntime(ExecutionPolicy(allow_github_actions=False))
+        GitHubToolBindings(tools, FakeGitHubRuntime())
+        result = tools.execute(
+            ToolRequest("execution.route.select", {"local_available": False}),
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.output["route"], "blocked")
+
+
 if __name__=="__main__":
     unittest.main()
