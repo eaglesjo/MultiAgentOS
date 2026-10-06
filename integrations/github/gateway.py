@@ -177,39 +177,25 @@ class GitHubGatewayClient:
         ref: str,
         inputs: dict[str, str],
     ) -> WorkflowRun:
-        self._run(
-            "workflow", "run", workflow,
-            "--repo", full_name,
-            "--ref", ref,
-            *sum(([ "--field", f"{key}={value}" ] for key, value in inputs.items()), []),
-        )
-        # workflow run is asynchronous; resolve the newly created run from the
-        # workflow/ref pair. The runtime will poll this identity until terminal.
-        runs = self._run(
-            "run", "list", "--repo", full_name,
-            "--workflow", workflow,
-            "--commit", ref,
-            "--event", "workflow_dispatch",
-            "--limit", "10",
-            "--json", "databaseId,status,conclusion,headSha,url",
-        )
-        if not runs:
-            raise RuntimeError("GitHub Actions dispatch succeeded but no run was returned")
-        item = next(
-            (candidate for candidate in runs if candidate.get("headSha") == ref),
-            runs[0],
-        )
-        if item.get("headSha") != ref:
+        # Use the REST dispatch endpoint through gh api so GitHub returns the
+        # exact workflow_run_id created by this dispatch. Listing recent runs
+        # after dispatch is race-prone and cannot distinguish a branch ref
+        # from the immutable source SHA carried in the mission input.
+        args = [
+            "api",
+            f"repos/{full_name}/actions/workflows/{workflow}/dispatches",
+            "--method", "POST",
+            "-f", f"ref={ref}",
+        ]
+        for key, value in inputs.items():
+            args.extend(["-f", f"inputs[{key}]={value}"])
+        data = self._run(*args)
+        run_id = data.get("workflow_run_id") if data else None
+        if not run_id:
             raise RuntimeError(
-                "GitHub Actions dispatch returned a run for a different source SHA"
+                "GitHub Actions dispatch succeeded without a workflow run id"
             )
-        return WorkflowRun(
-            item["databaseId"],
-            item["status"],
-            item["conclusion"],
-            item.get("headSha"),
-            item.get("url"),
-        )
+        return self.get_workflow_run(full_name, int(run_id))
 
     def get_workflow_run(self, full_name: str, run_id: int) -> WorkflowRun:
         item = self._run(

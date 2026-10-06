@@ -9,7 +9,6 @@ from typing import Callable
 from core.contracts.execution_mission import (
     ExecutionEvidence,
     ExecutionMission,
-    MissionOperation,
     verify_execution_evidence,
 )
 from core.contracts.github import GitHubGateway, WorkflowRun
@@ -77,6 +76,7 @@ class GitHubActionsMissionRuntime:
                     status=current.status,
                     conclusion=current.conclusion,
                     head_sha=current.head_sha,
+                    source_sha=mission.source_sha,
                     url=current.url,
                 )
             self.sleep(self.poll_interval_seconds)
@@ -94,6 +94,7 @@ class GitHubActionsMissionRuntime:
             status=current.status,
             conclusion=current.conclusion,
             head_sha=current.head_sha,
+            source_sha=mission.source_sha,
             url=current.url,
             artifacts=artifacts,
             logs_available=current.conclusion is not None,

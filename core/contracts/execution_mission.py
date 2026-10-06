@@ -55,6 +55,7 @@ class ExecutionEvidence:
     status: str
     conclusion: str | None
     head_sha: str | None
+    source_sha: str
     url: str | None = None
     artifacts: tuple[str, ...] = ()
     logs_available: bool = False
@@ -77,10 +78,10 @@ def verify_execution_evidence(
     mission.validate()
     if evidence.mission_id != mission.id:
         raise ValueError("mission identity mismatch")
-    if evidence.head_sha and evidence.head_sha != mission.source_sha:
+    if evidence.source_sha != mission.source_sha:
         raise ValueError(
             f"source identity mismatch: expected {mission.source_sha}, "
-            f"got {evidence.head_sha}"
+            f"got {evidence.source_sha}"
         )
     if evidence.status not in {"completed", "success"}:
         raise RuntimeError(f"remote mission is not terminal: {evidence.status}")
