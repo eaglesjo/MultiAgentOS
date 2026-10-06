@@ -20,6 +20,6 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install package
-        run: python -m pip install .
+        run: python -m pip install '.[mcp-http]'
       - name: Run contract and runtime tests
         run: python -m unittest discover -s tests -v
