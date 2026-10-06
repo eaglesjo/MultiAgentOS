@@ -100,6 +100,6 @@ jobs:
 
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: execution-mission-evidence-${{ github.run_id }}
+          name: execution-mission-evidence
           path: mission-evidence/result.json
           retention-days: 7
