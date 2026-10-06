@@ -371,6 +371,7 @@ GitHub Actions remains the authoritative CI execution environment for repository
 - [Project Installation](docs/PROJECT_INSTALLATION.md)
 - [Agent Execution Runtime Connection Guide](docs/AGENT_EXECUTION_RUNTIME_CONNECTIONS.md)
 - [Agent Execution Runtime GitHub Connection](docs/AGENT_EXECUTION_RUNTIME_GITHUB_CONNECTION.md)
+- [Bounded GitHub Actions Execution Missions](docs/GITHUB_ACTIONS_EXECUTION_MISSIONS.md)
 
 ### Optional connectivity and platform integration
 

@@ -1,0 +1,105 @@
+name: Agent Execution Mission
+
+on:
+  workflow_dispatch:
+    inputs:
+      mission_id:
+        description: "Task-owned mission identifier"
+        required: true
+        type: string
+      source_sha:
+        description: "Exact 40-character commit SHA to execute"
+        required: true
+        type: string
+      operation:
+        description: "Bounded operation"
+        required: true
+        type: choice
+        options:
+          - test
+          - package
+          - verify
+
+permissions:
+  contents: read
+
+jobs:
+  mission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate source identity
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          python - <<PY
+          import os
+          import re
+          sha = os.environ["SOURCE_SHA"]
+          if not re.fullmatch(r"[0-9a-f]{40}", sha):
+              raise SystemExit("source_sha must be a full 40-character lowercase commit SHA")
+          PY
+
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ inputs.source_sha }}
+          persist-credentials: false
+
+      - name: Verify checked-out source
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: python -m pip install '.[mcp-http]'
+
+      - name: Execute bounded operation
+        env:
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          case "$OPERATION" in
+            test)
+              python -m unittest discover -s tests -v
+              ;;
+            package)
+              python -m pip install build
+              python -m build
+              ;;
+            verify)
+              python -c "import multiagentos; import core; import runtime"
+              multiagentos --help
+              ;;
+            *)
+              echo "unsupported operation: $OPERATION" >&2
+              exit 2
+              ;;
+          esac
+
+      - name: Write mission evidence
+        env:
+          MISSION_ID: ${{ inputs.mission_id }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          mkdir -p mission-evidence
+          cat > mission-evidence/result.json <<EOF
+          {
+            "mission_id": "$MISSION_ID",
+            "source_sha": "$SOURCE_SHA",
+            "operation": "$OPERATION",
+            "run_id": "$GITHUB_RUN_ID",
+            "status": "completed",
+            "conclusion": "success"
+          }
+          EOF
+
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: execution-mission-evidence-${{ github.run_id }}
+          path: mission-evidence/result.json
+          retention-days: 7

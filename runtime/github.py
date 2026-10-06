@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from core.contracts.github import GitHubGateway
+from core.contracts.execution_mission import ExecutionMission
+from runtime.github_actions import GitHubActionsMissionResult, GitHubActionsMissionRuntime
 from runtime.policy import ExecutionPolicy
 
 
@@ -10,6 +12,10 @@ class GitHubRuntime:
     def __init__(self, gateway: GitHubGateway, policy: ExecutionPolicy | None = None) -> None:
         self.gateway = gateway
         self.policy = policy or ExecutionPolicy()
+
+    def run_actions_mission(self, mission: ExecutionMission) -> GitHubActionsMissionResult:
+        runtime = GitHubActionsMissionRuntime(self.gateway, self.policy)
+        return runtime.run(mission)
 
     def _require_write(self) -> None:
         if not self.policy.permits("github.write"):

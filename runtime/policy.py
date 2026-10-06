@@ -12,6 +12,7 @@ class ExecutionPolicy:
     allow_git_write: bool = False
     allow_network: bool = False
     allow_github_write: bool = False
+    allow_github_actions: bool = False
     require_approval_for: frozenset[str] = frozenset(
         {"git.commit", "git.push", "github.pr", "github.merge"}
     )
@@ -23,6 +24,7 @@ class ExecutionPolicy:
             "git.write": self.allow_git_write,
             "network": self.allow_network,
             "github.write": self.allow_github_write,
+            "github.actions": self.allow_github_actions,
         }
         return mapping.get(capability, False)
 

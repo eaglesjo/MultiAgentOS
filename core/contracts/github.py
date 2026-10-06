@@ -54,10 +54,18 @@ class MergeResult:
 
 
 @dataclass(frozen=True)
+class WorkflowArtifact:
+    id: int
+    name: str
+
+
+@dataclass(frozen=True)
 class WorkflowRun:
     id: int
     status: str
     conclusion: str | None = None
+    head_sha: str | None = None
+    url: str | None = None
 
 
 class GitHubGateway(Protocol):
@@ -72,3 +80,14 @@ class GitHubGateway(Protocol):
     def review_pull_request(self, full_name: str, number: int, action: str, body: str = "") -> ReviewResult: ...
     def merge_pull_request(self, full_name: str, number: int, method: str = "squash") -> MergeResult: ...
     def list_workflows(self, full_name: str, ref: str) -> Sequence[WorkflowRun]: ...
+    def dispatch_workflow(
+        self,
+        full_name: str,
+        workflow: str,
+        ref: str,
+        inputs: dict[str, str],
+    ) -> WorkflowRun: ...
+    def get_workflow_run(self, full_name: str, run_id: int) -> WorkflowRun: ...
+    def list_workflow_artifacts(
+        self, full_name: str, run_id: int
+    ) -> Sequence[WorkflowArtifact]: ...
