@@ -60,3 +60,91 @@ class MCPToolBindings:
                 raise RuntimeError(f"MCP tool error: {server_id}:{tool_name}")
             return {"content":result.content,"raw":result.raw}
         return invoke
+
+
+@dataclass
+class GitHubToolBindings:
+    """Expose bounded GitHub Actions execution through the normalized tool boundary."""
+
+    runtime: ToolRuntime
+    github: GitHubRuntime
+
+    def __post_init__(self) -> None:
+        self.runtime.register(
+            ToolSpec(
+                "github.actions.run_mission",
+                "Run and verify one bounded GitHub Actions execution mission.",
+                ToolSideEffect.NETWORK,
+                frozenset({"github.actions"}),
+                {
+                    "type": "object",
+                    "required": ["repository", "source_sha", "operation"],
+                    "properties": {
+                        "repository": {"type": "string"},
+                        "source_sha": {"type": "string"},
+                        "operation": {"type": "string", "enum": ["test", "package", "verify"]},
+                        "workflow": {"type": "string"},
+                        "ref": {"type": "string"},
+                        "mission_id": {"type": "string"},
+                        "inputs": {"type": "object"},
+                    },
+                },
+            ),
+            self._run_mission,
+        )
+
+    def _run_mission(self, request: ToolRequest) -> object:
+        repository = request.arguments.get("repository")
+        source_sha = request.arguments.get("source_sha")
+        operation = request.arguments.get("operation")
+        if not all(isinstance(value, str) and value.strip() for value in (repository, source_sha, operation)):
+            raise ValueError("repository, source_sha, and operation must be non-empty strings")
+        try:
+            mission_operation = MissionOperation(operation)
+        except ValueError as exc:
+            raise ValueError(f"unsupported mission operation: {operation}") from exc
+
+        raw_inputs = request.arguments.get("inputs", {})
+        if not isinstance(raw_inputs, dict) or any(
+            not isinstance(key, str) or not isinstance(value, str)
+            for key, value in raw_inputs.items()
+        ):
+            raise ValueError("inputs must be an object containing only string values")
+
+        mission_id = request.arguments.get("mission_id")
+        if mission_id is None:
+            if not request.work_unit_id:
+                raise ValueError("mission_id or work_unit_id is required")
+            mission_id = f"mission-{request.work_unit_id}"
+
+        workflow = request.arguments.get("workflow", "execution-mission.yml")
+        ref = request.arguments.get("ref", "main")
+        if not isinstance(workflow, str) or not workflow.strip():
+            raise ValueError("workflow must be a non-empty string")
+        if not isinstance(ref, str) or not ref.strip():
+            raise ValueError("ref must be a non-empty string")
+
+        mission = ExecutionMission(
+            id=str(mission_id),
+            repository=repository,
+            source_sha=source_sha,
+            workflow=workflow,
+            operation=mission_operation,
+            ref=ref,
+            inputs=dict(raw_inputs),
+            expected_artifacts=("execution-mission-evidence",),
+        )
+        result = self.github.run_actions_mission(mission)
+        evidence = result.evidence
+        return {
+            "mission_id": evidence.mission_id,
+            "run_id": evidence.run_id,
+            "status": evidence.status,
+            "conclusion": evidence.conclusion,
+            "source_sha": evidence.source_sha,
+            "head_sha": evidence.head_sha,
+            "url": evidence.url,
+            "artifacts": list(evidence.artifacts),
+            "logs_available": evidence.logs_available,
+            "disposition": evidence.disposition.value,
+        }
