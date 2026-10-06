@@ -21,7 +21,9 @@ from core.state import RuntimeEventStore
 from core.tool_ledger import ToolInvocationStore
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.policy import ExecutionPolicy
-from runtime.repository_tools import GitToolBindings, MCPToolBindings
+from integrations.github.gateway import GitHubGatewayClient
+from runtime.github import GitHubRuntime
+from runtime.repository_tools import GitHubToolBindings, GitToolBindings, MCPToolBindings
 from runtime.tool_calling import ToolRuntime
 
 
@@ -58,6 +60,10 @@ class ExecutionHarness:
         tool_runtime = ToolRuntime(effective_policy, decision_store=decision_store)
         BuiltinToolBindings(str(root), tool_runtime)
         GitToolBindings(str(root), tool_runtime)
+        GitHubToolBindings(
+            tool_runtime,
+            github=GitHubRuntime(GitHubGatewayClient(), effective_policy),
+        )
         if not apply_changes:
             tool_runtime.unregister("patch.apply")
         return cls(
