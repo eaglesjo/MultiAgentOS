@@ -6,6 +6,7 @@ from core.contracts.execution_mission import ExecutionMission, MissionOperation
 from core.contracts.agent_execution_runtime import ToolRequest, ToolSideEffect, ToolSpec
 from runtime.git import GitRuntime
 from runtime.github import GitHubRuntime
+from runtime.execution_route import select_execution_route
 from runtime.mcp.client import MCPClient
 from runtime.tool_calling import ToolRuntime
 
@@ -74,6 +75,23 @@ class GitHubToolBindings:
     def __post_init__(self) -> None:
         self.runtime.register(
             ToolSpec(
+                "execution.route.select",
+                "Select the deterministic local-first execution route for a WorkUnit.",
+                ToolSideEffect.READ,
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "local_available": {"type": "boolean"},
+                        "local_failed": {"type": "boolean"},
+                        "force_remote": {"type": "boolean"},
+                        "prefer_local": {"type": "boolean"},
+                    },
+                },
+            ),
+            self._select_route,
+        )
+        self.runtime.register(
+            ToolSpec(
                 "github.actions.run_mission",
                 "Run and verify one bounded GitHub Actions execution mission.",
                 ToolSideEffect.NETWORK,
@@ -94,6 +112,20 @@ class GitHubToolBindings:
             ),
             self._run_mission,
         )
+
+    def _select_route(self, request: ToolRequest) -> object:
+        decision = select_execution_route(
+            local_available=request.arguments.get("local_available", True) is True,
+            local_failed=request.arguments.get("local_failed", False) is True,
+            force_remote=request.arguments.get("force_remote", False) is True,
+            allow_github_actions=self.runtime.policy.allow_github_actions,
+            prefer_local=request.arguments.get("prefer_local", True) is True,
+        )
+        return {
+            "route": decision.route.value,
+            "reason": decision.reason,
+            "requires_explicit_github_permission": decision.requires_explicit_github_permission,
+        }
 
     def _run_mission(self, request: ToolRequest) -> object:
         repository = request.arguments.get("repository")
