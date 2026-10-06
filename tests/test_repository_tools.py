@@ -70,6 +70,26 @@ class FakeGitHubRuntime:
 
 
 class GitHubMissionToolTests(unittest.TestCase):
+    def test_github_actions_tool_can_resolve_source_sha_from_ref(self):
+        class BranchResolvingGateway(FakeGitHubRuntime):
+            class Gateway:
+                def get_branch(self, repository, ref):
+                    return type("Branch", (), {"sha": "0123456789abcdef0123456789abcdef01234567"})()
+        github = FakeGitHubRuntime()
+        github.gateway = BranchResolvingGateway.Gateway()
+        tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
+        GitHubToolBindings(tools, github)
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {"repository": "owner/repo", "operation": "test"},
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertTrue(result.ok, result.error)
+        self.assertEqual(github.missions[0].source_sha, "0123456789abcdef0123456789abcdef01234567")
+
     def test_github_actions_tool_is_exposed(self):
         tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
         github = FakeGitHubRuntime()
