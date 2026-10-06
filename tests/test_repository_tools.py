@@ -86,7 +86,7 @@ class GitHubMissionToolTests(unittest.TestCase):
             ),
             granted_permissions=frozenset({"github.actions"}),
         )
-        self.assertTrue(result.ok)
+        self.assertTrue(result.ok, result.error)
         self.assertEqual(result.output["mission_id"], "mission-work-123")
         self.assertEqual(github.missions[0].operation.value, "test")
 
