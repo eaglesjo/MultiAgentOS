@@ -45,10 +45,14 @@ class GitHubActionsMissionRuntime:
         if not self.policy.permits("github.actions"):
             raise PermissionError("GitHub Actions execution is disabled by policy")
 
+        workflow_ref = (
+            mission.ref
+            or self.gateway.get_repository(mission.repository).default_branch
+        )
         run = self.gateway.dispatch_workflow(
             mission.repository,
             mission.workflow,
-            mission.ref or mission.source_sha,
+            workflow_ref,
             {
                 "mission_id": mission.id,
                 "source_sha": mission.source_sha,
