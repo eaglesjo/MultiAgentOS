@@ -57,7 +57,16 @@ class ToolRuntime:
         if missing:
             self._record_decision(request, DecisionCategory.PERMISSION, DecisionDisposition.DENY, f"missing permissions: {sorted(missing)}", action=item.spec.id)
             return ToolResult(item.spec.id, False, error=f"tool permission denied: missing={sorted(missing)}")
-        capability = {ToolSideEffect.READ: None, ToolSideEffect.WRITE: "filesystem.write", ToolSideEffect.EXECUTE: "process", ToolSideEffect.NETWORK: "network"}[item.spec.side_effect]
+        capability = (
+            "github.actions"
+            if "github.actions" in item.spec.permissions
+            else {
+                ToolSideEffect.READ: None,
+                ToolSideEffect.WRITE: "filesystem.write",
+                ToolSideEffect.EXECUTE: "process",
+                ToolSideEffect.NETWORK: "network",
+            }[item.spec.side_effect]
+        )
         if capability and not self.policy.permits(capability):
             self._record_decision(request, DecisionCategory.CAPABILITY, DecisionDisposition.DENY, f"capability disabled: {capability}", action=item.spec.id)
             return ToolResult(item.spec.id, False, error=f"tool capability is disabled: {capability}")
