@@ -228,9 +228,9 @@ class GitHubGatewayClient:
         self, full_name: str, run_id: int
     ) -> list[WorkflowArtifact]:
         items = self._run(
-            "run", "view", str(run_id), "--repo", full_name,
-            "--json", "artifacts",
-        ).get("artifacts", [])
+            "api", f"repos/{full_name}/actions/runs/{run_id}/artifacts",
+            "--jq", "[.artifacts[] | {id: .id, name: .name}]",
+        )
         return [
             WorkflowArtifact(int(item["id"]), item["name"])
             for item in items
