@@ -99,3 +99,16 @@ The remote path is selected only when it is actually needed. It does not replace
 This design incorporates bounded-mission, exact-source, evidence-verification, diagnose-before-retry, and bounded-lifecycle principles from prior repository-development research. The implementation is native to MultiAgentOS and has no external runtime dependency for these capabilities.
 
 GitHub's current Actions guidance also supports explicit workflow inputs, least-privilege `GITHUB_TOKEN` permissions, immutable action references, and careful control over who may trigger manual workflows.
+
+
+## Automatic execution routing
+
+The Agent tool boundary now exposes `execution.route.select`. Its deterministic policy is:
+
+1. prefer local execution when it is available and has not failed;
+2. after a local execution failure, fall back to one bounded GitHub Actions mission only when the policy explicitly permits `github.actions`;
+3. block when neither route is permitted.
+
+Remote execution is therefore a fallback, not an unconditional replacement for local execution.
+
+The `github.actions.run_mission` tool also resolves `source_sha` from the requested workflow `ref` when the Agent does not provide an explicit SHA. The resolved SHA is still passed into the immutable mission and verified against the returned evidence.
