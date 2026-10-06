@@ -34,7 +34,7 @@ class FakeGateway:
         )
 
     def list_workflow_artifacts(self, repository, run_id):
-        return [WorkflowArtifact(7, "mission-evidence-abc123")]
+        return [WorkflowArtifact(7, "execution-mission-evidence")]
 
 
 class ExecutionMissionTests(unittest.TestCase):
@@ -45,7 +45,7 @@ class ExecutionMissionTests(unittest.TestCase):
             source_sha="0123456789abcdef0123456789abcdef01234567",
             workflow="execution-mission.yml",
             operation=MissionOperation.TEST,
-            expected_artifacts=("mission-evidence-abc123",),
+            expected_artifacts=("execution-mission-evidence",),
         )
 
     def test_policy_blocks_actions_by_default(self):
