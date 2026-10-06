@@ -22,13 +22,15 @@ class FakeGateway:
 
     def dispatch_workflow(self, repository, workflow, ref, inputs):
         self.dispatched.append((repository, workflow, ref, inputs))
-        return WorkflowRun(42, "in_progress", None, inputs["source_sha"], "https://example/run/42")
+        return WorkflowRun(
+            42, "in_progress", None, "main-tip-sha", "https://example/run/42"
+        )
 
     def get_workflow_run(self, repository, run_id):
         self.polls += 1
         return WorkflowRun(
             run_id, "completed", "success",
-            self.dispatched[0][3]["source_sha"], "https://example/run/42"
+            "main-tip-sha", "https://example/run/42"
         )
 
     def list_workflow_artifacts(self, repository, run_id):
@@ -61,6 +63,8 @@ class ExecutionMissionTests(unittest.TestCase):
         result = runtime.run(self.mission())
         self.assertEqual(result.evidence.run_id, 42)
         self.assertEqual(result.evidence.conclusion, "success")
+        self.assertEqual(result.evidence.source_sha, self.mission().source_sha)
+        self.assertEqual(result.evidence.head_sha, "main-tip-sha")
         self.assertEqual(gateway.dispatched[0][2], "main")
         self.assertEqual(
             gateway.dispatched[0][3]["source_sha"], self.mission().source_sha
@@ -73,7 +77,8 @@ class ExecutionMissionTests(unittest.TestCase):
             run_id=42,
             status="completed",
             conclusion="success",
-            head_sha="f" * 40,
+            head_sha="main-tip-sha",
+            source_sha="bad-source",
         )
         with self.assertRaises(ValueError):
             verify_execution_evidence(mission, evidence)
