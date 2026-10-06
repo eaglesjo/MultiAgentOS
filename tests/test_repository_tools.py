@@ -42,8 +42,6 @@ class RepositoryToolTests(unittest.TestCase):
         spec=next(s for s in (GitToolBindings("/tmp",tools,FakeGit()).runtime.specs()) if s.id=="git.push")
         self.assertEqual(spec.side_effect,ToolSideEffect.NETWORK)
 
-if __name__=="__main__":
-    unittest.main()
 
 
 class FakeGitHubRuntime:
@@ -110,3 +108,5 @@ class GitHubMissionToolTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("github.actions", result.error)
 
+if __name__=="__main__":
+    unittest.main()
