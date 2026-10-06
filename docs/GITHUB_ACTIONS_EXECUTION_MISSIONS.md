@@ -49,6 +49,13 @@ Verification
    +-- expected artifacts
 ```
 
+
+## Agent tool integration
+
+The bounded mission runtime is exposed to the normalized Agent tool boundary as `github.actions.run_mission`. A WorkUnit can request a mission with an exact `source_sha` and one of the maintained operations (`test`, `package`, or `verify`). The tool returns only structured mission evidence after the runtime has completed its terminal-state and artifact verification.
+
+The tool is fail-closed: `github.actions` remains disabled by default and must be explicitly granted by the execution policy and tool permission boundary. This keeps remote CI execution under the same durable WorkUnit, policy-decision, tool-ledger, and recovery controls as other Agent tool calls.
+
 ## Policy
 
 `github.actions` is disabled by default. Enable it explicitly through `ExecutionPolicy`:
