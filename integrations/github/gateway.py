@@ -16,6 +16,7 @@ from core.contracts.github import (
     MergeResult,
     PullRequest,
     ReviewResult,
+    WorkflowArtifact,
     WorkflowRun,
 )
 
@@ -159,6 +160,70 @@ class GitHubGatewayClient:
             "--json", "databaseId,status,conclusion",
         )
         return [
-            WorkflowRun(item["databaseId"], item["status"], item["conclusion"])
+            WorkflowRun(
+                item["databaseId"],
+                item["status"],
+                item["conclusion"],
+                item.get("headSha"),
+                item.get("url"),
+            )
             for item in data
+        ]
+
+    def dispatch_workflow(
+        self,
+        full_name: str,
+        workflow: str,
+        ref: str,
+        inputs: dict[str, str],
+    ) -> WorkflowRun:
+        self._run(
+            "workflow", "run", workflow,
+            "--repo", full_name,
+            "--ref", ref,
+            *sum(([ "--field", f"{key}={value}" ] for key, value in inputs.items()), []),
+        )
+        # workflow run is asynchronous; resolve the newly created run from the
+        # workflow/ref pair. The runtime will poll this identity until terminal.
+        runs = self._run(
+            "run", "list", "--repo", full_name,
+            "--workflow", workflow,
+            "--branch", ref,
+            "--limit", "1",
+            "--json", "databaseId,status,conclusion,headSha,url",
+        )
+        if not runs:
+            raise RuntimeError("GitHub Actions dispatch succeeded but no run was returned")
+        item = runs[0]
+        return WorkflowRun(
+            item["databaseId"],
+            item["status"],
+            item["conclusion"],
+            item.get("headSha"),
+            item.get("url"),
+        )
+
+    def get_workflow_run(self, full_name: str, run_id: int) -> WorkflowRun:
+        item = self._run(
+            "run", "view", str(run_id), "--repo", full_name,
+            "--json", "databaseId,status,conclusion,headSha,url",
+        )
+        return WorkflowRun(
+            item["databaseId"],
+            item["status"],
+            item["conclusion"],
+            item.get("headSha"),
+            item.get("url"),
+        )
+
+    def list_workflow_artifacts(
+        self, full_name: str, run_id: int
+    ) -> list[WorkflowArtifact]:
+        items = self._run(
+            "run", "view", str(run_id), "--repo", full_name,
+            "--json", "artifacts",
+        ).get("artifacts", [])
+        return [
+            WorkflowArtifact(int(item["id"]), item["name"])
+            for item in items
         ]
