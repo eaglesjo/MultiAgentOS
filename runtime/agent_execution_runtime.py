@@ -11,6 +11,7 @@ from core.chat_agent_registry import default_chat_agents
 from core.chat_agent_router import ChatAgentAssignment, ChatAgentRouter, ChatAgentRoutingStrategy
 from core.chat_session import ChatSession, ChatSessionStore
 from core.contracts.human_review import HumanReviewDecision
+from core.contracts.execution_mission import ExecutionMission, MissionOperation
 from core.contracts.resume import WorkflowResumeContext
 from core.contracts.recovery import RecoveryAuthorization, RecoveryDecision, RecoveryDisposition, RecoveryPlan
 from core.multi_agent_workflow import MultiAgentWorkflow, MultiAgentWorkflowResult
@@ -1934,6 +1935,62 @@ class AgentExecutionRuntime:
         from runtime.mcp.proxy import MCPToolProxy
         return MCPToolProxy(self.mcp_clients, self.mcp_authorizer(project_root)).call(request, agent, profile_id)
 
+
+    def execute_work_unit_with_github_actions(
+        self,
+        work_unit: WorkUnit,
+        *,
+        local,
+        project_root: Path,
+        repository: str,
+        operation: MissionOperation = MissionOperation.TEST,
+        workflow: str = "execution-mission.yml",
+        ref: str = "main",
+        inputs: dict[str, str] | None = None,
+        local_available: bool = True,
+        force_remote: bool = False,
+        prefer_local: bool = True,
+    ) -> AutomaticExecutionResult:
+        """Execute a WorkUnit locally first and use the real GitHub mission runtime as fallback."""
+        root = Path(project_root).resolve()
+        identity = self.git.identity(str(root))
+        source_sha = identity.get("head") if identity else None
+        if not isinstance(source_sha, str) or len(source_sha) != 40:
+            raise ValueError("GitHub mission requires a local repository HEAD SHA")
+        mission = ExecutionMission(
+            id=f"mission-{work_unit.id}",
+            repository=repository,
+            source_sha=source_sha,
+            workflow=workflow,
+            operation=MissionOperation(operation),
+            ref=ref,
+            inputs=dict(inputs or {}),
+            expected_artifacts=("execution-mission-evidence",),
+        )
+        mission.validate()
+        work_unit.metadata["execution_mission"] = {
+            "id": mission.id,
+            "repository": mission.repository,
+            "source_sha": mission.source_sha,
+            "workflow": mission.workflow,
+            "operation": mission.operation.value,
+            "ref": mission.ref,
+            "expected_artifacts": list(mission.expected_artifacts),
+        }
+
+        def remote(_work_unit: WorkUnit):
+            result = self.github.run_actions_mission(mission)
+            return result, result.evidence
+
+        return self.execute_work_unit_with_route(
+            work_unit,
+            local=local,
+            remote=remote,
+            local_available=local_available,
+            force_remote=force_remote,
+            prefer_local=prefer_local,
+            project_root=root,
+        )
 
     def execute_work_unit_with_route(
         self,
