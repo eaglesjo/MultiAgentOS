@@ -86,6 +86,31 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
             "mission-work-remote",
         )
 
+    def test_dirty_worktree_blocks_github_fallback(self):
+        runtime = AgentExecutionRuntime(
+            policy=ExecutionPolicy(allow_github_actions=True)
+        )
+        runtime.git.identity = lambda _: {
+            "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "dirty": True,
+        }
+        runtime.github.run_actions_mission = lambda mission: self.fail(
+            "remote mission must not run from a dirty worktree"
+        )
+
+        with tempfile.TemporaryDirectory() as root:
+            unit = WorkUnit("work-dirty", "do not ship dirty state")
+            with self.assertRaises(PermissionError):
+                runtime.execute_work_unit_with_github_actions(
+                    unit,
+                    local_available=False,
+                    local=lambda _: "unused",
+                    project_root=Path(root),
+                    repository="eaglesjo/MultiAgentOS",
+                )
+
+        self.assertEqual(unit.status, WorkStatus.EXECUTING)
+
     def test_success_evidence_source_mismatch_fails_closed(self):
         runtime = AgentExecutionRuntime(
             policy=ExecutionPolicy(allow_github_actions=True)
