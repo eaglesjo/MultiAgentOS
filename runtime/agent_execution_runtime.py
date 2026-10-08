@@ -1979,6 +1979,11 @@ class AgentExecutionRuntime:
         }
 
         def remote(_work_unit: WorkUnit):
+            current_identity = self.git.identity(str(root))
+            if not current_identity or current_identity.get("head") != mission.source_sha:
+                raise PermissionError("GitHub fallback source SHA no longer matches the local WorkUnit")
+            if current_identity.get("dirty") is True:
+                raise PermissionError("GitHub fallback requires a clean local worktree")
             result = self.github.run_actions_mission(mission)
             return result, result.evidence
 
