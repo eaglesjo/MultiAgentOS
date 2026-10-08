@@ -62,6 +62,8 @@ class AutomaticWorkUnitExecutor:
                     work_unit.transition(WorkStatus.FAILED)
                     raise
                 return self._run_remote_fallback(work_unit, remote)
+            work_unit.transition(WorkStatus.VERIFYING)
+            work_unit.transition(WorkStatus.COMPLETED)
             return AutomaticExecutionResult(work_unit, ExecutionRoute.LOCAL, output=output)
 
         if remote is None:
