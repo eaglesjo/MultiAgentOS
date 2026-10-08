@@ -5,7 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from core.contracts.execution_mission import ExecutionEvidence
+from core.contracts.execution_mission import (
+    ExecutionEvidence,
+    ExecutionMission,
+    verify_execution_evidence,
+)
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from runtime.execution_route import ExecutionRoute, select_execution_route
 
@@ -51,8 +55,10 @@ class AutomaticWorkUnitExecutor:
                 work_unit.transition(WorkStatus.EXECUTING)
             try:
                 output = local(work_unit)
-            except Exception:
+            except Exception as exc:
+                work_unit.metadata["local_execution_error"] = str(exc)
                 if remote is None or not self.allow_github_actions:
+                    work_unit.transition(WorkStatus.FAILED)
                     raise
                 return self._run_remote_fallback(work_unit, remote)
             return AutomaticExecutionResult(work_unit, ExecutionRoute.LOCAL, output=output)
@@ -70,6 +76,7 @@ class AutomaticWorkUnitExecutor:
             work_unit.transition(WorkStatus.EXECUTING)
         elif work_unit.status is WorkStatus.PENDING:
             work_unit.transition(WorkStatus.EXECUTING)
+
         output, evidence = remote(work_unit)
         work_unit.metadata["execution_route"] = ExecutionRoute.GITHUB_ACTIONS.value
         work_unit.metadata["execution_evidence"] = {
@@ -81,13 +88,33 @@ class AutomaticWorkUnitExecutor:
             "head_sha": evidence.head_sha,
             "artifacts": list(evidence.artifacts),
         }
-        if evidence.status == "completed" and evidence.conclusion == "success":
+
+        if evidence.status in {"completed", "success"} and evidence.conclusion == "success":
+            try:
+                mission_data = work_unit.metadata.get("execution_mission")
+                if not isinstance(mission_data, dict):
+                    raise ValueError("remote success requires execution mission metadata")
+                mission = ExecutionMission(
+                    id=str(mission_data["id"]),
+                    repository=str(mission_data["repository"]),
+                    source_sha=str(mission_data["source_sha"]),
+                    workflow=str(mission_data["workflow"]),
+                    operation=mission_data["operation"],
+                    ref=mission_data.get("ref"),
+                    expected_artifacts=tuple(mission_data.get("expected_artifacts", ())),
+                )
+                verify_execution_evidence(mission, evidence)
+            except Exception:
+                if work_unit.status is WorkStatus.EXECUTING:
+                    work_unit.transition(WorkStatus.FAILED)
+                raise
             if work_unit.status is WorkStatus.EXECUTING:
                 work_unit.transition(WorkStatus.VERIFYING)
                 work_unit.transition(WorkStatus.COMPLETED)
         else:
             if work_unit.status is WorkStatus.EXECUTING:
                 work_unit.transition(WorkStatus.FAILED)
+
         return AutomaticExecutionResult(
             work_unit,
             ExecutionRoute.GITHUB_ACTIONS,
