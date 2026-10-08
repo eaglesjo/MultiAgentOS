@@ -66,7 +66,7 @@ from runtime.ide.runtime import IDERuntime
 from runtime.ide.bridge import IDEBridge, IDEBridgePolicy, IDEBridgeServer
 from runtime.agent.ide import IDECodingExecutor, IDEValidationVerifier
 from runtime.tool_calling import ToolRuntime
-from runtime.harness import ExecutionHarness
+from runtime.harness import ExecutionHarness\nfrom runtime.work_unit_execution import AutomaticExecutionResult, AutomaticWorkUnitExecutor
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.repository_tools import GitToolBindings, MCPToolBindings
 from runtime.quota import QuotaIntelligence, QuotaStore, quota_available
@@ -1932,6 +1932,34 @@ class AgentExecutionRuntime:
         """Invoke an MCP tool after applying the AGENT_EXECUTION_RUNTIME agent/profile policy."""
         from runtime.mcp.proxy import MCPToolProxy
         return MCPToolProxy(self.mcp_clients, self.mcp_authorizer(project_root)).call(request, agent, profile_id)
+
+
+    def execute_work_unit_with_route(
+        self,
+        work_unit: WorkUnit,
+        *,
+        local,
+        remote=None,
+        local_available: bool = True,
+        force_remote: bool = False,
+        prefer_local: bool = True,
+        project_root: Path | None = None,
+    ) -> AutomaticExecutionResult:
+        """Execute one WorkUnit local-first with a bounded remote fallback."""
+        coordinator = AutomaticWorkUnitExecutor(
+            allow_github_actions=self.policy.allow_github_actions,
+        )
+        result = coordinator.execute(
+            work_unit,
+            local=local,
+            remote=remote,
+            local_available=local_available,
+            force_remote=force_remote,
+            prefer_local=prefer_local,
+        )
+        root = project_root or Path.cwd()
+        self.state_store(root).save(work_unit)
+        return result
 
 
 __all__ = ["AgentExecutionRuntime"]
