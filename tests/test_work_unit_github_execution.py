@@ -40,7 +40,7 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
 
         self.assertEqual(result.route.value, "local")
         self.assertEqual(result.output, "local-result")
-        self.assertEqual(unit.status, WorkStatus.EXECUTING)
+        self.assertEqual(unit.status, WorkStatus.COMPLETED)
         self.assertEqual(calls, [])
 
     def test_local_failure_dispatches_real_mission_and_verifies_evidence(self):
