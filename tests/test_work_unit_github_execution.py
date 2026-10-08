@@ -26,6 +26,7 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
             policy=ExecutionPolicy(allow_github_actions=True)
         )
         calls = []
+        runtime.git.identity = lambda _: {"head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "dirty": False}
         runtime.github.run_actions_mission = lambda mission: calls.append(mission)
 
         with tempfile.TemporaryDirectory() as root:
