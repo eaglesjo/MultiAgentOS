@@ -186,6 +186,7 @@ class GitHubGatewayClient:
             f"repos/{full_name}/actions/workflows/{workflow}/dispatches",
             "--method", "POST",
             "-f", f"ref={ref}",
+            "-F", "return_run_details=true",
         ]
         for key, value in inputs.items():
             args.extend(["-f", f"inputs[{key}]={value}"])
