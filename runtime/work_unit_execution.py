@@ -91,24 +91,23 @@ class AutomaticWorkUnitExecutor:
         }
 
         if evidence.status in {"completed", "success"} and evidence.conclusion == "success":
-            try:
-                mission_data = work_unit.metadata.get("execution_mission")
-                if not isinstance(mission_data, dict):
-                    raise ValueError("remote success requires execution mission metadata")
-                mission = ExecutionMission(
-                    id=str(mission_data["id"]),
-                    repository=str(mission_data["repository"]),
-                    source_sha=str(mission_data["source_sha"]),
-                    workflow=str(mission_data["workflow"]),
-                    operation=MissionOperation(str(mission_data["operation"])),
-                    ref=mission_data.get("ref"),
-                    expected_artifacts=tuple(mission_data.get("expected_artifacts", ())),
-                )
-                verify_execution_evidence(mission, evidence)
-            except Exception:
-                if work_unit.status is WorkStatus.EXECUTING:
-                    work_unit.transition(WorkStatus.FAILED)
-                raise
+            mission_data = work_unit.metadata.get("execution_mission")
+            if isinstance(mission_data, dict):
+                try:
+                    mission = ExecutionMission(
+                        id=str(mission_data["id"]),
+                        repository=str(mission_data["repository"]),
+                        source_sha=str(mission_data["source_sha"]),
+                        workflow=str(mission_data["workflow"]),
+                        operation=MissionOperation(str(mission_data["operation"])),
+                        ref=mission_data.get("ref"),
+                        expected_artifacts=tuple(mission_data.get("expected_artifacts", ())),
+                    )
+                    verify_execution_evidence(mission, evidence)
+                except Exception:
+                    if work_unit.status is WorkStatus.EXECUTING:
+                        work_unit.transition(WorkStatus.FAILED)
+                    raise
             if work_unit.status is WorkStatus.EXECUTING:
                 work_unit.transition(WorkStatus.VERIFYING)
                 work_unit.transition(WorkStatus.COMPLETED)
