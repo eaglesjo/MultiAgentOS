@@ -29,7 +29,7 @@ class GitHubGatewayDispatchTests(unittest.TestCase):
             },
         )
 
-        self.assertEqual(result.run_id, 12345)
+        self.assertEqual(result.id, 12345)
         dispatch_args = run.call_args_list[0].args
         self.assertIn("-F", dispatch_args)
         self.assertIn("return_run_details=true", dispatch_args)
