@@ -66,7 +66,8 @@ from runtime.ide.runtime import IDERuntime
 from runtime.ide.bridge import IDEBridge, IDEBridgePolicy, IDEBridgeServer
 from runtime.agent.ide import IDECodingExecutor, IDEValidationVerifier
 from runtime.tool_calling import ToolRuntime
-from runtime.harness import ExecutionHarness\nfrom runtime.work_unit_execution import AutomaticExecutionResult, AutomaticWorkUnitExecutor
+from runtime.harness import ExecutionHarness
+from runtime.work_unit_execution import AutomaticExecutionResult, AutomaticWorkUnitExecutor
 from runtime.builtin_tools import BuiltinToolBindings
 from runtime.repository_tools import GitToolBindings, MCPToolBindings
 from runtime.quota import QuotaIntelligence, QuotaStore, quota_available
