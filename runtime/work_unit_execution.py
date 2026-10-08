@@ -8,6 +8,7 @@ from typing import Callable
 from core.contracts.execution_mission import (
     ExecutionEvidence,
     ExecutionMission,
+    MissionOperation,
     verify_execution_evidence,
 )
 from core.contracts.work_unit import WorkStatus, WorkUnit
@@ -99,7 +100,7 @@ class AutomaticWorkUnitExecutor:
                     repository=str(mission_data["repository"]),
                     source_sha=str(mission_data["source_sha"]),
                     workflow=str(mission_data["workflow"]),
-                    operation=mission_data["operation"],
+                    operation=MissionOperation(str(mission_data["operation"])),
                     ref=mission_data.get("ref"),
                     expected_artifacts=tuple(mission_data.get("expected_artifacts", ())),
                 )
