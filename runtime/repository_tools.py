@@ -1,5 +1,6 @@
 """Repository and MCP bindings for the normalized ToolRuntime."""
 from __future__ import annotations
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from core.contracts.mcp import MCPToolCall
 from core.contracts.execution_mission import ExecutionMission, MissionOperation
@@ -77,6 +78,7 @@ class GitHubToolBindings:
     prefer_local: bool = True
     source_sha: str | None = None
     source_clean: bool = False
+    source_identity_provider: Callable[[], dict[str, object] | None] | None = None
     _selected_route: ExecutionRoute | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -155,6 +157,16 @@ class GitHubToolBindings:
             raise PermissionError(
                 f"GitHub Actions repository is not allowlisted: {repository}"
             )
+        if self.source_identity_provider is not None:
+            current_identity = self.source_identity_provider()
+            if (
+                current_identity is None
+                or current_identity.get("head") != source_sha
+                or current_identity.get("dirty") is not False
+            ):
+                raise PermissionError(
+                    "GitHub Actions mission source identity changed or worktree became dirty"
+                )
         try:
             mission_operation = MissionOperation(operation)
         except ValueError as exc:
