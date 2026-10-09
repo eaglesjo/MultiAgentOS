@@ -522,5 +522,78 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
         self.assertEqual(mission_result.output["source_sha"], source_sha)
         self.assertIn("execution-mission-evidence", mission_result.output["artifacts"])
 
+
+    def test_failed_github_mission_tool_cannot_be_masked_by_final_model_response(self):
+        from core.contracts.agent_execution_runtime import ToolSideEffect, ToolSpec
+        from runtime.agent.model import ModelAgentExecutor
+        from runtime.policy import ExecutionPolicy
+        from runtime.tool_calling import ToolExecutionError, ToolRuntime
+
+        class Adapter:
+            def __init__(self):
+                self.calls = 0
+
+            def generate_with_tools(self, model, request, tools):
+                self.calls += 1
+                if self.calls == 1:
+                    return ModelResponse(
+                        text="",
+                        model_id=model.id,
+                        metadata={
+                            "tool_calls": [{
+                                "id": "mission-call-1",
+                                "name": "github.actions.run_mission",
+                                "arguments": {
+                                    "repository": "eaglesjo/MultiAgentOS",
+                                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
+                                    "operation": "test",
+                                },
+                            }]
+                        },
+                    )
+                return ModelResponse(text="all checks passed", model_id=model.id)
+
+        policy = ExecutionPolicy(allow_github_actions=True)
+        tools = ToolRuntime(policy)
+        tools.register(
+            ToolSpec(
+                "github.actions.run_mission",
+                "Run one verified GitHub Actions mission.",
+                ToolSideEffect.NETWORK,
+                frozenset({"github.actions"}),
+                {"type": "object"},
+            ),
+            lambda _request: (_ for _ in ()).throw(RuntimeError("artifact evidence mismatch")),
+        )
+        adapter = Adapter()
+        model = ModelSpec(
+            id="test-model",
+            provider_id="test-provider",
+            capabilities=frozenset({"code"}),
+            metadata={"adapter_id": "test-adapter"},
+        )
+        agent = AgentContract(
+            id="developer",
+            role="developer",
+            capabilities=frozenset({"code"}),
+            permissions=frozenset({"github.actions"}),
+        )
+        executor = ModelAgentExecutor(
+            adapters={"test-adapter": adapter},
+            models=[model],
+        )
+        work = WorkUnit("wu-failed-mission-tool", "run a remote mission")
+
+        with self.assertRaisesRegex(ToolExecutionError, "GitHub Actions mission failed"):
+            executor.execute_with_tools(
+                agent=agent,
+                model_id=model.id,
+                work_unit=work,
+                tool_runtime=tools,
+            )
+
+        self.assertEqual(adapter.calls, 2)
+        self.assertNotIn("model_response", work.metadata)
+
 if __name__ == "__main__":
     unittest.main()
