@@ -102,7 +102,10 @@ class GitHubMissionToolTests(unittest.TestCase):
         self.assertEqual(github.missions[0].source_sha, "0123456789abcdef0123456789abcdef01234567")
 
     def test_github_actions_tool_is_exposed(self):
-        tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
         github = FakeGitHubRuntime()
         GitHubToolBindings(tools, github)
         result = tools.execute(
