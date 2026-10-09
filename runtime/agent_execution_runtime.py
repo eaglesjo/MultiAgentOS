@@ -290,29 +290,52 @@ class AgentExecutionRuntime:
         artifact_store=None,
         checkpoint=None,
     ):
-        """Select a governed Agent route automatically, then execute it."""
-        if repository_evidence is None and project_root is not None:
-            repository_evidence = self.repository.evidence(project_root)
-        return self.orchestrator.run_auto(
-            work_unit=work_unit,
-            models=models,
-            executor=executor,
-            explicit_agents=explicit_agents,
-            repository_evidence=repository_evidence,
-            selection_strategy=selection_strategy,
-            selection_policy=selection_policy,
-            verifier=verifier,
-            reviewers=reviewers,
-            executors_by_agent=executors_by_agent,
-            preferred_model_ids_by_agent=preferred_model_ids_by_agent,
-            verifiers_by_agent=verifiers_by_agent,
-            reviewers_by_agent=reviewers_by_agent,
-            reviewer_runner=reviewer_runner,
-            preferred_model_ids=preferred_model_ids,
-            routing_strategy=routing_strategy,
-            artifact_store=artifact_store,
-            checkpoint=checkpoint,
-        )
+        """Select a governed Agent route automatically, then execute it.
+
+        When a project root is supplied, persist the WorkUnit before execution
+        and after either success or failure so automatic Agent workflows have
+        the same durable recovery boundary as other runtime entry points.
+        """
+        root = Path(project_root).resolve() if project_root is not None else None
+        store = self.state_store(root) if root is not None else None
+        if root is not None:
+            work_unit.metadata["cwd"] = str(root)
+            if "source_identity" not in work_unit.metadata:
+                identity = self.workspace_identity(root)
+                if identity is not None:
+                    work_unit.metadata["source_identity"] = identity
+            store.save(work_unit)
+        if repository_evidence is None and root is not None:
+            repository_evidence = self.repository.evidence(root)
+        try:
+            result = self.orchestrator.run_auto(
+                work_unit=work_unit,
+                models=models,
+                executor=executor,
+                explicit_agents=explicit_agents,
+                repository_evidence=repository_evidence,
+                selection_strategy=selection_strategy,
+                selection_policy=selection_policy,
+                verifier=verifier,
+                reviewers=reviewers,
+                executors_by_agent=executors_by_agent,
+                preferred_model_ids_by_agent=preferred_model_ids_by_agent,
+                verifiers_by_agent=verifiers_by_agent,
+                reviewers_by_agent=reviewers_by_agent,
+                reviewer_runner=reviewer_runner,
+                preferred_model_ids=preferred_model_ids,
+                routing_strategy=routing_strategy,
+                artifact_store=artifact_store,
+                checkpoint=checkpoint,
+            )
+        except Exception as exc:
+            work_unit.metadata["error"] = str(exc)
+            if store is not None:
+                store.save(work_unit)
+            raise
+        if store is not None:
+            store.save(work_unit)
+        return result
 
     def run_adaptive(
         self,
