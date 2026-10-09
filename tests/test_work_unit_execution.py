@@ -74,11 +74,14 @@ class AutomaticWorkUnitExecutionTests(unittest.TestCase):
     def test_remote_route_requires_explicit_permission(self):
         unit = WorkUnit("work-3", "blocked")
 
-        with self.assertRaises(PermissionError):
+        with self.assertRaisesRegex(PermissionError, "GitHub Actions is disabled"):
             AutomaticWorkUnitExecutor(allow_github_actions=False).execute(
-                unit, local=None, remote=lambda work: ("x", self.evidence())
-                , force_remote=True
+                unit, local=None, remote=lambda work: ("x", self.evidence()), force_remote=True
             )
+
+        self.assertEqual(unit.status, WorkStatus.BLOCKED)
+        self.assertEqual(unit.metadata["execution_route"], "blocked")
+        self.assertIn("GitHub Actions is disabled", unit.metadata["execution_block_reason"])
 
     def test_remote_success_can_execute_without_local(self):
         unit = WorkUnit("work-4", "remote")

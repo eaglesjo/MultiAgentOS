@@ -24,7 +24,7 @@ class WorkStatus(str, Enum):
 
 
 _ALLOWED_TRANSITIONS: dict[WorkStatus, frozenset[WorkStatus]] = {
-    WorkStatus.PENDING: frozenset({WorkStatus.PLANNING, WorkStatus.EXECUTING, WorkStatus.FAILED, WorkStatus.HOLD}),
+    WorkStatus.PENDING: frozenset({WorkStatus.PLANNING, WorkStatus.EXECUTING, WorkStatus.FAILED, WorkStatus.HOLD, WorkStatus.BLOCKED}),
     WorkStatus.PLANNING: frozenset({WorkStatus.EXECUTING, WorkStatus.FAILED, WorkStatus.HOLD}),
     WorkStatus.EXECUTING: frozenset({WorkStatus.VERIFYING, WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.HOLD}),
     WorkStatus.VERIFYING: frozenset({WorkStatus.EXECUTING, WorkStatus.REVIEWING, WorkStatus.HANDOFF, WorkStatus.COMPLETED, WorkStatus.FAILED, WorkStatus.HOLD}),
