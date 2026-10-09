@@ -370,10 +370,10 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
             runtime = AgentExecutionRuntime()
             runtime.workspace_identity = lambda _: {"head": "c" * 40, "dirty": False}
             work = WorkUnit("wu-adaptive-persist", "adaptive workflow")
-            with patch.object(runtime_module, "build_registry", return_value=Registry()), \\
-                 patch.object(runtime_module, "DeterministicAgentSelector", Selector), \\
-                 patch.object(runtime_module, "AdaptiveAgentExecutionLoop", AdaptiveLoop):
-                rounds = runtime.run_adaptive(root, work, [], {})
+            with patch.object(runtime_module, "build_registry", return_value=Registry()):
+                with patch.object(runtime_module, "DeterministicAgentSelector", Selector):
+                    with patch.object(runtime_module, "AdaptiveAgentExecutionLoop", AdaptiveLoop):
+                        rounds = runtime.run_adaptive(root, work, [], {})
 
             persisted = runtime.state_store(root).load(work.id)
 
