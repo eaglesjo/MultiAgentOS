@@ -36,6 +36,17 @@ class FakeGateway:
     def list_workflow_artifacts(self, repository, run_id):
         return [WorkflowArtifact(7, "execution-mission-evidence")]
 
+    def get_workflow_artifact_json(self, repository, run_id, artifact_name, filename):
+        inputs = self.dispatched[0][3]
+        return {
+            "mission_id": inputs["mission_id"],
+            "run_id": run_id,
+            "source_sha": inputs["source_sha"],
+            "operation": inputs["operation"],
+            "status": "completed",
+            "conclusion": "success",
+        }
+
 
 class ExecutionMissionTests(unittest.TestCase):
     def mission(self):
@@ -69,6 +80,61 @@ class ExecutionMissionTests(unittest.TestCase):
         self.assertEqual(
             gateway.dispatched[0][3]["source_sha"], self.mission().source_sha
         )
+
+    def test_artifact_run_id_mismatch_is_rejected(self):
+        class MismatchedRunIdGateway(FakeGateway):
+            def get_workflow_artifact_json(self, repository, run_id, artifact_name, filename):
+                payload = super().get_workflow_artifact_json(
+                    repository, run_id, artifact_name, filename
+                )
+                payload["run_id"] = run_id + 1
+                return payload
+
+        gateway = MismatchedRunIdGateway()
+        runtime = GitHubActionsMissionRuntime(
+            gateway,
+            ExecutionPolicy(allow_github_actions=True),
+            poll_interval_seconds=0,
+            sleep=lambda _: None,
+        )
+        with self.assertRaisesRegex(ValueError, "run_id"):
+            runtime.run(self.mission())
+
+    def test_artifact_source_sha_mismatch_is_rejected(self):
+        class MismatchedSourceGateway(FakeGateway):
+            def get_workflow_artifact_json(self, repository, run_id, artifact_name, filename):
+                payload = super().get_workflow_artifact_json(
+                    repository, run_id, artifact_name, filename
+                )
+                payload["source_sha"] = "f" * 40
+                return payload
+
+        runtime = GitHubActionsMissionRuntime(
+            MismatchedSourceGateway(),
+            ExecutionPolicy(allow_github_actions=True),
+            poll_interval_seconds=0,
+            sleep=lambda _: None,
+        )
+        with self.assertRaisesRegex(ValueError, "source_sha"):
+            runtime.run(self.mission())
+
+    def test_artifact_mission_identity_mismatch_is_rejected(self):
+        class MismatchedMissionGateway(FakeGateway):
+            def get_workflow_artifact_json(self, repository, run_id, artifact_name, filename):
+                payload = super().get_workflow_artifact_json(
+                    repository, run_id, artifact_name, filename
+                )
+                payload["mission_id"] = "another-mission"
+                return payload
+
+        runtime = GitHubActionsMissionRuntime(
+            MismatchedMissionGateway(),
+            ExecutionPolicy(allow_github_actions=True),
+            poll_interval_seconds=0,
+            sleep=lambda _: None,
+        )
+        with self.assertRaisesRegex(ValueError, "mission_id"):
+            runtime.run(self.mission())
 
     def test_source_mismatch_is_rejected(self):
         mission = self.mission()
