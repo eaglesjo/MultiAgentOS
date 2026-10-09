@@ -150,5 +150,43 @@ class ExecutionMissionTests(unittest.TestCase):
             verify_execution_evidence(mission, evidence)
 
 
+    def test_missing_expected_artifact_fails_before_download(self):
+        class MissingArtifactGateway(FakeGateway):
+            def list_workflow_artifacts(self, repository, run_id):
+                return []
+
+            def get_workflow_artifact_json(self, *args, **kwargs):
+                raise AssertionError("must not download a missing artifact")
+
+        runtime = GitHubActionsMissionRuntime(
+            MissingArtifactGateway(),
+            ExecutionPolicy(allow_github_actions=True),
+            poll_interval_seconds=0,
+            sleep=lambda _: None,
+        )
+        with self.assertRaisesRegex(RuntimeError, "without expected artifacts"):
+            runtime.run(self.mission())
+
+    def test_failed_workflow_is_reported_before_artifact_lookup(self):
+        class FailedRunGateway(FakeGateway):
+            def get_workflow_run(self, repository, run_id):
+                self.polls += 1
+                return WorkflowRun(
+                    run_id, "completed", "failure",
+                    "main-tip-sha", "https://example/run/42"
+                )
+
+            def list_workflow_artifacts(self, *args, **kwargs):
+                raise AssertionError("failed workflow must not look up artifacts")
+
+        runtime = GitHubActionsMissionRuntime(
+            FailedRunGateway(),
+            ExecutionPolicy(allow_github_actions=True),
+            poll_interval_seconds=0,
+            sleep=lambda _: None,
+        )
+        with self.assertRaisesRegex(RuntimeError, "remote mission failed"):
+            runtime.run(self.mission())
+
 if __name__ == "__main__":
     unittest.main()
