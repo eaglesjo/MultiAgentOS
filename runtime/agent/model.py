@@ -206,6 +206,20 @@ class ModelAgentExecutor(AgentExecutor):
                     None,
                 )
                 if failed_mission is not None:
+                    # Preserve the failed tool outcome before propagating the error.
+                    # run_persistent will then save this audit trail with FAILED state.
+                    work_unit.metadata["tool_rounds"] = result.rounds
+                    work_unit.metadata["tool_results"] = tuple(
+                        {
+                            "tool_id": item.tool_id,
+                            "ok": item.ok,
+                            "output": item.output,
+                            "error": item.error,
+                            "metadata": dict(item.metadata),
+                        }
+                        for item in result.tool_results
+                    )
+                    work_unit.metadata["tool_error"] = failed_mission.error or "no failure details returned"
                     raise ToolExecutionError(
                         "GitHub Actions mission failed: "
                         + (failed_mission.error or "no failure details returned")
