@@ -144,8 +144,13 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
             def generate_with_tools(self, model, request, tools):
                 self.calls += 1
                 if self.calls == 1:
-                    if "filesystem.read" not in {tool.id for tool in tools}:
+                    tool_ids = {tool.id for tool in tools}
+                    if "filesystem.read" not in tool_ids:
                         raise AssertionError("filesystem.read tool was not registered")
+                    if "execution.route.select" not in tool_ids:
+                        raise AssertionError("execution route tool was not registered")
+                    if "github.actions.run_mission" not in tool_ids:
+                        raise AssertionError("GitHub Actions mission tool was not registered")
                     return ModelResponse(text="", model_id=model.id, metadata={"tool_calls": [{"id": "read-1", "name": "filesystem.read", "arguments": {"path": "README.md"}}]})
                 return ModelResponse(text="ide-tool-complete", model_id=model.id)
 
