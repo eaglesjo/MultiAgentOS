@@ -16,7 +16,7 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
             run_id=99,
             status="completed",
             conclusion="success" if success else "failure",
-            head_sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            head_sha=source_sha,
             source_sha=source_sha,
             artifacts=("execution-mission-evidence",),
             logs_available=True,
@@ -118,6 +118,42 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
             persisted.metadata["remote_execution_error"],
             "GitHub fallback requires a clean local worktree",
         )
+
+    def test_success_evidence_head_mismatch_fails_closed(self):
+        runtime = AgentExecutionRuntime(
+            policy=ExecutionPolicy(allow_github_actions=True)
+        )
+        source_sha = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        runtime.git.identity = lambda _: {"head": source_sha, "dirty": False}
+        runtime.github.run_actions_mission = lambda mission: type(
+            "MissionResult",
+            (),
+            {"evidence": ExecutionEvidence(
+                mission_id=mission.id,
+                run_id=99,
+                status="completed",
+                conclusion="success",
+                head_sha="cccccccccccccccccccccccccccccccccccccccc",
+                source_sha=source_sha,
+                artifacts=("execution-mission-evidence",),
+                logs_available=True,
+            )},
+        )()
+
+        with tempfile.TemporaryDirectory() as root:
+            unit = WorkUnit("work-head-mismatch", "fail closed on head mismatch")
+            with self.assertRaisesRegex(ValueError, "head identity mismatch"):
+                runtime.execute_work_unit_with_github_actions(
+                    unit,
+                    local_available=False,
+                    local=lambda _: "unused",
+                    project_root=Path(root),
+                    repository="eaglesjo/MultiAgentOS",
+                )
+            persisted = runtime.state_store(Path(root)).load(unit.id)
+
+        self.assertEqual(unit.status, WorkStatus.FAILED)
+        self.assertEqual(persisted.status, WorkStatus.FAILED)
 
     def test_success_evidence_source_mismatch_fails_closed(self):
         runtime = AgentExecutionRuntime(
