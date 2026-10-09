@@ -540,6 +540,18 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
         self.assertEqual(mission_result.output["run_id"], 42)
         self.assertEqual(mission_result.output["source_sha"], source_sha)
         self.assertIn("execution-mission-evidence", mission_result.output["artifacts"])
+        audit = persisted.metadata["tool_results_audit"]
+        route_audit = next(
+            item for item in audit if item["tool_id"] == "execution.route.select"
+        )
+        mission_audit = next(
+            item for item in audit if item["tool_id"] == "github.actions.run_mission"
+        )
+        self.assertEqual(route_audit["output"]["route"], "github_actions")
+        self.assertTrue(mission_audit["ok"])
+        self.assertEqual(mission_audit["output"]["run_id"], 42)
+        self.assertEqual(mission_audit["output"]["source_sha"], source_sha)
+        self.assertIn("execution-mission-evidence", mission_audit["output"]["artifacts"])
 
 
     def test_missing_mission_evidence_marks_persisted_work_unit_failed(self):
