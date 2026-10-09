@@ -15,6 +15,10 @@ from core.contracts.work_unit import WorkStatus, WorkUnit
 from runtime.execution_route import ExecutionRoute, select_execution_route
 
 
+class LocalExecutionUnavailable(RuntimeError):
+    """Raised when local execution cannot start and remote fallback is safe."""
+
+
 @dataclass(frozen=True)
 class AutomaticExecutionResult:
     work_unit: WorkUnit
@@ -56,12 +60,16 @@ class AutomaticWorkUnitExecutor:
                 work_unit.transition(WorkStatus.EXECUTING)
             try:
                 output = local(work_unit)
-            except Exception as exc:
+            except LocalExecutionUnavailable as exc:
                 work_unit.metadata["local_execution_error"] = str(exc)
                 if remote is None or not self.allow_github_actions:
                     work_unit.transition(WorkStatus.FAILED)
                     raise
                 return self._run_remote_fallback(work_unit, remote)
+            except Exception as exc:
+                work_unit.metadata["local_execution_error"] = str(exc)
+                work_unit.transition(WorkStatus.FAILED)
+                raise
             work_unit.transition(WorkStatus.VERIFYING)
             work_unit.transition(WorkStatus.COMPLETED)
             return AutomaticExecutionResult(work_unit, ExecutionRoute.LOCAL, output=output)

@@ -3,7 +3,7 @@ import unittest
 from core.contracts.execution_mission import ExecutionEvidence
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from runtime.execution_route import ExecutionRoute
-from runtime.work_unit_execution import AutomaticWorkUnitExecutor
+from runtime.work_unit_execution import AutomaticWorkUnitExecutor, LocalExecutionUnavailable
 
 
 class AutomaticWorkUnitExecutionTests(unittest.TestCase):
@@ -40,7 +40,7 @@ class AutomaticWorkUnitExecutionTests(unittest.TestCase):
 
         def local(_):
             calls.append("local")
-            raise RuntimeError("local failed")
+            raise LocalExecutionUnavailable("local runner unavailable")
 
         def remote(work):
             calls.append("remote")
@@ -56,6 +56,20 @@ class AutomaticWorkUnitExecutionTests(unittest.TestCase):
         self.assertEqual(unit.status, WorkStatus.COMPLETED)
         self.assertEqual(unit.metadata["execution_route"], "github_actions")
         self.assertEqual(unit.metadata["execution_evidence"]["mission_id"], "mission-work-2")
+
+    def test_local_execution_failure_does_not_fall_back_automatically(self):
+        unit = WorkUnit("work-unsafe-fallback", "test failure must not be retried remotely")
+        remote_calls = []
+
+        with self.assertRaisesRegex(RuntimeError, "tests failed"):
+            AutomaticWorkUnitExecutor(allow_github_actions=True).execute(
+                unit,
+                local=lambda _: (_ for _ in ()).throw(RuntimeError("tests failed")),
+                remote=lambda work: remote_calls.append(work.id) or ("remote", self.evidence()),
+            )
+
+        self.assertEqual(remote_calls, [])
+        self.assertEqual(unit.status, WorkStatus.FAILED)
 
     def test_remote_route_requires_explicit_permission(self):
         unit = WorkUnit("work-3", "blocked")
