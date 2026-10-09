@@ -90,7 +90,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                 },
                 work_unit_id="work-123",
@@ -140,7 +139,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                 },
                 work_unit_id="work-123",
@@ -165,7 +163,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "attacker/other",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                 },
                 work_unit_id="work-123",
@@ -190,7 +187,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                     "workflow": "untrusted.yml",
                 },
@@ -200,6 +196,38 @@ class GitHubMissionToolTests(unittest.TestCase):
         )
         self.assertFalse(result.ok)
         self.assertIn("workflow is fixed", result.error)
+        self.assertEqual(github.missions, [])
+
+    def test_github_actions_tool_rejects_source_sha_override(self):
+        trusted_sha = "0123456789abcdef0123456789abcdef01234567"
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(
+            tools,
+            github,
+            local_available=False,
+            source_sha=trusted_sha,
+            source_clean=True,
+        )
+        route = tools.execute(ToolRequest("execution.route.select"))
+        self.assertEqual(route.output["route"], "github_actions")
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {
+                    "repository": "owner/repo",
+                    "source_sha": "f" * 40,
+                    "operation": "test",
+                },
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("source SHA is fixed by runtime context", result.error)
         self.assertEqual(github.missions, [])
 
     def test_github_actions_tool_rejects_custom_input_overrides(self):
@@ -216,7 +244,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                     "inputs": {
                         "source_sha": "ffffffffffffffffffffffffffffffffffffffff",
@@ -245,7 +272,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                     "mission_id": "mission-some-other-work",
                 },
@@ -265,7 +291,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                 },
                 work_unit_id="work-123",
