@@ -32,7 +32,7 @@ class AutomaticWorkUnitExecutionTests(unittest.TestCase):
         self.assertEqual(result.route, ExecutionRoute.LOCAL)
         self.assertEqual(result.output, "local-result")
         self.assertEqual(calls, ["work-1"])
-        self.assertEqual(unit.status, WorkStatus.EXECUTING)
+        self.assertEqual(unit.status, WorkStatus.COMPLETED)
 
     def test_local_failure_falls_back_to_one_remote_mission(self):
         unit = WorkUnit("work-2", "fallback")
