@@ -91,3 +91,6 @@ class GitHubGateway(Protocol):
     def list_workflow_artifacts(
         self, full_name: str, run_id: int
     ) -> Sequence[WorkflowArtifact]: ...
+    def get_workflow_artifact_json(
+        self, full_name: str, run_id: int, artifact_name: str, filename: str
+    ) -> dict[str, object]: ...
