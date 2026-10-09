@@ -88,7 +88,13 @@ class AutomaticWorkUnitExecutor:
         elif work_unit.status is WorkStatus.PENDING:
             work_unit.transition(WorkStatus.EXECUTING)
 
-        output, evidence = remote(work_unit)
+        try:
+            output, evidence = remote(work_unit)
+        except Exception as exc:
+            work_unit.metadata["remote_execution_error"] = str(exc)
+            if work_unit.status is WorkStatus.EXECUTING:
+                work_unit.transition(WorkStatus.FAILED)
+            raise
         work_unit.metadata["execution_route"] = ExecutionRoute.GITHUB_ACTIONS.value
         work_unit.metadata["execution_evidence"] = {
             "mission_id": evidence.mission_id,
