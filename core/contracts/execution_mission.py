@@ -83,6 +83,11 @@ def verify_execution_evidence(
             f"source identity mismatch: expected {mission.source_sha}, "
             f"got {evidence.source_sha}"
         )
+    if evidence.head_sha != mission.source_sha:
+        raise ValueError(
+            f"head identity mismatch: expected {mission.source_sha}, "
+            f"got {evidence.head_sha}"
+        )
     if evidence.status not in {"completed", "success"}:
         raise RuntimeError(f"remote mission is not terminal: {evidence.status}")
     if evidence.conclusion != "success":
