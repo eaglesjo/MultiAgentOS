@@ -147,10 +147,15 @@ class GitHubToolBindings:
             )
 
         mission_id = request.arguments.get("mission_id")
-        if mission_id is None:
-            if not request.work_unit_id:
-                raise ValueError("mission_id or work_unit_id is required")
-            mission_id = f"mission-{request.work_unit_id}"
+        if request.work_unit_id:
+            expected_mission_id = f"mission-{request.work_unit_id}"
+            if mission_id is not None and mission_id != expected_mission_id:
+                raise PermissionError(
+                    "mission identity is bound to the current WorkUnit"
+                )
+            mission_id = expected_mission_id
+        elif mission_id is None:
+            raise ValueError("mission_id or work_unit_id is required")
 
         workflow = "execution-mission.yml"
         repository_info = self.github.gateway.get_repository(repository)
