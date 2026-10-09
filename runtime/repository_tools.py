@@ -141,7 +141,7 @@ class GitHubToolBindings:
             raise ValueError(f"unsupported mission operation: {operation}") from exc
 
         raw_inputs = request.arguments.get("inputs", {})
-        if raw_inputs not in ({}, None):
+        if raw_inputs != {}:
             raise PermissionError(
                 "custom GitHub Actions mission inputs are disabled by runtime policy"
             )
