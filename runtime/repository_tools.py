@@ -103,8 +103,6 @@ class GitHubToolBindings:
                         "repository": {"type": "string"},
                         "source_sha": {"type": "string"},
                         "operation": {"type": "string", "enum": ["test", "package", "verify"]},
-                        "workflow": {"type": "string"},
-                        "ref": {"type": "string"},
                         "mission_id": {"type": "string"},
                         "inputs": {"type": "object"},
                     },
@@ -133,6 +131,11 @@ class GitHubToolBindings:
         operation = request.arguments.get("operation")
         if not all(isinstance(value, str) and value.strip() for value in (repository, operation)):
             raise ValueError("repository and operation must be non-empty strings")
+        repository = repository.strip()
+        if repository not in self.runtime.policy.allowed_github_repositories:
+            raise PermissionError(
+                f"GitHub Actions repository is not allowlisted: {repository}"
+            )
         try:
             mission_operation = MissionOperation(operation)
         except ValueError as exc:
@@ -151,16 +154,21 @@ class GitHubToolBindings:
                 raise ValueError("mission_id or work_unit_id is required")
             mission_id = f"mission-{request.work_unit_id}"
 
-        workflow = request.arguments.get("workflow", "execution-mission.yml")
-        ref = request.arguments.get("ref", "main")
+        workflow = "execution-mission.yml"
+        repository_info = self.github.gateway.get_repository(repository)
+        ref = repository_info.default_branch
+        requested_workflow = request.arguments.get("workflow")
+        requested_ref = request.arguments.get("ref")
+        if requested_workflow is not None and requested_workflow != workflow:
+            raise PermissionError("GitHub Actions workflow is fixed by runtime policy")
+        if requested_ref is not None and requested_ref != ref:
+            raise PermissionError(
+                "GitHub Actions dispatch ref must be the repository default branch"
+            )
         if source_sha is None:
             source_sha = self.github.gateway.get_branch(repository, ref).sha
         if not isinstance(source_sha, str) or not source_sha.strip():
             raise ValueError("source_sha must resolve to a non-empty commit SHA")
-        if not isinstance(workflow, str) or not workflow.strip():
-            raise ValueError("workflow must be a non-empty string")
-        if not isinstance(ref, str) or not ref.strip():
-            raise ValueError("ref must be a non-empty string")
 
         mission = ExecutionMission(
             id=str(mission_id),
