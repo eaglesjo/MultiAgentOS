@@ -82,12 +82,24 @@ class GitHubActionsMissionRuntime:
             self.sleep(self.poll_interval_seconds)
             current = self.gateway.get_workflow_run(mission.repository, current.id)
 
+        if current.conclusion != "success":
+            raise RuntimeError(
+                f"remote mission failed: conclusion={current.conclusion!r}"
+            )
+
         artifacts = tuple(
             artifact.name
             for artifact in self.gateway.list_workflow_artifacts(
                 mission.repository, current.id
             )
         )
+        missing = set(mission.expected_artifacts) - set(artifacts)
+        if missing:
+            raise RuntimeError(
+                "remote mission completed without expected artifacts: "
+                + ", ".join(sorted(missing))
+            )
+
         if "execution-mission-evidence" in mission.expected_artifacts:
             payload = self.gateway.get_workflow_artifact_json(
                 mission.repository,
