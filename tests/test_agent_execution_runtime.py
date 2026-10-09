@@ -489,7 +489,7 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
             )
             persisted = runtime.state_store(root).load(result["work_unit"].id)
 
-        self.assertEqual(gateway.dispatched[0], (
+        self.assertEqual(gateway.dispatched, (
             "eaglesjo/MultiAgentOS",
             "execution-mission.yml",
             "main",
