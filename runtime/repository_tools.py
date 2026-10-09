@@ -1,12 +1,12 @@
 """Repository and MCP bindings for the normalized ToolRuntime."""
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from core.contracts.mcp import MCPToolCall
 from core.contracts.execution_mission import ExecutionMission, MissionOperation
 from core.contracts.agent_execution_runtime import ToolRequest, ToolSideEffect, ToolSpec
 from runtime.git import GitRuntime
 from runtime.github import GitHubRuntime
-from runtime.execution_route import select_execution_route
+from runtime.execution_route import ExecutionRoute, select_execution_route
 from runtime.mcp.client import MCPClient
 from runtime.tool_calling import ToolRuntime
 
@@ -71,6 +71,11 @@ class GitHubToolBindings:
 
     runtime: ToolRuntime
     github: GitHubRuntime
+    local_available: bool = True
+    local_failed: bool = False
+    force_remote: bool = False
+    prefer_local: bool = True
+    _selected_route: ExecutionRoute | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.runtime.register(
@@ -78,15 +83,7 @@ class GitHubToolBindings:
                 "execution.route.select",
                 "Select the deterministic local-first execution route for a WorkUnit.",
                 ToolSideEffect.READ,
-                input_schema={
-                    "type": "object",
-                    "properties": {
-                        "local_available": {"type": "boolean"},
-                        "local_failed": {"type": "boolean"},
-                        "force_remote": {"type": "boolean"},
-                        "prefer_local": {"type": "boolean"},
-                    },
-                },
+                input_schema={"type": "object"},
             ),
             self._select_route,
         )
@@ -112,12 +109,13 @@ class GitHubToolBindings:
 
     def _select_route(self, request: ToolRequest) -> object:
         decision = select_execution_route(
-            local_available=request.arguments.get("local_available", True) is True,
-            local_failed=request.arguments.get("local_failed", False) is True,
-            force_remote=request.arguments.get("force_remote", False) is True,
+            local_available=self.local_available,
+            local_failed=self.local_failed,
+            force_remote=self.force_remote,
             allow_github_actions=self.runtime.policy.allow_github_actions,
-            prefer_local=request.arguments.get("prefer_local", True) is True,
+            prefer_local=self.prefer_local,
         )
+        self._selected_route = decision.route
         return {
             "route": decision.route.value,
             "reason": decision.reason,
@@ -125,6 +123,12 @@ class GitHubToolBindings:
         }
 
     def _run_mission(self, request: ToolRequest) -> object:
+        selected_route = self._selected_route
+        self._selected_route = None
+        if selected_route is not ExecutionRoute.GITHUB_ACTIONS:
+            raise PermissionError(
+                "GitHub Actions mission requires a prior local-first route decision"
+            )
         repository = request.arguments.get("repository")
         source_sha = request.arguments.get("source_sha")
         operation = request.arguments.get("operation")
