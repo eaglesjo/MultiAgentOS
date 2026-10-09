@@ -11,7 +11,7 @@ from runtime.quota import QuotaIntelligence
 from runtime.capability import CapabilityRegistry
 from runtime.health import ModelHealthRegistry
 from runtime.model_control import ModelControlPlane
-from runtime.tool_calling import ToolCallingExecution, ToolCallingRuntime, ToolRuntime
+from runtime.tool_calling import ToolCallingExecution, ToolCallingRuntime, ToolExecutionError, ToolRuntime
 from core.contracts.work_unit import WorkUnit
 from core.contracts.execution_limits import ExecutionBudget, RateLimit
 from core.execution_limits import ExecutionLimitStore
@@ -61,6 +61,10 @@ class ModelAgentExecutor(AgentExecutor):
     @staticmethod
     def _is_failover_error(exc: Exception) -> bool:
         """Return True for errors where another model/provider may succeed."""
+        # Tool failures are execution outcomes, not provider transport failures.
+        # Retrying another model could repeat a non-idempotent tool side effect.
+        if isinstance(exc, ToolExecutionError):
+            return False
         status = getattr(exc, "status_code", getattr(exc, "status", None))
         code = str(getattr(exc, "code", "")).lower()
         message = str(exc).lower()
@@ -193,6 +197,18 @@ class ModelAgentExecutor(AgentExecutor):
                         work_unit_id=work_unit.id,
                         granted_permissions=agent.permissions,
                         approved=approved,
+                    )
+                failed_mission = next(
+                    (
+                        item for item in result.tool_results
+                        if item.tool_id == "github.actions.run_mission" and not item.ok
+                    ),
+                    None,
+                )
+                if failed_mission is not None:
+                    raise ToolExecutionError(
+                        "GitHub Actions mission failed: "
+                        + (failed_mission.error or "no failure details returned")
                     )
                 attempts.append(candidate_id)
                 work_unit.metadata["model_response"] = result.response.text
