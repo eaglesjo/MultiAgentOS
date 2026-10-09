@@ -104,7 +104,6 @@ class GitHubToolBindings:
                         "source_sha": {"type": "string"},
                         "operation": {"type": "string", "enum": ["test", "package", "verify"]},
                         "mission_id": {"type": "string"},
-                        "inputs": {"type": "object"},
                     },
                 },
             ),
@@ -142,11 +141,10 @@ class GitHubToolBindings:
             raise ValueError(f"unsupported mission operation: {operation}") from exc
 
         raw_inputs = request.arguments.get("inputs", {})
-        if not isinstance(raw_inputs, dict) or any(
-            not isinstance(key, str) or not isinstance(value, str)
-            for key, value in raw_inputs.items()
-        ):
-            raise ValueError("inputs must be an object containing only string values")
+        if raw_inputs not in ({}, None):
+            raise PermissionError(
+                "custom GitHub Actions mission inputs are disabled by runtime policy"
+            )
 
         mission_id = request.arguments.get("mission_id")
         if mission_id is None:
