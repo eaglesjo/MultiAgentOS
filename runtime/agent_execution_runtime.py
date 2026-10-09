@@ -2012,15 +2012,20 @@ class AgentExecutionRuntime:
         coordinator = AutomaticWorkUnitExecutor(
             allow_github_actions=self.policy.allow_github_actions,
         )
-        result = coordinator.execute(
-            work_unit,
-            local=local,
-            remote=remote,
-            local_available=local_available,
-            force_remote=force_remote,
-            prefer_local=prefer_local,
-        )
         root = project_root or Path.cwd()
+        try:
+            result = coordinator.execute(
+                work_unit,
+                local=local,
+                remote=remote,
+                local_available=local_available,
+                force_remote=force_remote,
+                prefer_local=prefer_local,
+            )
+        except Exception:
+            # Persist FAILED/BLOCKED lifecycle state before propagating the error.
+            self.state_store(root).save(work_unit)
+            raise
         self.state_store(root).save(work_unit)
         return result
 
