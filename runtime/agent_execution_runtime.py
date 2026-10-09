@@ -356,73 +356,103 @@ class AgentExecutionRuntime:
     ) -> tuple[ExecutionRound, ...]:
         """Execute a governed route with bounded specialist-only adaptive reselection."""
         root = Path(project_root).resolve()
-        registry = build_registry()
-        initial_selector = DeterministicAgentSelector(
-            evidence_engine=EvidenceEngine(),
-            selection_strategy=selection_strategy,
-            selection_policy=selection_policy,
-            registry=registry,
-        )
-        selection = initial_selector.select(
-            work_unit,
-            explicit_agents=explicit_agents,
-            repository_evidence=(
-                repository_evidence
-                if repository_evidence is not None
-                else self.repository.evidence(root)
-            ),
-        )
-        selector = DeterministicAgentSelector(
-            evidence_engine=EvidenceEngine(),
-            selection_strategy=None,
-            selection_policy=selection_policy,
-            registry=registry,
-        )
-        fallback = (
-            SelectionFallback(selection_strategy, policy=selection_policy)
-            if selection_strategy is not None
-            else None
-        )
-        collector = RuntimeExecutionEvidenceCollector(
-            event_store=self.event_store(root),
-            tool_ledger_store=self.tool_ledger_store(root),
-        )
-        capability_registry = CapabilityRegistry(
-            CapabilityStore(root / ".multiagentos" / "capabilities")
-        )
-        quota_store = QuotaStore(root / ".multiagentos" / "quota")
-        quota_snapshots = {
-            model.id: quota_store.load(model.id)
-            for model in models
-            if quota_store.exists(model.id)
-        }
-        health_store = ModelHealthStore(root / ".multiagentos" / "health")
-        health_snapshots = {
-            model.id: health_store.load(model.id)
-            for model in models
-            if health_store.exists(model.id)
-        }
-        stage_executor = RuntimeStageExecutor(
-            agents={agent.id: agent for agent in registry.list()},
-            models=models,
-            executors=executors_by_agent,
-            preferred_model_ids_by_agent=preferred_model_ids_by_agent,
-            preferred_model_ids=preferred_model_ids,
-            routing_strategy=routing_strategy,
-            capability_registry=capability_registry,
-            quota_snapshots=quota_snapshots,
-            health_snapshots=health_snapshots,
-            evidence_collector=collector,
-            confidence_resolver=confidence_resolver,
-        )
-        loop = AdaptiveAgentExecutionLoop(
-            selector=selector,
-            registry=registry,
-            executor=stage_executor,
-            selection_fallback=fallback,
-            policy=policy,
-        )
-        return loop.run(work_unit=work_unit, initial_plan=selection.plan)
+        store = self.state_store(root)
+        work_unit.metadata["cwd"] = str(root)
+        if "source_identity" not in work_unit.metadata:
+            identity = self.workspace_identity(root)
+            if identity is not None:
+                work_unit.metadata["source_identity"] = identity
+        try:
+            if work_unit.status in {WorkStatus.PENDING, WorkStatus.FAILED}:
+                work_unit.transition(WorkStatus.EXECUTING)
+            elif work_unit.status is not WorkStatus.EXECUTING:
+                raise ValueError(
+                    f"adaptive execution cannot start from {work_unit.status.value}"
+                )
+            store.save(work_unit)
+            registry = build_registry()
+            initial_selector = DeterministicAgentSelector(
+                evidence_engine=EvidenceEngine(),
+                selection_strategy=selection_strategy,
+                selection_policy=selection_policy,
+                registry=registry,
+            )
+            selection = initial_selector.select(
+                work_unit,
+                explicit_agents=explicit_agents,
+                repository_evidence=(
+                    repository_evidence
+                    if repository_evidence is not None
+                    else self.repository.evidence(root)
+                ),
+            )
+            selector = DeterministicAgentSelector(
+                evidence_engine=EvidenceEngine(),
+                selection_strategy=None,
+                selection_policy=selection_policy,
+                registry=registry,
+            )
+            fallback = (
+                SelectionFallback(selection_strategy, policy=selection_policy)
+                if selection_strategy is not None
+                else None
+            )
+            collector = RuntimeExecutionEvidenceCollector(
+                event_store=self.event_store(root),
+                tool_ledger_store=self.tool_ledger_store(root),
+            )
+            capability_registry = CapabilityRegistry(
+                CapabilityStore(root / ".multiagentos" / "capabilities")
+            )
+            quota_store = QuotaStore(root / ".multiagentos" / "quota")
+            quota_snapshots = {
+                model.id: quota_store.load(model.id)
+                for model in models
+                if quota_store.exists(model.id)
+            }
+            health_store = ModelHealthStore(root / ".multiagentos" / "health")
+            health_snapshots = {
+                model.id: health_store.load(model.id)
+                for model in models
+                if health_store.exists(model.id)
+            }
+            stage_executor = RuntimeStageExecutor(
+                agents={agent.id: agent for agent in registry.list()},
+                models=models,
+                executors=executors_by_agent,
+                preferred_model_ids_by_agent=preferred_model_ids_by_agent,
+                preferred_model_ids=preferred_model_ids,
+                routing_strategy=routing_strategy,
+                capability_registry=capability_registry,
+                quota_snapshots=quota_snapshots,
+                health_snapshots=health_snapshots,
+                evidence_collector=collector,
+                confidence_resolver=confidence_resolver,
+            )
+            loop = AdaptiveAgentExecutionLoop(
+                selector=selector,
+                registry=registry,
+                executor=stage_executor,
+                selection_fallback=fallback,
+                policy=policy,
+            )
+            rounds = loop.run(work_unit=work_unit, initial_plan=selection.plan)
+            if rounds and rounds[-1].success:
+                if work_unit.status is WorkStatus.EXECUTING:
+                    work_unit.transition(WorkStatus.VERIFYING)
+                if work_unit.status is WorkStatus.VERIFYING:
+                    work_unit.transition(WorkStatus.COMPLETED)
+            elif work_unit.status in {WorkStatus.EXECUTING, WorkStatus.VERIFYING}:
+                work_unit.transition(WorkStatus.FAILED)
+            store.save(work_unit)
+            return rounds
+        except Exception as exc:
+            work_unit.metadata["error"] = str(exc)
+            if work_unit.status in {WorkStatus.PENDING, WorkStatus.PLANNING, WorkStatus.EXECUTING, WorkStatus.VERIFYING}:
+                work_unit.transition(WorkStatus.FAILED)
+            store.save(work_unit)
+            raise
+    
 
     def reselect_agents(
         self,
