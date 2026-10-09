@@ -88,6 +88,30 @@ class GitHubActionsMissionRuntime:
                 mission.repository, current.id
             )
         )
+        if "execution-mission-evidence" in mission.expected_artifacts:
+            payload = self.gateway.get_workflow_artifact_json(
+                mission.repository,
+                current.id,
+                "execution-mission-evidence",
+                "result.json",
+            )
+            expected_payload = {
+                "mission_id": mission.id,
+                "run_id": current.id,
+                "source_sha": mission.source_sha,
+                "operation": mission.operation.value,
+                "status": "completed",
+                "conclusion": "success",
+            }
+            mismatches = [
+                key for key, expected in expected_payload.items()
+                if payload.get(key) != expected
+            ]
+            if mismatches:
+                raise ValueError(
+                    "mission artifact evidence mismatch: "
+                    + ", ".join(mismatches)
+                )
         return ExecutionEvidence(
             mission_id=mission.id,
             run_id=current.id,
