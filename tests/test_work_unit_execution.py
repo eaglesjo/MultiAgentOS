@@ -93,6 +93,30 @@ class AutomaticWorkUnitExecutionTests(unittest.TestCase):
         self.assertEqual(result.route, ExecutionRoute.GITHUB_ACTIONS)
         self.assertEqual(unit.status, WorkStatus.COMPLETED)
 
+    def test_missing_local_runner_marks_work_unit_failed(self):
+        unit = WorkUnit("work-missing-local", "missing local runner")
+
+        with self.assertRaisesRegex(ValueError, "local execution route requires a local runner"):
+            AutomaticWorkUnitExecutor(allow_github_actions=False).execute(
+                unit, local=None
+            )
+
+        self.assertEqual(unit.status, WorkStatus.FAILED)
+        self.assertEqual(unit.metadata["execution_route"], "local")
+        self.assertIn("execution_error", unit.metadata)
+
+    def test_missing_remote_runner_marks_work_unit_failed(self):
+        unit = WorkUnit("work-missing-remote", "missing remote runner")
+
+        with self.assertRaisesRegex(ValueError, "requires a bounded remote runner"):
+            AutomaticWorkUnitExecutor(allow_github_actions=True).execute(
+                unit, local_available=False, remote=None
+            )
+
+        self.assertEqual(unit.status, WorkStatus.FAILED)
+        self.assertEqual(unit.metadata["execution_route"], "github_actions")
+        self.assertIn("execution_error", unit.metadata)
+
     def test_remote_runner_exception_marks_work_unit_failed(self):
         unit = WorkUnit("work-remote-exception", "remote failure lifecycle")
 
