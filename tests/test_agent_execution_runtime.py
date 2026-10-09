@@ -426,6 +426,17 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
             def list_workflow_artifacts(self, repository, run_id):
                 return [WorkflowArtifact(7, "execution-mission-evidence")]
 
+            def get_workflow_artifact_json(self, repository, run_id, artifact_name, filename):
+                inputs = self.dispatched[3]
+                return {
+                    "mission_id": inputs["mission_id"],
+                    "run_id": run_id,
+                    "source_sha": inputs["source_sha"],
+                    "operation": inputs["operation"],
+                    "status": "completed",
+                    "conclusion": "success",
+                }
+
         class Adapter:
             def __init__(self):
                 self.calls = 0
