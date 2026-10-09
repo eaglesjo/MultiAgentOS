@@ -198,6 +198,30 @@ class GitHubMissionToolTests(unittest.TestCase):
         self.assertIn("custom GitHub Actions mission inputs are disabled", result.error)
         self.assertEqual(github.missions, [])
 
+    def test_github_actions_tool_rejects_mission_id_override(self):
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(tools, github)
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {
+                    "repository": "owner/repo",
+                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
+                    "operation": "test",
+                    "mission_id": "mission-some-other-work",
+                },
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("bound to the current WorkUnit", result.error)
+        self.assertEqual(github.missions, [])
+
     def test_github_actions_tool_is_policy_blocked_by_default(self):
         tools = ToolRuntime(ExecutionPolicy())
         GitHubToolBindings(tools, FakeGitHubRuntime())
