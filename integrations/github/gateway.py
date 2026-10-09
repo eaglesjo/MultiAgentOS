@@ -224,3 +224,29 @@ class GitHubGatewayClient:
             WorkflowArtifact(int(item["id"]), item["name"])
             for item in items
         ]
+
+    def get_workflow_artifact_json(
+        self, full_name: str, run_id: int, artifact_name: str, filename: str
+    ) -> dict[str, object]:
+        """Download one run-owned artifact and parse its JSON evidence file."""
+        with tempfile.TemporaryDirectory(prefix="multiagentos-artifact-") as temp:
+            self._run(
+                "run", "download", str(run_id),
+                "--repo", full_name,
+                "--name", artifact_name,
+                "--dir", temp,
+            )
+            matches = list(Path(temp).rglob(filename))
+            if len(matches) != 1 or not matches[0].is_file():
+                raise RuntimeError(
+                    f"expected exactly one {filename!r} in artifact {artifact_name!r}"
+                )
+            try:
+                payload = json.loads(matches[0].read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise RuntimeError(
+                    f"could not read JSON evidence from artifact {artifact_name!r}"
+                ) from exc
+            if not isinstance(payload, dict):
+                raise RuntimeError("mission artifact JSON must contain an object")
+            return payload
