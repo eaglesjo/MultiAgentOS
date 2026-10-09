@@ -6,6 +6,7 @@ from core.contracts.execution_mission import ExecutionEvidence, MissionOperation
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from runtime.agent_execution_runtime import AgentExecutionRuntime
 from runtime.policy import ExecutionPolicy
+from runtime.work_unit_execution import LocalExecutionUnavailable
 
 
 class WorkUnitGitHubExecutionTests(unittest.TestCase):
@@ -69,7 +70,7 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
             unit = WorkUnit("work-remote", "fallback")
             result = runtime.execute_work_unit_with_github_actions(
                 unit,
-                local=lambda _: (_ for _ in ()).throw(RuntimeError("local unavailable")),
+                local=lambda _: (_ for _ in ()).throw(LocalExecutionUnavailable("local runner unavailable")),
                 project_root=Path(root),
                 repository="eaglesjo/MultiAgentOS",
                 operation=MissionOperation.TEST,
