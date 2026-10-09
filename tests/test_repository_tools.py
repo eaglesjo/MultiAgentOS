@@ -78,6 +78,29 @@ class FakeGitHubRuntime:
 
 
 class GitHubMissionToolTests(unittest.TestCase):
+    def test_github_actions_mission_requires_prior_route_selection(self):
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(tools, github, local_available=False)
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {
+                    "repository": "owner/repo",
+                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
+                    "operation": "test",
+                },
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("prior local-first route decision", result.error)
+        self.assertEqual(github.missions, [])
+
     def test_github_actions_tool_can_resolve_source_sha_from_ref(self):
         class BranchResolvingGateway(FakeGitHubRuntime):
             class Gateway:
