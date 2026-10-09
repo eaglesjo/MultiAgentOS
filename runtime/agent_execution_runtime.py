@@ -70,7 +70,7 @@ from runtime.tool_calling import ToolRuntime
 from runtime.harness import ExecutionHarness
 from runtime.work_unit_execution import AutomaticExecutionResult, AutomaticWorkUnitExecutor
 from runtime.builtin_tools import BuiltinToolBindings
-from runtime.repository_tools import GitToolBindings, MCPToolBindings
+from runtime.repository_tools import GitHubToolBindings, GitToolBindings, MCPToolBindings
 from runtime.quota import QuotaIntelligence, QuotaStore, quota_available
 from runtime.capability import CapabilityRegistry, CapabilityStore
 from runtime.health import ModelHealthRegistry, ModelHealthStore
@@ -176,6 +176,7 @@ class AgentExecutionRuntime:
             tool_runtime = ToolRuntime(self.policy)
             BuiltinToolBindings(str(project_root), tool_runtime)
             GitToolBindings(str(project_root), tool_runtime)
+            GitHubToolBindings(tool_runtime, self.github)
             effective_executor = IDECodingExecutor(
                 delegate=executor,
                 project_root=project_root,
