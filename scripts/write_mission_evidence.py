@@ -57,7 +57,7 @@ def write_evidence(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = output_path.with_suffix(output_path.suffix + ".tmp")
     temporary_path.write_text(
-        json.dumps(evidence, ensure_ascii=False, indent=2) + "\\n",
+        json.dumps(evidence, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     temporary_path.replace(output_path)
