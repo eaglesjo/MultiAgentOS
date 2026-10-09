@@ -642,6 +642,7 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
                     models=[model],
                     executor=executor,
                 )
+            self.assertEqual(adapter.calls, 3)
             mission_id = gateway.dispatched[3]["mission_id"]
             work_unit_id = mission_id.removeprefix("mission-")
             persisted = runtime.state_store(root).load(work_unit_id)
@@ -735,10 +736,10 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
         self.assertIn("artifact evidence mismatch", work.metadata["tool_error"])
         failed_result = next(
             item for item in work.metadata["tool_results"]
-            if item.tool_id == "github.actions.run_mission"
+            if item["tool_id"] == "github.actions.run_mission"
         )
-        self.assertFalse(failed_result.ok)
-        self.assertIn("artifact evidence mismatch", failed_result.error)
+        self.assertFalse(failed_result["ok"])
+        self.assertIn("artifact evidence mismatch", failed_result["error"])
 
 
     def test_ide_mission_evidence_mismatch_persists_failed_work_unit_and_audit(self):
@@ -857,10 +858,10 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
         self.assertIn("artifact evidence mismatch", persisted.metadata["tool_error"])
         failed_result = next(
             item for item in persisted.metadata["tool_results"]
-            if item.tool_id == "github.actions.run_mission"
+            if item["tool_id"] == "github.actions.run_mission"
         )
-        self.assertFalse(failed_result.ok)
-        self.assertIn("source_sha", failed_result.error)
+        self.assertFalse(failed_result["ok"])
+        self.assertIn("source_sha", failed_result["error"])
 
 if __name__ == "__main__":
     unittest.main()
