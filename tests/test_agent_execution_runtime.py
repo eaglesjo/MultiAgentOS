@@ -659,7 +659,7 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
         })
         self.assertEqual(persisted.status, WorkStatus.FAILED)
         self.assertIn("without expected artifacts", persisted.metadata["error"])
-        self.assertEqual(adapter.calls, 2)
+        self.assertEqual(adapter.calls, 3)
 
 
     def test_failed_github_mission_tool_cannot_be_masked_by_final_model_response(self):
