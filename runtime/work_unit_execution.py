@@ -51,6 +51,10 @@ class AutomaticWorkUnitExecutor:
         )
 
         if decision.route is ExecutionRoute.BLOCKED:
+            work_unit.metadata["execution_route"] = ExecutionRoute.BLOCKED.value
+            work_unit.metadata["execution_block_reason"] = decision.reason
+            if work_unit.status is WorkStatus.PENDING:
+                work_unit.transition(WorkStatus.BLOCKED)
             raise PermissionError(decision.reason)
 
         if decision.route is ExecutionRoute.LOCAL:
