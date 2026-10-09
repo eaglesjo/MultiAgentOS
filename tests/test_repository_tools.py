@@ -84,7 +84,7 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/repo"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github, local_available=False)
+        GitHubToolBindings(tools, github, local_available=False, source_sha="0123456789abcdef0123456789abcdef01234567", source_clean=True)
         result = tools.execute(
             ToolRequest(
                 "github.actions.run_mission",
@@ -101,7 +101,7 @@ class GitHubMissionToolTests(unittest.TestCase):
         self.assertIn("prior local-first route decision", result.error)
         self.assertEqual(github.missions, [])
 
-    def test_github_actions_tool_can_resolve_source_sha_from_ref(self):
+    def test_github_actions_tool_uses_trusted_source_sha(self):
         class BranchResolvingGateway(FakeGitHubRuntime):
             class Gateway:
                 def get_repository(self, full_name):
@@ -286,7 +286,7 @@ class ExecutionRouteToolTests(unittest.TestCase):
 
     def test_route_falls_back_to_github_actions_after_local_failure(self):
         tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
-        GitHubToolBindings(tools, FakeGitHubRuntime(), local_available=True, local_failed=True)
+        GitHubToolBindings(tools, FakeGitHubRuntime(), local_available=True, local_failed=True, source_sha="0123456789abcdef0123456789abcdef01234567", source_clean=True)
         result = tools.execute(ToolRequest("execution.route.select"))
         self.assertTrue(result.ok)
         self.assertEqual(result.output["route"], "github_actions")
