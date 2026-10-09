@@ -75,6 +75,7 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
                 repository="eaglesjo/MultiAgentOS",
                 operation=MissionOperation.TEST,
             )
+            persisted = runtime.state_store(Path(root)).load(unit.id)
 
         self.assertEqual(result.route.value, "github_actions")
         self.assertEqual(unit.status, WorkStatus.COMPLETED)
@@ -85,6 +86,19 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
         self.assertEqual(
             unit.metadata["execution_evidence"]["mission_id"],
             "mission-work-remote",
+        )
+        self.assertEqual(persisted.status, WorkStatus.COMPLETED)
+        self.assertEqual(
+            persisted.metadata["execution_evidence"]["mission_id"],
+            captured[0].id,
+        )
+        self.assertEqual(
+            persisted.metadata["execution_mission"]["source_sha"],
+            source_sha,
+        )
+        self.assertEqual(
+            persisted.metadata["execution_mission"]["operation"],
+            MissionOperation.TEST.value,
         )
 
     def test_dirty_worktree_blocks_github_fallback(self):
