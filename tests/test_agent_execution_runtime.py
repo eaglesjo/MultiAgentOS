@@ -406,5 +406,121 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
         self.assertEqual(persisted.metadata["error"], "adaptive selection failed")
         self.assertEqual(persisted.metadata["cwd"], str(root.resolve()))
 
+
+    def test_ide_model_tool_call_verifies_github_mission_and_persists_work_unit(self):
+        from core.contracts.github import WorkflowArtifact, WorkflowRun
+        from runtime.github import GitHubRuntime
+        from runtime.agent.model import ModelAgentExecutor
+        from runtime.policy import ExecutionPolicy
+
+        source_sha = "0123456789abcdef0123456789abcdef01234567"
+
+        class Gateway:
+            def dispatch_workflow(self, repository, workflow, ref, inputs):
+                self.dispatched = (repository, workflow, ref, inputs)
+                return WorkflowRun(42, "in_progress", None, "main-tip-sha", "https://example/run/42")
+
+            def get_workflow_run(self, repository, run_id):
+                return WorkflowRun(run_id, "completed", "success", "main-tip-sha", "https://example/run/42")
+
+            def list_workflow_artifacts(self, repository, run_id):
+                return [WorkflowArtifact(7, "execution-mission-evidence")]
+
+            def get_workflow_artifact_json(self, repository, run_id, artifact_name, filename):
+                inputs = self.dispatched[3]
+                return {
+                    "mission_id": inputs["mission_id"],
+                    "run_id": run_id,
+                    "source_sha": inputs["source_sha"],
+                    "operation": inputs["operation"],
+                    "status": "completed",
+                    "conclusion": "success",
+                }
+
+        class Adapter:
+            def __init__(self):
+                self.calls = 0
+
+            def generate_with_tools(self, model, request, tools):
+                self.calls += 1
+                if self.calls == 1:
+                    tool_ids = {tool.id for tool in tools}
+                    self_outer.assertIn("github.actions.run_mission", tool_ids)
+                    return ModelResponse(
+                        text="",
+                        model_id=model.id,
+                        metadata={
+                            "tool_calls": [{
+                                "id": "mission-call-1",
+                                "name": "github.actions.run_mission",
+                                "arguments": {
+                                    "repository": "eaglesjo/MultiAgentOS",
+                                    "source_sha": source_sha,
+                                    "operation": "test",
+                                },
+                            }]
+                        },
+                    )
+                return ModelResponse(text="mission verified", model_id=model.id)
+
+        self_outer = self
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            policy = ExecutionPolicy(allow_github_actions=True)
+            runtime = AgentExecutionRuntime(policy=policy)
+            runtime.ide.execute = lambda *_args: {"ok": True}
+            gateway = Gateway()
+            runtime.github = GitHubRuntime(gateway, policy)
+            runtime.agent_profile = lambda _root, _agent_id: AgentContract(
+                id="developer",
+                role="developer",
+                capabilities=frozenset({"code"}),
+                permissions=frozenset({"github.actions"}),
+            )
+            adapter = Adapter()
+            model = ModelSpec(
+                id="test-model",
+                provider_id="test-provider",
+                capabilities=frozenset({"code"}),
+                metadata={"adapter_id": "test-adapter"},
+            )
+            executor = ModelAgentExecutor(
+                adapters={"test-adapter": adapter},
+                models=[model],
+            )
+            result = runtime.submit_ide_work(
+                IDEWorkRequest(
+                    context=IDEContext(kind=IDEKind.VS_CODE, project_root=str(root)),
+                    objective="run the GitHub Actions verification mission",
+                    agent_id="developer",
+                    model_ids=("test-model",),
+                ),
+                models=[model],
+                executor=executor,
+            )
+            persisted = runtime.state_store(root).load(result["work_unit"].id)
+
+        self.assertEqual(gateway.dispatched, (
+            "eaglesjo/MultiAgentOS",
+            "execution-mission.yml",
+            "main",
+            {
+                "mission_id": f"mission-{result['work_unit'].id}",
+                "source_sha": source_sha,
+                "operation": "test",
+            },
+        ))
+        self.assertEqual(result["work_unit"].metadata["model_response"], "mission verified")
+        self.assertEqual(result["work_unit"].status, WorkStatus.COMPLETED)
+        self.assertEqual(persisted.status, WorkStatus.COMPLETED)
+        mission_result = next(
+            item for item in result["work_unit"].metadata["tool_results"]
+            if item.tool_id == "github.actions.run_mission"
+        )
+        self.assertTrue(mission_result.ok, mission_result.error)
+        self.assertEqual(mission_result.output["run_id"], 42)
+        self.assertEqual(mission_result.output["source_sha"], source_sha)
+        self.assertIn("execution-mission-evidence", mission_result.output["artifacts"])
+
 if __name__ == "__main__":
     unittest.main()
