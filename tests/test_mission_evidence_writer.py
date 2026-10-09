@@ -8,7 +8,7 @@ from scripts.write_mission_evidence import build_evidence, write_evidence
 
 class MissionEvidenceWriterTests(unittest.TestCase):
     def test_mission_id_is_encoded_as_json_not_interpolated(self):
-        mission_id = 'mission-"quoted"\\nsecond-line'
+        mission_id = 'mission-"quoted"\nsecond-line'
         with tempfile.TemporaryDirectory() as temp:
             target = Path(temp) / "mission-evidence" / "result.json"
             write_evidence(
