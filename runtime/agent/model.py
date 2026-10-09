@@ -205,20 +205,22 @@ class ModelAgentExecutor(AgentExecutor):
                     ),
                     None,
                 )
+                tool_result_audit = tuple(
+                    {
+                        "tool_id": item.tool_id,
+                        "ok": item.ok,
+                        "output": item.output,
+                        "error": item.error,
+                        "metadata": dict(item.metadata),
+                    }
+                    for item in result.tool_results
+                )
                 if failed_mission is not None:
                     # Preserve the failed tool outcome before propagating the error.
                     # run_persistent will then save this audit trail with FAILED state.
                     work_unit.metadata["tool_rounds"] = result.rounds
-                    work_unit.metadata["tool_results"] = tuple(
-                        {
-                            "tool_id": item.tool_id,
-                            "ok": item.ok,
-                            "output": item.output,
-                            "error": item.error,
-                            "metadata": dict(item.metadata),
-                        }
-                        for item in result.tool_results
-                    )
+                    work_unit.metadata["tool_results"] = tool_result_audit
+                    work_unit.metadata["tool_results_audit"] = tool_result_audit
                     work_unit.metadata["tool_error"] = failed_mission.error or "no failure details returned"
                     raise ToolExecutionError(
                         "GitHub Actions mission failed: "
@@ -230,6 +232,7 @@ class ModelAgentExecutor(AgentExecutor):
                 work_unit.metadata["model_adapter"] = adapter_id
                 work_unit.metadata["tool_rounds"] = result.rounds
                 work_unit.metadata["tool_results"] = tuple(result.tool_results)
+                work_unit.metadata["tool_results_audit"] = tool_result_audit
                 work_unit.metadata["model_attempts"] = tuple(attempts)
                 if self.capability_registry is not None:
                     self.capability_registry.observe_response(model, dict(result.response.metadata))
