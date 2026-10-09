@@ -723,6 +723,133 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
 
         self.assertEqual(adapter.calls, 2)
         self.assertNotIn("model_response", work.metadata)
+        self.assertIn("artifact evidence mismatch", work.metadata["tool_error"])
+        failed_result = next(
+            item for item in work.metadata["tool_results"]
+            if item.tool_id == "github.actions.run_mission"
+        )
+        self.assertFalse(failed_result.ok)
+        self.assertIn("artifact evidence mismatch", failed_result.error)
+
+
+    def test_ide_mission_evidence_mismatch_persists_failed_work_unit_and_audit(self):
+        from core.contracts.github import WorkflowArtifact, WorkflowRun
+        from runtime.github import GitHubRuntime
+        from runtime.agent.model import ModelAgentExecutor
+        from runtime.policy import ExecutionPolicy
+        from runtime.tool_calling import ToolExecutionError
+
+        source_sha = "0123456789abcdef0123456789abcdef01234567"
+        captured = {}
+
+        class Gateway:
+            def get_repository(self, full_name):
+                return type("Repository", (), {"full_name": full_name, "default_branch": "main"})()
+
+            def dispatch_workflow(self, repository, workflow, ref, inputs):
+                self.dispatched = (repository, workflow, ref, inputs)
+                return WorkflowRun(73, "in_progress", None, "main-tip-sha", "https://example/run/73")
+
+            def get_workflow_run(self, repository, run_id):
+                return WorkflowRun(run_id, "completed", "success", "main-tip-sha", "https://example/run/73")
+
+            def list_workflow_artifacts(self, repository, run_id):
+                return [WorkflowArtifact(8, "execution-mission-evidence")]
+
+            def get_workflow_artifact_json(self, repository, run_id, artifact_name, filename):
+                inputs = self.dispatched[3]
+                return {
+                    "mission_id": inputs["mission_id"],
+                    "run_id": run_id,
+                    "source_sha": "f" * 40,
+                    "operation": inputs["operation"],
+                    "status": "completed",
+                    "conclusion": "success",
+                }
+
+        class Adapter:
+            def __init__(self):
+                self.calls = 0
+
+            def generate_with_tools(self, model, request, tools):
+                self.calls += 1
+                if self.calls == 1:
+                    return ModelResponse(
+                        text="",
+                        model_id=model.id,
+                        metadata={"tool_calls": [{
+                            "id": "route-call-1",
+                            "name": "execution.route.select",
+                            "arguments": {},
+                        }]},
+                    )
+                return ModelResponse(
+                    text="",
+                    model_id=model.id,
+                    metadata={"tool_calls": [{
+                        "id": "mission-call-1",
+                        "name": "github.actions.run_mission",
+                        "arguments": {
+                            "repository": "eaglesjo/MultiAgentOS",
+                            "source_sha": source_sha,
+                            "operation": "test",
+                        },
+                    }]},
+                )
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            policy = ExecutionPolicy(
+                allow_github_actions=True,
+                allowed_github_repositories=frozenset({"eaglesjo/MultiAgentOS"}),
+            )
+            runtime = AgentExecutionRuntime(policy=policy)
+            gateway = Gateway()
+            runtime.github = GitHubRuntime(gateway, policy)
+            runtime.agent_profile = lambda _root, _agent_id: AgentContract(
+                id="developer",
+                role="developer",
+                capabilities=frozenset({"code"}),
+                permissions=frozenset({"github.actions"}),
+            )
+            original_run_persistent = runtime.run_persistent
+
+            def capture_work_unit(**kwargs):
+                captured["work_unit_id"] = kwargs["work_unit"].id
+                return original_run_persistent(**kwargs)
+
+            runtime.run_persistent = capture_work_unit
+            model = ModelSpec(
+                id="test-model",
+                provider_id="test-provider",
+                capabilities=frozenset({"code"}),
+                metadata={"adapter_id": "test-adapter"},
+            )
+            executor = ModelAgentExecutor(
+                adapters={"test-adapter": Adapter()},
+                models=[model],
+            )
+            with self.assertRaisesRegex(ToolExecutionError, "GitHub Actions mission failed"):
+                runtime.submit_ide_work(
+                    IDEWorkRequest(
+                        context=IDEContext(kind=IDEKind.VS_CODE, project_root=str(root)),
+                        objective="verify evidence failure is persisted",
+                        agent_id="developer",
+                        model_ids=("test-model",),
+                    ),
+                    models=[model],
+                    executor=executor,
+                )
+            persisted = runtime.state_store(root).load(captured["work_unit_id"])
+
+        self.assertEqual(persisted.status, WorkStatus.FAILED)
+        self.assertIn("artifact evidence mismatch", persisted.metadata["tool_error"])
+        failed_result = next(
+            item for item in persisted.metadata["tool_results"]
+            if item.tool_id == "github.actions.run_mission"
+        )
+        self.assertFalse(failed_result.ok)
+        self.assertIn("source_sha", failed_result.error)
 
 if __name__ == "__main__":
     unittest.main()
