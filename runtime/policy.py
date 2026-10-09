@@ -13,6 +13,7 @@ class ExecutionPolicy:
     allow_network: bool = False
     allow_github_write: bool = False
     allow_github_actions: bool = False
+    allowed_github_repositories: frozenset[str] = frozenset()
     require_approval_for: frozenset[str] = frozenset(
         {"git.commit", "git.push", "github.pr", "github.merge"}
     )

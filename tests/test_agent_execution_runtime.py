@@ -416,6 +416,9 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
         source_sha = "0123456789abcdef0123456789abcdef01234567"
 
         class Gateway:
+            def get_repository(self, full_name):
+                return type("Repository", (), {"full_name": full_name, "default_branch": "main"})()
+
             def dispatch_workflow(self, repository, workflow, ref, inputs):
                 self.dispatched = (repository, workflow, ref, inputs)
                 return WorkflowRun(42, "in_progress", None, "main-tip-sha", "https://example/run/42")
@@ -466,7 +469,10 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
         self_outer = self
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            policy = ExecutionPolicy(allow_github_actions=True)
+            policy = ExecutionPolicy(
+                allow_github_actions=True,
+                allowed_github_repositories=frozenset({"eaglesjo/MultiAgentOS"}),
+            )
             runtime = AgentExecutionRuntime(policy=policy)
             runtime.ide.execute = lambda *_args: {"ok": True}
             gateway = Gateway()

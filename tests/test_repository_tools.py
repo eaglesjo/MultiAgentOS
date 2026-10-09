@@ -45,8 +45,16 @@ class RepositoryToolTests(unittest.TestCase):
 
 
 class FakeGitHubRuntime:
+    class Gateway:
+        def get_repository(self, full_name):
+            return type("Repository", (), {"full_name": full_name, "default_branch": "main"})()
+
+        def get_branch(self, full_name, branch):
+            return type("Branch", (), {"name": branch, "sha": "0123456789abcdef0123456789abcdef01234567"})()
+
     def __init__(self):
         self.missions = []
+        self.gateway = self.Gateway()
 
     def run_actions_mission(self, mission):
         self.missions.append(mission)
@@ -73,11 +81,14 @@ class GitHubMissionToolTests(unittest.TestCase):
     def test_github_actions_tool_can_resolve_source_sha_from_ref(self):
         class BranchResolvingGateway(FakeGitHubRuntime):
             class Gateway:
+                def get_repository(self, full_name):
+                    return type("Repository", (), {"full_name": full_name, "default_branch": "trunk"})()
+
                 def get_branch(self, repository, ref):
                     return type("Branch", (), {"sha": "0123456789abcdef0123456789abcdef01234567"})()
         github = FakeGitHubRuntime()
         github.gateway = BranchResolvingGateway.Gateway()
-        tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
+        tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True, allowed_github_repositories=frozenset({"owner/repo"})))
         GitHubToolBindings(tools, github)
         result = tools.execute(
             ToolRequest(
@@ -91,7 +102,10 @@ class GitHubMissionToolTests(unittest.TestCase):
         self.assertEqual(github.missions[0].source_sha, "0123456789abcdef0123456789abcdef01234567")
 
     def test_github_actions_tool_is_exposed(self):
-        tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
         github = FakeGitHubRuntime()
         GitHubToolBindings(tools, github)
         result = tools.execute(
@@ -109,6 +123,53 @@ class GitHubMissionToolTests(unittest.TestCase):
         self.assertTrue(result.ok, result.error)
         self.assertEqual(result.output["mission_id"], "mission-work-123")
         self.assertEqual(github.missions[0].operation.value, "test")
+
+    def test_github_actions_tool_rejects_unallowlisted_repository(self):
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/approved"}),
+        ))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(tools, github)
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {
+                    "repository": "attacker/other",
+                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
+                    "operation": "test",
+                },
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("not allowlisted", result.error)
+        self.assertEqual(github.missions, [])
+
+    def test_github_actions_tool_pins_workflow_and_default_ref(self):
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(tools, github)
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {
+                    "repository": "owner/repo",
+                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
+                    "operation": "test",
+                    "workflow": "untrusted.yml",
+                },
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("workflow is fixed", result.error)
+        self.assertEqual(github.missions, [])
 
     def test_github_actions_tool_is_policy_blocked_by_default(self):
         tools = ToolRuntime(ExecutionPolicy())
