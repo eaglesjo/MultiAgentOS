@@ -471,7 +471,6 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
                                 "name": "github.actions.run_mission",
                                 "arguments": {
                                     "repository": "eaglesjo/MultiAgentOS",
-                                    "source_sha": source_sha,
                                     "operation": "test",
                                 },
                             }]
@@ -487,6 +486,7 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
                 allowed_github_repositories=frozenset({"eaglesjo/MultiAgentOS"}),
             )
             runtime = AgentExecutionRuntime(policy=policy)
+            runtime.git.identity = lambda _root: {"head": source_sha, "dirty": False}
             runtime.ide.execute = lambda *_args: {"ok": True}
             gateway = Gateway()
             runtime.github = GitHubRuntime(gateway, policy)
@@ -595,7 +595,6 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
                             "name": "github.actions.run_mission",
                             "arguments": {
                                 "repository": "eaglesjo/MultiAgentOS",
-                                "source_sha": source_sha,
                                 "operation": "test",
                             },
                         }]},
@@ -610,6 +609,7 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
                 allowed_github_repositories=frozenset({"eaglesjo/MultiAgentOS"}),
             )
             runtime = AgentExecutionRuntime(policy=policy)
+            runtime.git.identity = lambda _root: {"head": source_sha, "dirty": False}
             runtime.ide.execute = lambda *_args: {"ok": True}
             gateway = Gateway()
             runtime.github = GitHubRuntime(gateway, policy)
@@ -802,7 +802,6 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
                             "name": "github.actions.run_mission",
                             "arguments": {
                                 "repository": "eaglesjo/MultiAgentOS",
-                                "source_sha": source_sha,
                                 "operation": "test",
                             },
                         }]},
@@ -816,6 +815,7 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
                 allowed_github_repositories=frozenset({"eaglesjo/MultiAgentOS"}),
             )
             runtime = AgentExecutionRuntime(policy=policy)
+            runtime.git.identity = lambda _root: {"head": source_sha, "dirty": False}
             gateway = Gateway()
             runtime.github = GitHubRuntime(gateway, policy)
             runtime.agent_profile = lambda _root, _agent_id: AgentContract(

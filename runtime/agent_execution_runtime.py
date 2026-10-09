@@ -176,7 +176,21 @@ class AgentExecutionRuntime:
             tool_runtime = ToolRuntime(self.policy)
             BuiltinToolBindings(str(project_root), tool_runtime)
             GitToolBindings(str(project_root), tool_runtime)
-            GitHubToolBindings(tool_runtime, self.github, local_available=False)
+            source_identity = self.workspace_identity(project_root)
+            GitHubToolBindings(
+                tool_runtime,
+                self.github,
+                local_available=False,
+                source_sha=(
+                    str(source_identity["head"])
+                    if source_identity is not None and source_identity.get("head")
+                    else None
+                ),
+                source_clean=(
+                    source_identity is not None
+                    and source_identity.get("dirty") is False
+                ),
+            )
             effective_executor = IDECodingExecutor(
                 delegate=executor,
                 project_root=project_root,

@@ -75,6 +75,8 @@ class GitHubToolBindings:
     local_failed: bool = False
     force_remote: bool = False
     prefer_local: bool = True
+    source_sha: str | None = None
+    source_clean: bool = False
     _selected_route: ExecutionRoute | None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -98,7 +100,6 @@ class GitHubToolBindings:
                     "required": ["repository", "operation"],
                     "properties": {
                         "repository": {"type": "string"},
-                        "source_sha": {"type": "string"},
                         "operation": {"type": "string", "enum": ["test", "package", "verify"]},
                         "mission_id": {"type": "string"},
                     },
@@ -108,11 +109,19 @@ class GitHubToolBindings:
         )
 
     def _select_route(self, request: ToolRequest) -> object:
+        source_identity_valid = (
+            isinstance(self.source_sha, str)
+            and len(self.source_sha) == 40
+            and all(char in "0123456789abcdef" for char in self.source_sha)
+            and self.source_clean
+        )
         decision = select_execution_route(
             local_available=self.local_available,
             local_failed=self.local_failed,
             force_remote=self.force_remote,
-            allow_github_actions=self.runtime.policy.allow_github_actions,
+            allow_github_actions=(
+                self.runtime.policy.allow_github_actions and source_identity_valid
+            ),
             prefer_local=self.prefer_local,
         )
         self._selected_route = decision.route
@@ -130,11 +139,18 @@ class GitHubToolBindings:
                 "GitHub Actions mission requires a prior local-first route decision"
             )
         repository = request.arguments.get("repository")
-        source_sha = request.arguments.get("source_sha")
+        requested_source_sha = request.arguments.get("source_sha")
+        source_sha = self.source_sha
         operation = request.arguments.get("operation")
         if not all(isinstance(value, str) and value.strip() for value in (repository, operation)):
             raise ValueError("repository and operation must be non-empty strings")
         repository = repository.strip()
+        if not self.source_clean or not source_sha:
+            raise PermissionError(
+                "GitHub Actions mission requires a clean trusted source identity"
+            )
+        if requested_source_sha is not None and requested_source_sha != source_sha:
+            raise PermissionError("source SHA is fixed by runtime context")
         if repository not in self.runtime.policy.allowed_github_repositories:
             raise PermissionError(
                 f"GitHub Actions repository is not allowlisted: {repository}"

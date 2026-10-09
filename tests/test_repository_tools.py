@@ -84,13 +84,12 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/repo"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github, local_available=False)
+        GitHubToolBindings(tools, github, local_available=False, source_sha="0123456789abcdef0123456789abcdef01234567", source_clean=True)
         result = tools.execute(
             ToolRequest(
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                 },
                 work_unit_id="work-123",
@@ -101,7 +100,7 @@ class GitHubMissionToolTests(unittest.TestCase):
         self.assertIn("prior local-first route decision", result.error)
         self.assertEqual(github.missions, [])
 
-    def test_github_actions_tool_can_resolve_source_sha_from_ref(self):
+    def test_github_actions_tool_uses_trusted_source_sha(self):
         class BranchResolvingGateway(FakeGitHubRuntime):
             class Gateway:
                 def get_repository(self, full_name):
@@ -112,7 +111,7 @@ class GitHubMissionToolTests(unittest.TestCase):
         github = FakeGitHubRuntime()
         github.gateway = BranchResolvingGateway.Gateway()
         tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True, allowed_github_repositories=frozenset({"owner/repo"})))
-        GitHubToolBindings(tools, github, local_available=False)
+        GitHubToolBindings(tools, github, local_available=False, source_sha="0123456789abcdef0123456789abcdef01234567", source_clean=True)
         route = tools.execute(ToolRequest("execution.route.select"))
         self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
@@ -132,7 +131,7 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/repo"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github, local_available=False)
+        GitHubToolBindings(tools, github, local_available=False, source_sha="0123456789abcdef0123456789abcdef01234567", source_clean=True)
         route = tools.execute(ToolRequest("execution.route.select"))
         self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
@@ -140,7 +139,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                 },
                 work_unit_id="work-123",
@@ -157,7 +155,7 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/approved"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github, local_available=False)
+        GitHubToolBindings(tools, github, local_available=False, source_sha="0123456789abcdef0123456789abcdef01234567", source_clean=True)
         route = tools.execute(ToolRequest("execution.route.select"))
         self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
@@ -165,7 +163,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "attacker/other",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                 },
                 work_unit_id="work-123",
@@ -182,7 +179,7 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/repo"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github, local_available=False)
+        GitHubToolBindings(tools, github, local_available=False, source_sha="0123456789abcdef0123456789abcdef01234567", source_clean=True)
         route = tools.execute(ToolRequest("execution.route.select"))
         self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
@@ -190,7 +187,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                     "workflow": "untrusted.yml",
                 },
@@ -202,13 +198,20 @@ class GitHubMissionToolTests(unittest.TestCase):
         self.assertIn("workflow is fixed", result.error)
         self.assertEqual(github.missions, [])
 
-    def test_github_actions_tool_rejects_custom_input_overrides(self):
+    def test_github_actions_tool_rejects_source_sha_override(self):
+        trusted_sha = "0123456789abcdef0123456789abcdef01234567"
         tools = ToolRuntime(ExecutionPolicy(
             allow_github_actions=True,
             allowed_github_repositories=frozenset({"owner/repo"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github, local_available=False)
+        GitHubToolBindings(
+            tools,
+            github,
+            local_available=False,
+            source_sha=trusted_sha,
+            source_clean=True,
+        )
         route = tools.execute(ToolRequest("execution.route.select"))
         self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
@@ -216,7 +219,31 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
+                    "source_sha": "f" * 40,
+                    "operation": "test",
+                },
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("source SHA is fixed by runtime context", result.error)
+        self.assertEqual(github.missions, [])
+
+    def test_github_actions_tool_rejects_custom_input_overrides(self):
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(tools, github, local_available=False, source_sha="0123456789abcdef0123456789abcdef01234567", source_clean=True)
+        route = tools.execute(ToolRequest("execution.route.select"))
+        self.assertEqual(route.output["route"], "github_actions")
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {
+                    "repository": "owner/repo",
                     "operation": "test",
                     "inputs": {
                         "source_sha": "ffffffffffffffffffffffffffffffffffffffff",
@@ -237,7 +264,7 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/repo"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github, local_available=False)
+        GitHubToolBindings(tools, github, local_available=False, source_sha="0123456789abcdef0123456789abcdef01234567", source_clean=True)
         route = tools.execute(ToolRequest("execution.route.select"))
         self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
@@ -245,7 +272,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                     "mission_id": "mission-some-other-work",
                 },
@@ -265,7 +291,6 @@ class GitHubMissionToolTests(unittest.TestCase):
                 "github.actions.run_mission",
                 {
                     "repository": "owner/repo",
-                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
                     "operation": "test",
                 },
                 work_unit_id="work-123",
@@ -286,10 +311,37 @@ class ExecutionRouteToolTests(unittest.TestCase):
 
     def test_route_falls_back_to_github_actions_after_local_failure(self):
         tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
-        GitHubToolBindings(tools, FakeGitHubRuntime(), local_available=True, local_failed=True)
+        GitHubToolBindings(tools, FakeGitHubRuntime(), local_available=True, local_failed=True, source_sha="0123456789abcdef0123456789abcdef01234567", source_clean=True)
         result = tools.execute(ToolRequest("execution.route.select"))
         self.assertTrue(result.ok)
         self.assertEqual(result.output["route"], "github_actions")
+
+    def test_dirty_source_identity_blocks_remote_route(self):
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(
+            tools,
+            github,
+            local_available=False,
+            source_sha="0123456789abcdef0123456789abcdef01234567",
+            source_clean=False,
+        )
+        result = tools.execute(ToolRequest("execution.route.select"))
+        self.assertTrue(result.ok)
+        self.assertEqual(result.output["route"], "blocked")
+        mission = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {"repository": "owner/repo", "operation": "test"},
+                work_unit_id="work-dirty",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(mission.ok)
+        self.assertEqual(github.missions, [])
 
     def test_route_blocks_when_no_route_is_permitted(self):
         tools = ToolRuntime(ExecutionPolicy(allow_github_actions=False))
