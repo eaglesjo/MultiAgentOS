@@ -446,9 +446,22 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
 
             def generate_with_tools(self, model, request, tools):
                 self.calls += 1
+                tool_ids = {tool.id for tool in tools}
+                self_outer.assertIn("execution.route.select", tool_ids)
+                self_outer.assertIn("github.actions.run_mission", tool_ids)
                 if self.calls == 1:
-                    tool_ids = {tool.id for tool in tools}
-                    self_outer.assertIn("github.actions.run_mission", tool_ids)
+                    return ModelResponse(
+                        text="",
+                        model_id=model.id,
+                        metadata={
+                            "tool_calls": [{
+                                "id": "route-call-1",
+                                "name": "execution.route.select",
+                                "arguments": {},
+                            }]
+                        },
+                    )
+                if self.calls == 2:
                     return ModelResponse(
                         text="",
                         model_id=model.id,
