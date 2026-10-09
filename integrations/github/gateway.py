@@ -230,12 +230,22 @@ class GitHubGatewayClient:
     ) -> dict[str, object]:
         """Download one run-owned artifact and parse its JSON evidence file."""
         with tempfile.TemporaryDirectory(prefix="multiagentos-artifact-") as temp:
-            self._run(
-                "run", "download", str(run_id),
-                "--repo", full_name,
-                "--name", artifact_name,
-                "--dir", temp,
+            result = subprocess.run(
+                [
+                    self.gh_binary, "run", "download", str(run_id),
+                    "--repo", full_name,
+                    "--name", artifact_name,
+                    "--dir", temp,
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
             )
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"gh artifact download failed ({result.returncode}): "
+                    f"{result.stderr.strip()}"
+                )
             matches = list(Path(temp).rglob(filename))
             if len(matches) != 1 or not matches[0].is_file():
                 raise RuntimeError(
