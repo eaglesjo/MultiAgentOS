@@ -277,5 +277,69 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
             self.assertEqual(recovered_state.status, "recoverable")
             self.assertEqual(tuple(item.id for item in recoverable), ("session-work",))
 
+
+    def test_run_auto_persists_completed_work_unit(self):
+        class AutoOrchestrator:
+            def run_auto(self, *, work_unit, **kwargs):
+                work_unit.transition(WorkStatus.EXECUTING)
+                work_unit.transition(WorkStatus.VERIFYING)
+                work_unit.transition(WorkStatus.COMPLETED)
+                return ("selection", "result")
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = AgentExecutionRuntime(orchestrator=AutoOrchestrator())
+            runtime.git.identity = lambda _: {
+                "head": "a" * 40,
+                "dirty": False,
+            }
+            work = WorkUnit("wu-auto-persist", "automatic workflow")
+            result = runtime.run_auto(
+                work,
+                [],
+                FakeExecutor(),
+                project_root=root,
+                repository_evidence=(),
+            )
+            persisted = runtime.state_store(root).load(work.id)
+
+        self.assertEqual(result, ("selection", "result"))
+        self.assertEqual(persisted.status, WorkStatus.COMPLETED)
+        self.assertEqual(persisted.metadata["cwd"], str(root.resolve()))
+        self.assertEqual(persisted.metadata["source_identity"]["head"], "a" * 40)
+
+    def test_run_auto_persists_failed_work_unit_before_reraising(self):
+        class FailingAutoOrchestrator:
+            def run_auto(self, *, work_unit, **kwargs):
+                work_unit.transition(WorkStatus.EXECUTING)
+                work_unit.transition(WorkStatus.FAILED)
+                work_unit.metadata["partial_progress"] = "agent selection completed"
+                raise RuntimeError("automatic workflow failed")
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = AgentExecutionRuntime(orchestrator=FailingAutoOrchestrator())
+            runtime.git.identity = lambda _: {
+                "head": "b" * 40,
+                "dirty": False,
+            }
+            work = WorkUnit("wu-auto-failed", "automatic workflow failure")
+            with self.assertRaisesRegex(RuntimeError, "automatic workflow failed"):
+                runtime.run_auto(
+                    work,
+                    [],
+                    FakeExecutor(),
+                    project_root=root,
+                    repository_evidence=(),
+                )
+            persisted = runtime.state_store(root).load(work.id)
+
+        self.assertEqual(persisted.status, WorkStatus.FAILED)
+        self.assertEqual(persisted.metadata["error"], "automatic workflow failed")
+        self.assertEqual(
+            persisted.metadata["partial_progress"],
+            "agent selection completed",
+        )
+
 if __name__ == "__main__":
     unittest.main()
