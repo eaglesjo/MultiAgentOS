@@ -190,6 +190,7 @@ class AgentExecutionRuntime:
                     source_identity is not None
                     and source_identity.get("dirty") is False
                 ),
+                source_identity_provider=lambda: self.workspace_identity(project_root),
             )
             effective_executor = IDECodingExecutor(
                 delegate=executor,

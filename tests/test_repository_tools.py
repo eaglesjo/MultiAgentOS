@@ -198,6 +198,35 @@ class GitHubMissionToolTests(unittest.TestCase):
         self.assertIn("workflow is fixed", result.error)
         self.assertEqual(github.missions, [])
 
+    def test_github_actions_tool_rechecks_clean_source_before_dispatch(self):
+        trusted_sha = "0123456789abcdef0123456789abcdef01234567"
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(
+            tools,
+            github,
+            local_available=False,
+            source_sha=trusted_sha,
+            source_clean=True,
+            source_identity_provider=lambda: {"head": trusted_sha, "dirty": True},
+        )
+        route = tools.execute(ToolRequest("execution.route.select"))
+        self.assertEqual(route.output["route"], "github_actions")
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {"repository": "owner/repo", "operation": "test"},
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("worktree became dirty", result.error)
+        self.assertEqual(github.missions, [])
+
     def test_github_actions_tool_rejects_source_sha_override(self):
         trusted_sha = "0123456789abcdef0123456789abcdef01234567"
         tools = ToolRuntime(ExecutionPolicy(
