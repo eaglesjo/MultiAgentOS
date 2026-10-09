@@ -457,6 +457,7 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
             root = Path(temp)
             policy = ExecutionPolicy(allow_github_actions=True)
             runtime = AgentExecutionRuntime(policy=policy)
+            runtime.ide.execute = lambda *_args: {"ok": True}
             gateway = Gateway()
             runtime.github = GitHubRuntime(gateway, policy)
             runtime.agent_profile = lambda _root, _agent_id: AgentContract(
