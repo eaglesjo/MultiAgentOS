@@ -341,5 +341,65 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
             "agent selection completed",
         )
 
+
+    def test_run_adaptive_persists_completed_work_unit(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        import runtime.agent_execution_runtime as runtime_module
+
+        class Registry:
+            def list(self):
+                return []
+
+        class Selector:
+            def __init__(self, **kwargs):
+                pass
+
+            def select(self, *args, **kwargs):
+                return SimpleNamespace(plan=object())
+
+        class AdaptiveLoop:
+            def __init__(self, **kwargs):
+                pass
+
+            def run(self, **kwargs):
+                return (SimpleNamespace(success=True),)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = AgentExecutionRuntime()
+            runtime.workspace_identity = lambda _: {"head": "c" * 40, "dirty": False}
+            work = WorkUnit("wu-adaptive-persist", "adaptive workflow")
+            with patch.object(runtime_module, "build_registry", return_value=Registry()), \\
+                 patch.object(runtime_module, "DeterministicAgentSelector", Selector), \\
+                 patch.object(runtime_module, "AdaptiveAgentExecutionLoop", AdaptiveLoop):
+                rounds = runtime.run_adaptive(root, work, [], {})
+
+            persisted = runtime.state_store(root).load(work.id)
+
+        self.assertEqual(len(rounds), 1)
+        self.assertEqual(persisted.status, WorkStatus.COMPLETED)
+        self.assertEqual(persisted.metadata["cwd"], str(root.resolve()))
+        self.assertEqual(persisted.metadata["source_identity"]["head"], "c" * 40)
+
+    def test_run_adaptive_persists_failed_work_unit_before_reraising(self):
+        from unittest.mock import patch
+        import runtime.agent_execution_runtime as runtime_module
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = AgentExecutionRuntime()
+            runtime.workspace_identity = lambda _: {"head": "d" * 40, "dirty": False}
+            work = WorkUnit("wu-adaptive-failed", "adaptive workflow failure")
+            with patch.object(runtime_module, "build_registry", side_effect=RuntimeError("adaptive selection failed")):
+                with self.assertRaisesRegex(RuntimeError, "adaptive selection failed"):
+                    runtime.run_adaptive(root, work, [], {})
+
+            persisted = runtime.state_store(root).load(work.id)
+
+        self.assertEqual(persisted.status, WorkStatus.FAILED)
+        self.assertEqual(persisted.metadata["error"], "adaptive selection failed")
+        self.assertEqual(persisted.metadata["cwd"], str(root.resolve()))
+
 if __name__ == "__main__":
     unittest.main()
