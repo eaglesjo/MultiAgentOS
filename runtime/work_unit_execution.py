@@ -59,7 +59,12 @@ class AutomaticWorkUnitExecutor:
 
         if decision.route is ExecutionRoute.LOCAL:
             if local is None:
-                raise ValueError("local execution route requires a local runner")
+                message = "local execution route requires a local runner"
+                work_unit.metadata["execution_route"] = ExecutionRoute.LOCAL.value
+                work_unit.metadata["execution_error"] = message
+                if work_unit.status is WorkStatus.PENDING:
+                    work_unit.transition(WorkStatus.FAILED)
+                raise ValueError(message)
             if work_unit.status is WorkStatus.PENDING:
                 work_unit.transition(WorkStatus.EXECUTING)
             try:
@@ -79,7 +84,12 @@ class AutomaticWorkUnitExecutor:
             return AutomaticExecutionResult(work_unit, ExecutionRoute.LOCAL, output=output)
 
         if remote is None:
-            raise ValueError("GitHub Actions route requires a bounded remote runner")
+            message = "GitHub Actions route requires a bounded remote runner"
+            work_unit.metadata["execution_route"] = ExecutionRoute.GITHUB_ACTIONS.value
+            work_unit.metadata["execution_error"] = message
+            if work_unit.status is WorkStatus.PENDING:
+                work_unit.transition(WorkStatus.FAILED)
+            raise ValueError(message)
         return self._run_remote_fallback(work_unit, remote)
 
     def _run_remote_fallback(
