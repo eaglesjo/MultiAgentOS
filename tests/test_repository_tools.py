@@ -78,6 +78,29 @@ class FakeGitHubRuntime:
 
 
 class GitHubMissionToolTests(unittest.TestCase):
+    def test_github_actions_mission_requires_prior_route_selection(self):
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(tools, github, local_available=False)
+        result = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {
+                    "repository": "owner/repo",
+                    "source_sha": "0123456789abcdef0123456789abcdef01234567",
+                    "operation": "test",
+                },
+                work_unit_id="work-123",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("prior local-first route decision", result.error)
+        self.assertEqual(github.missions, [])
+
     def test_github_actions_tool_can_resolve_source_sha_from_ref(self):
         class BranchResolvingGateway(FakeGitHubRuntime):
             class Gateway:
@@ -89,7 +112,9 @@ class GitHubMissionToolTests(unittest.TestCase):
         github = FakeGitHubRuntime()
         github.gateway = BranchResolvingGateway.Gateway()
         tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True, allowed_github_repositories=frozenset({"owner/repo"})))
-        GitHubToolBindings(tools, github)
+        GitHubToolBindings(tools, github, local_available=False)
+        route = tools.execute(ToolRequest("execution.route.select"))
+        self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
             ToolRequest(
                 "github.actions.run_mission",
@@ -107,7 +132,9 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/repo"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github)
+        GitHubToolBindings(tools, github, local_available=False)
+        route = tools.execute(ToolRequest("execution.route.select"))
+        self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
             ToolRequest(
                 "github.actions.run_mission",
@@ -130,7 +157,9 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/approved"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github)
+        GitHubToolBindings(tools, github, local_available=False)
+        route = tools.execute(ToolRequest("execution.route.select"))
+        self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
             ToolRequest(
                 "github.actions.run_mission",
@@ -153,7 +182,9 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/repo"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github)
+        GitHubToolBindings(tools, github, local_available=False)
+        route = tools.execute(ToolRequest("execution.route.select"))
+        self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
             ToolRequest(
                 "github.actions.run_mission",
@@ -177,7 +208,9 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/repo"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github)
+        GitHubToolBindings(tools, github, local_available=False)
+        route = tools.execute(ToolRequest("execution.route.select"))
+        self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
             ToolRequest(
                 "github.actions.run_mission",
@@ -204,7 +237,9 @@ class GitHubMissionToolTests(unittest.TestCase):
             allowed_github_repositories=frozenset({"owner/repo"}),
         ))
         github = FakeGitHubRuntime()
-        GitHubToolBindings(tools, github)
+        GitHubToolBindings(tools, github, local_available=False)
+        route = tools.execute(ToolRequest("execution.route.select"))
+        self.assertEqual(route.output["route"], "github_actions")
         result = tools.execute(
             ToolRequest(
                 "github.actions.run_mission",
@@ -245,27 +280,21 @@ class ExecutionRouteToolTests(unittest.TestCase):
     def test_route_prefers_local(self):
         tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
         GitHubToolBindings(tools, FakeGitHubRuntime())
-        result = tools.execute(
-            ToolRequest("execution.route.select", {"local_available": True}),
-        )
+        result = tools.execute(ToolRequest("execution.route.select"))
         self.assertTrue(result.ok)
         self.assertEqual(result.output["route"], "local")
 
     def test_route_falls_back_to_github_actions_after_local_failure(self):
         tools = ToolRuntime(ExecutionPolicy(allow_github_actions=True))
-        GitHubToolBindings(tools, FakeGitHubRuntime())
-        result = tools.execute(
-            ToolRequest("execution.route.select", {"local_available": True, "local_failed": True}),
-        )
+        GitHubToolBindings(tools, FakeGitHubRuntime(), local_available=True, local_failed=True)
+        result = tools.execute(ToolRequest("execution.route.select"))
         self.assertTrue(result.ok)
         self.assertEqual(result.output["route"], "github_actions")
 
     def test_route_blocks_when_no_route_is_permitted(self):
         tools = ToolRuntime(ExecutionPolicy(allow_github_actions=False))
-        GitHubToolBindings(tools, FakeGitHubRuntime())
-        result = tools.execute(
-            ToolRequest("execution.route.select", {"local_available": False}),
-        )
+        GitHubToolBindings(tools, FakeGitHubRuntime(), local_available=False)
+        result = tools.execute(ToolRequest("execution.route.select"))
         self.assertTrue(result.ok)
         self.assertEqual(result.output["route"], "blocked")
 

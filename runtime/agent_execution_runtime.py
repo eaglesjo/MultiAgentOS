@@ -176,7 +176,7 @@ class AgentExecutionRuntime:
             tool_runtime = ToolRuntime(self.policy)
             BuiltinToolBindings(str(project_root), tool_runtime)
             GitToolBindings(str(project_root), tool_runtime)
-            GitHubToolBindings(tool_runtime, self.github)
+            GitHubToolBindings(tool_runtime, self.github, local_available=False)
             effective_executor = IDECodingExecutor(
                 delegate=executor,
                 project_root=project_root,
