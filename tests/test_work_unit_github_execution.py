@@ -16,7 +16,7 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
             run_id=99,
             status="completed",
             conclusion="success" if success else "failure",
-            head_sha=source_sha,
+            head_sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             source_sha=source_sha,
             artifacts=("execution-mission-evidence",),
             logs_available=True,
@@ -119,7 +119,7 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
             "GitHub fallback requires a clean local worktree",
         )
 
-    def test_success_evidence_head_mismatch_fails_closed(self):
+    def test_success_evidence_missing_artifact_fails_closed_and_persists(self):
         runtime = AgentExecutionRuntime(
             policy=ExecutionPolicy(allow_github_actions=True)
         )
@@ -133,16 +133,16 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
                 run_id=99,
                 status="completed",
                 conclusion="success",
-                head_sha="cccccccccccccccccccccccccccccccccccccccc",
+                head_sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                 source_sha=source_sha,
-                artifacts=("execution-mission-evidence",),
+                artifacts=(),
                 logs_available=True,
             )},
         )()
 
         with tempfile.TemporaryDirectory() as root:
-            unit = WorkUnit("work-head-mismatch", "fail closed on head mismatch")
-            with self.assertRaisesRegex(ValueError, "head identity mismatch"):
+            unit = WorkUnit("work-missing-artifact", "require mission evidence")
+            with self.assertRaisesRegex(RuntimeError, "without expected artifacts"):
                 runtime.execute_work_unit_with_github_actions(
                     unit,
                     local_available=False,
