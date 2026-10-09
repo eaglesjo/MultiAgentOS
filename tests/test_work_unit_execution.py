@@ -90,6 +90,20 @@ class AutomaticWorkUnitExecutionTests(unittest.TestCase):
         self.assertEqual(result.route, ExecutionRoute.GITHUB_ACTIONS)
         self.assertEqual(unit.status, WorkStatus.COMPLETED)
 
+    def test_remote_runner_exception_marks_work_unit_failed(self):
+        unit = WorkUnit("work-remote-exception", "remote failure lifecycle")
+
+        def remote(_):
+            raise RuntimeError("GitHub dispatch failed")
+
+        with self.assertRaisesRegex(RuntimeError, "GitHub dispatch failed"):
+            AutomaticWorkUnitExecutor(allow_github_actions=True).execute(
+                unit, local_available=False, remote=remote
+            )
+
+        self.assertEqual(unit.status, WorkStatus.FAILED)
+        self.assertEqual(unit.metadata["remote_execution_error"], "GitHub dispatch failed")
+
     def test_remote_failure_marks_work_unit_failed(self):
         unit = WorkUnit("work-5", "remote failure")
         result = AutomaticWorkUnitExecutor(allow_github_actions=True).execute(

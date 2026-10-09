@@ -110,7 +110,7 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
                     repository="eaglesjo/MultiAgentOS",
                 )
 
-        self.assertEqual(unit.status, WorkStatus.EXECUTING)
+        self.assertEqual(unit.status, WorkStatus.FAILED)
 
     def test_success_evidence_source_mismatch_fails_closed(self):
         runtime = AgentExecutionRuntime(
