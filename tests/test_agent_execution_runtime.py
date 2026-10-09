@@ -575,21 +575,30 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
                 self.calls += 1
                 if self.calls == 1:
                     tool_ids = {tool.id for tool in tools}
+                    self_outer.assertIn("execution.route.select", tool_ids)
                     self_outer.assertIn("github.actions.run_mission", tool_ids)
                     return ModelResponse(
                         text="",
                         model_id=model.id,
-                        metadata={
-                            "tool_calls": [{
-                                "id": "mission-call-1",
-                                "name": "github.actions.run_mission",
-                                "arguments": {
-                                    "repository": "eaglesjo/MultiAgentOS",
-                                    "source_sha": source_sha,
-                                    "operation": "test",
-                                },
-                            }]
-                        },
+                        metadata={"tool_calls": [{
+                            "id": "route-call-1",
+                            "name": "execution.route.select",
+                            "arguments": {},
+                        }]},
+                    )
+                if self.calls == 2:
+                    return ModelResponse(
+                        text="",
+                        model_id=model.id,
+                        metadata={"tool_calls": [{
+                            "id": "mission-call-1",
+                            "name": "github.actions.run_mission",
+                            "arguments": {
+                                "repository": "eaglesjo/MultiAgentOS",
+                                "source_sha": source_sha,
+                                "operation": "test",
+                            },
+                        }]},
                     )
                 return ModelResponse(text="mission verified", model_id=model.id)
 
@@ -783,19 +792,21 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
                             "arguments": {},
                         }]},
                     )
-                return ModelResponse(
-                    text="",
-                    model_id=model.id,
-                    metadata={"tool_calls": [{
-                        "id": "mission-call-1",
-                        "name": "github.actions.run_mission",
-                        "arguments": {
-                            "repository": "eaglesjo/MultiAgentOS",
-                            "source_sha": source_sha,
-                            "operation": "test",
-                        },
-                    }]},
-                )
+                if self.calls == 2:
+                    return ModelResponse(
+                        text="",
+                        model_id=model.id,
+                        metadata={"tool_calls": [{
+                            "id": "mission-call-1",
+                            "name": "github.actions.run_mission",
+                            "arguments": {
+                                "repository": "eaglesjo/MultiAgentOS",
+                                "source_sha": source_sha,
+                                "operation": "test",
+                            },
+                        }]},
+                    )
+                return ModelResponse(text="must not hide failed mission", model_id=model.id)
 
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
