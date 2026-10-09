@@ -316,6 +316,33 @@ class ExecutionRouteToolTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(result.output["route"], "github_actions")
 
+    def test_dirty_source_identity_blocks_remote_route(self):
+        tools = ToolRuntime(ExecutionPolicy(
+            allow_github_actions=True,
+            allowed_github_repositories=frozenset({"owner/repo"}),
+        ))
+        github = FakeGitHubRuntime()
+        GitHubToolBindings(
+            tools,
+            github,
+            local_available=False,
+            source_sha="0123456789abcdef0123456789abcdef01234567",
+            source_clean=False,
+        )
+        result = tools.execute(ToolRequest("execution.route.select"))
+        self.assertTrue(result.ok)
+        self.assertEqual(result.output["route"], "blocked")
+        mission = tools.execute(
+            ToolRequest(
+                "github.actions.run_mission",
+                {"repository": "owner/repo", "operation": "test"},
+                work_unit_id="work-dirty",
+            ),
+            granted_permissions=frozenset({"github.actions"}),
+        )
+        self.assertFalse(mission.ok)
+        self.assertEqual(github.missions, [])
+
     def test_route_blocks_when_no_route_is_permitted(self):
         tools = ToolRuntime(ExecutionPolicy(allow_github_actions=False))
         GitHubToolBindings(tools, FakeGitHubRuntime(), local_available=False)
