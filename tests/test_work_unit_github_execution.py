@@ -110,7 +110,14 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
                     repository="eaglesjo/MultiAgentOS",
                 )
 
+            persisted = runtime.state_store(Path(root)).load("work-dirty")
+
         self.assertEqual(unit.status, WorkStatus.FAILED)
+        self.assertEqual(persisted.status, WorkStatus.FAILED)
+        self.assertEqual(
+            persisted.metadata["remote_execution_error"],
+            "GitHub fallback requires a clean local worktree",
+        )
 
     def test_success_evidence_source_mismatch_fails_closed(self):
         runtime = AgentExecutionRuntime(
