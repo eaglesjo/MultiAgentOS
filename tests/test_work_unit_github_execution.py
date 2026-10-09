@@ -196,8 +196,18 @@ class WorkUnitGitHubExecutionTests(unittest.TestCase):
                     project_root=Path(root),
                     repository="eaglesjo/MultiAgentOS",
                 )
+            persisted = runtime.state_store(Path(root)).load(unit.id)
 
         self.assertEqual(unit.status, WorkStatus.FAILED)
+        self.assertEqual(persisted.status, WorkStatus.FAILED)
+        self.assertEqual(
+            persisted.metadata["execution_evidence"]["source_sha"],
+            "cccccccccccccccccccccccccccccccccccccccc",
+        )
+        self.assertEqual(
+            persisted.metadata["execution_mission"]["source_sha"],
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        )
 
 
 if __name__ == "__main__":
