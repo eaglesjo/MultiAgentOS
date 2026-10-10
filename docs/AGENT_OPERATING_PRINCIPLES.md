@@ -26,6 +26,10 @@ Before marking a task complete, confirm as applicable:
 
 When an action is not supported by the current tool surface, first inspect available authorized alternatives. Do not claim that a tool is unavailable before checking. Do not ask the user to perform the entire workflow when only one specific operation is blocked. Explain what was verified, what remains, and the narrowest user action needed, if any.
 
+## Enforcement map
+
+See [Agent Operating Principles Enforcement Map](AGENT_OPERATING_PRINCIPLES_ENFORCEMENT.md) for the distinction between technical controls, procedural requirements, and known gaps. A passing policy contract check confirms required policy text is present; it does not prove that an agent followed the policy in every execution.
+
 ## Scope
 
 These are repository-wide operating requirements for all agents. Agent-specific instructions may add stricter requirements, but must not weaken or contradict these principles. Enforcement through code, runtime policy, and CI should be added where practical; documentation alone does not guarantee technical enforcement.
