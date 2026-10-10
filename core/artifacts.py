@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from core.contracts.handoff import ArtifactContract
+from core.state_paths import state_file_path
 
 
 class ArtifactStore:
@@ -16,8 +17,8 @@ class ArtifactStore:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def save(self, artifact: ArtifactContract) -> Path:
+        path = state_file_path(self.root, artifact.id, ".json")
         artifact.validate()
-        path = self.root / f"{artifact.id}.json"
         payload = {
             "id": artifact.id,
             "kind": artifact.kind,
@@ -34,7 +35,7 @@ class ArtifactStore:
         return path
 
     def load(self, artifact_id: str) -> ArtifactContract:
-        path = self.root / f"{artifact_id}.json"
+        path = state_file_path(self.root, artifact_id, ".json")
         data = json.loads(path.read_text(encoding="utf-8"))
         return ArtifactContract(
             id=data["id"],

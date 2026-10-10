@@ -7,6 +7,8 @@ from pathlib import Path
 import json
 from datetime import datetime, timezone
 
+from core.state_paths import state_file_path
+
 
 @dataclass
 class ChatSession:
@@ -34,7 +36,7 @@ class ChatSessionStore:
     def save(self, session: ChatSession) -> Path:
         if not session.updated_at:
             session.updated_at = datetime.now(timezone.utc).isoformat()
-        path = self.root / f"{session.id}.json"
+        path = state_file_path(self.root, session.id, ".json")
         payload = {
             "id": session.id,
             "chat_agent_id": session.chat_agent_id,
@@ -50,7 +52,7 @@ class ChatSessionStore:
         return path
 
     def load(self, session_id: str) -> ChatSession:
-        path = self.root / f"{session_id}.json"
+        path = state_file_path(self.root, session_id, ".json")
         data = json.loads(path.read_text(encoding="utf-8"))
         return ChatSession(
             id=data["id"],

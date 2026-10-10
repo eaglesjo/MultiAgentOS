@@ -7,6 +7,7 @@ from pathlib import Path
 
 from core.contracts.approval import ApprovalGrant, ApprovalDecision
 from core.security import redact_sensitive
+from core.state_paths import state_file_path
 
 
 class ApprovalStore:
@@ -17,7 +18,7 @@ class ApprovalStore:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def save(self, grant: ApprovalGrant, *, metadata: dict[str, object] | None = None) -> Path:
-        path = self.root / f"{grant.approval_id}.json"
+        path = state_file_path(self.root, grant.approval_id, ".json")
         payload = redact_sensitive({
             "approval_id": grant.approval_id,
             "decision": grant.decision.value,
@@ -32,7 +33,8 @@ class ApprovalStore:
         return path
 
     def load(self, approval_id: str) -> ApprovalGrant:
-        data = json.loads((self.root / f"{approval_id}.json").read_text(encoding="utf-8"))
+        path = state_file_path(self.root, approval_id, ".json")
+        data = json.loads(path.read_text(encoding="utf-8"))
         return ApprovalGrant(
             approval_id=str(data["approval_id"]),
             decision=ApprovalDecision(str(data["decision"])),
