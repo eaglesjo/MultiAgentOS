@@ -8,6 +8,7 @@ from pathlib import Path
 
 from core.contracts.policy_decision import PolicyDecision
 from core.security import redact_sensitive
+from core.state_paths import state_file_path
 
 
 class PolicyDecisionStore:
@@ -18,9 +19,7 @@ class PolicyDecisionStore:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def append(self, decision: PolicyDecision) -> Path:
-        if not decision.work_unit_id.strip():
-            raise ValueError("policy decision requires work_unit_id")
-        path = self.root / f"{decision.work_unit_id}.jsonl"
+        path = state_file_path(self.root, decision.work_unit_id, ".jsonl")
         payload = redact_sensitive({
             "recorded_at": datetime.now(timezone.utc).isoformat(),
             "work_unit_id": decision.work_unit_id,
@@ -36,7 +35,7 @@ class PolicyDecisionStore:
         return path
 
     def load(self, work_unit_id: str) -> tuple[dict[str, object], ...]:
-        path = self.root / f"{work_unit_id}.jsonl"
+        path = state_file_path(self.root, work_unit_id, ".jsonl")
         if not path.exists():
             return ()
         return tuple(
