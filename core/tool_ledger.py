@@ -18,10 +18,25 @@ class ToolInvocationStore:
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
 
+    def _path_for_work_unit(self, work_unit_id: str) -> Path:
+        """Return a ledger path contained by the configured root."""
+        if (
+            not isinstance(work_unit_id, str)
+            or not work_unit_id.strip()
+            or work_unit_id in {".", ".."}
+            or any(char in work_unit_id for char in ("/", "\\", ":", "\\x00"))
+        ):
+            raise ValueError("invalid tool ledger work_unit_id")
+        root = self.root.resolve()
+        path = (root / f"{work_unit_id}.jsonl").resolve()
+        if path.parent != root:
+            raise ValueError("tool ledger path escapes configured root")
+        return path
+
     def append(self, record: ToolInvocationRecord) -> Path:
         if not record.work_unit_id:
             raise ValueError("tool invocation requires work_unit_id")
-        path = self.root / f"{record.work_unit_id}.jsonl"
+        path = self._path_for_work_unit(record.work_unit_id)
         payload = {
             "invocation_id": record.invocation_id,
             "work_unit_id": record.work_unit_id,
@@ -47,7 +62,7 @@ class ToolInvocationStore:
         return path
 
     def load(self, work_unit_id: str) -> tuple[ToolInvocationRecord, ...]:
-        path = self.root / f"{work_unit_id}.jsonl"
+        path = self._path_for_work_unit(work_unit_id)
         if not path.exists():
             return ()
         latest: dict[str, ToolInvocationRecord] = {}
