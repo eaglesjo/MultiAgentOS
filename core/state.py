@@ -57,7 +57,7 @@ class WorkStateStore:
         return tuple(sorted(path.stem for path in self.root.glob("*.json")))
 
     def load(self, work_unit_id: str) -> WorkUnit:
-        path = self.root / f"{work_unit_id}.json"
+        path = state_file_path(self.root, work_unit_id, ".json")
         data = json.loads(path.read_text(encoding="utf-8"))
         raw_scope = data.get("scope_lock", {})
         scope_lock = ScopeLock(
@@ -205,7 +205,7 @@ class SessionStateStore:
         return (state_file_path(self.root, session_id, ".json")).exists()
 
     def load(self, session_id: str) -> SessionState:
-        data = json.loads((self.root / f"{session_id}.json").read_text(encoding="utf-8"))
+        data = json.loads((state_file_path(self.root, session_id, ".json")).read_text(encoding="utf-8"))
         raw = data["spec"]
         spec = SessionSpec(
             id=raw["id"],
