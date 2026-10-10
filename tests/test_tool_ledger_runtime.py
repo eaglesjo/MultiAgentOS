@@ -40,11 +40,12 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
             policy = ReplayPolicy(ReplayDisposition.SAFE, reason="read-only")
             for work_unit_id in ("../outside", r"..\\outside", "bad:stream"):
                 with self.subTest(work_unit_id=work_unit_id):
+                    record = ToolInvocationRecord(
+                        "inv-escape", work_unit_id, "filesystem.read", {},
+                        ToolInvocationState.REQUESTED, policy, 1,
+                    )
                     with self.assertRaisesRegex(ValueError, "invalid tool ledger work_unit_id"):
-                        store.append(ToolInvocationRecord(
-                            "inv-escape", work_unit_id, "filesystem.read", {},
-                            ToolInvocationState.REQUESTED, policy, 1,
-                        ))
+                        store.append(record)
                     with self.assertRaisesRegex(ValueError, "invalid tool ledger work_unit_id"):
                         store.load(work_unit_id)
             self.assertFalse((Path(temp) / "outside.jsonl").exists())
@@ -55,22 +56,19 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
             root.mkdir()
             outside = Path(temp) / "outside.jsonl"
             outside.write_text("", encoding="utf-8")
-            link = root / "work-1.jsonl"
-            try:
-                link.symlink_to(outside)
-            except (OSError, NotImplementedError):
-                self.skipTest("symlinks are unavailable in this environment")
+            (root / "work-1.jsonl").symlink_to(outside)
             store = ToolInvocationStore(root)
+            from core.contracts.replay import ReplayDisposition, ReplayPolicy
+            from core.contracts.tool_ledger import ToolInvocationRecord
+
+            record = ToolInvocationRecord(
+                "inv-1", "work-1", "filesystem.read", {},
+                ToolInvocationState.REQUESTED,
+                ReplayPolicy(ReplayDisposition.SAFE, reason="read-only"),
+                1,
+            )
             with self.assertRaisesRegex(ValueError, "escapes configured root"):
-                store.append(__import__("core.contracts.tool_ledger", fromlist=["ToolInvocationRecord"]).ToolInvocationRecord(
-                    "inv-1", "work-1", "filesystem.read", {},
-                    ToolInvocationState.REQUESTED,
-                    __import__("core.contracts.replay", fromlist=["ReplayPolicy", "ReplayDisposition"]).ReplayPolicy(
-                        __import__("core.contracts.replay", fromlist=["ReplayDisposition"]).ReplayDisposition.SAFE,
-                        reason="read-only",
-                    ),
-                    1,
-                ))
+                store.append(record)
             self.assertEqual(outside.read_text(encoding="utf-8"), "")
 
     def test_tool_calling_persists_requested_started_completed(self):
