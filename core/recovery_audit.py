@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.contracts.recovery import RecoveryPlan
+from core.state_paths import state_file_path
 
 
 class RecoveryAuditStore:
@@ -20,7 +21,7 @@ class RecoveryAuditStore:
         *,
         source_identity: dict[str, object] | None = None,
     ) -> Path:
-        path = self.root / f"{plan.work_unit_id}.jsonl"
+        path = state_file_path(self.root, plan.work_unit_id, ".jsonl")
         payload = {
             "recorded_at": datetime.now(timezone.utc).isoformat(),
             "work_unit_id": plan.work_unit_id,
@@ -35,7 +36,7 @@ class RecoveryAuditStore:
         return path
 
     def load(self, work_unit_id: str) -> tuple[dict[str, object], ...]:
-        path = self.root / f"{work_unit_id}.jsonl"
+        path = state_file_path(self.root, work_unit_id, ".jsonl")
         if not path.exists():
             return ()
         return tuple(
