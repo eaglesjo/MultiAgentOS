@@ -10,6 +10,7 @@ from core.contracts.scope import ScopeLock
 from core.contracts.work_unit import WorkStatus, WorkUnit
 from core.contracts.agent_execution_runtime import RuntimeEvent, SessionSpec, SessionState
 from core.security import redact_sensitive
+from core.state_paths import state_file_path
 
 
 class WorkStateStore:
@@ -21,7 +22,7 @@ class WorkStateStore:
 
     def save(self, work_unit: WorkUnit) -> Path:
         work_unit.scope_lock.validate()
-        path = self.root / f"{work_unit.id}.json"
+        path = state_file_path(self.root, work_unit.id, ".json")
         payload = redact_sensitive(
             {
                 "id": work_unit.id,
@@ -50,7 +51,7 @@ class WorkStateStore:
         return path
 
     def exists(self, work_unit_id: str) -> bool:
-        return (self.root / f"{work_unit_id}.json").exists()
+        return (state_file_path(self.root, work_unit_id, ".json")).exists()
 
     def list_ids(self) -> tuple[str, ...]:
         return tuple(sorted(path.stem for path in self.root.glob("*.json")))
@@ -84,7 +85,7 @@ class WorkStateStore:
     def save_checkpoint(self, checkpoint: WorkflowCheckpoint) -> Path:
         """Persist a durable checkpoint independently of transient model output."""
         checkpoint.validate()
-        path = self.checkpoint_root / f"{checkpoint.work_unit_id}.json"
+        path = state_file_path(self.checkpoint_root, checkpoint.work_unit_id, ".json")
         path.write_text(
             json.dumps(checkpoint.to_dict(), indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
@@ -94,7 +95,7 @@ class WorkStateStore:
 
     def load_checkpoint(self, work_unit_id: str) -> WorkflowCheckpoint:
         """Load the latest durable checkpoint for a WorkUnit."""
-        path = self.checkpoint_root / f"{work_unit_id}.json"
+        path = state_file_path(self.checkpoint_root, work_unit_id, ".json")
         data = json.loads(path.read_text(encoding="utf-8"))
         return WorkflowCheckpoint.from_dict(data)
 
@@ -146,7 +147,7 @@ class RuntimeEventStore:
     def append(self, event) -> Path:
         if event.work_unit_id is None:
             raise ValueError("runtime event requires work_unit_id")
-        path = self.root / f"{event.work_unit_id}.jsonl"
+        path = state_file_path(self.root, event.work_unit_id, ".jsonl")
         sequence = event.sequence if event.sequence is not None else self.next_sequence(event.work_unit_id)
         payload = {
             "kind": event.kind.value,
@@ -161,7 +162,7 @@ class RuntimeEventStore:
         return path
 
     def load(self, work_unit_id: str) -> tuple[dict[str, object], ...]:
-        path = self.root / f"{work_unit_id}.jsonl"
+        path = state_file_path(self.root, work_unit_id, ".jsonl")
         if not path.exists():
             return ()
         return tuple(
@@ -183,7 +184,7 @@ class SessionStateStore:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def save(self, state: SessionState) -> Path:
-        path = self.root / f"{state.spec.id}.json"
+        path = state_file_path(self.root, state.spec.id, ".json")
         payload = {
             "spec": {
                 "id": state.spec.id,
@@ -201,7 +202,7 @@ class SessionStateStore:
         return path
 
     def exists(self, session_id: str) -> bool:
-        return (self.root / f"{session_id}.json").exists()
+        return (state_file_path(self.root, session_id, ".json")).exists()
 
     def load(self, session_id: str) -> SessionState:
         data = json.loads((self.root / f"{session_id}.json").read_text(encoding="utf-8"))
