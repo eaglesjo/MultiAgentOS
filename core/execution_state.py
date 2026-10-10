@@ -8,6 +8,7 @@ from pathlib import Path
 from core.contracts.execution_cursor import ExecutionCursor
 from core.contracts.streaming import StreamCheckpoint, StreamCheckpointStatus
 from core.security import redact_sensitive
+from core.state_paths import state_file_path
 
 
 class ExecutionStateStore:
@@ -23,7 +24,7 @@ class ExecutionStateStore:
         self.checkpoint_root.mkdir(parents=True, exist_ok=True)
 
     def save_cursor(self, cursor: ExecutionCursor) -> Path:
-        path = self.cursor_root / f"{cursor.work_unit_id}.json"
+        path = state_file_path(self.cursor_root, cursor.work_unit_id, ".json")
         path.write_text(
             json.dumps({
                 "work_unit_id": cursor.work_unit_id,
@@ -40,7 +41,7 @@ class ExecutionStateStore:
 
     def load_cursor(self, work_unit_id: str) -> ExecutionCursor:
         data = json.loads(
-            (self.cursor_root / f"{work_unit_id}.json").read_text(encoding="utf-8")
+            (state_file_path(self.cursor_root, work_unit_id, ".json")).read_text(encoding="utf-8")
         )
         return ExecutionCursor(
             work_unit_id=data["work_unit_id"],
@@ -61,7 +62,7 @@ class ExecutionStateStore:
         content: object,
         metadata: dict[str, object] | None = None,
     ) -> int:
-        path = self.message_root / f"{work_unit_id}.jsonl"
+        path = state_file_path(self.message_root, work_unit_id, ".jsonl")
         revision = self.next_message_revision(work_unit_id)
         payload = {
             "revision": revision,
@@ -91,7 +92,7 @@ class ExecutionStateStore:
     def save_stream_checkpoint(self, checkpoint: StreamCheckpoint) -> Path:
         """Persist an explicit streaming boundary after redaction."""
 
-        path = self.checkpoint_root / f"{checkpoint.work_unit_id}.json"
+        path = state_file_path(self.checkpoint_root, checkpoint.work_unit_id, ".json")
         payload = {
             "checkpoint_id": checkpoint.checkpoint_id,
             "work_unit_id": checkpoint.work_unit_id,
@@ -115,7 +116,7 @@ class ExecutionStateStore:
         """Load the latest explicit streaming boundary."""
 
         data = json.loads(
-            (self.checkpoint_root / f"{work_unit_id}.json").read_text(encoding="utf-8")
+            (state_file_path(self.checkpoint_root, work_unit_id, ".json")).read_text(encoding="utf-8")
         )
         return StreamCheckpoint(
             checkpoint_id=str(data["checkpoint_id"]),
