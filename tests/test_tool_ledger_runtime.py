@@ -30,6 +30,49 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
             self.assertEqual(records[0].state, ToolInvocationState.COMPLETED)
             self.assertFalse(store.has_unresolved("work-1"))
 
+    def test_ledger_rejects_work_unit_path_traversal(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "tool-ledger"
+            store = ToolInvocationStore(root)
+            from core.contracts.replay import ReplayDisposition, ReplayPolicy
+            from core.contracts.tool_ledger import ToolInvocationRecord
+
+            policy = ReplayPolicy(ReplayDisposition.SAFE, reason="read-only")
+            for work_unit_id in ("../outside", r"..\\outside", "bad:stream"):
+                with self.subTest(work_unit_id=work_unit_id):
+                    with self.assertRaisesRegex(ValueError, "invalid tool ledger work_unit_id"):
+                        store.append(ToolInvocationRecord(
+                            "inv-escape", work_unit_id, "filesystem.read", {},
+                            ToolInvocationState.REQUESTED, policy, 1,
+                        ))
+                    with self.assertRaisesRegex(ValueError, "invalid tool ledger work_unit_id"):
+                        store.load(work_unit_id)
+            self.assertFalse((Path(temp) / "outside.jsonl").exists())
+
+    def test_ledger_rejects_symlink_escape_when_supported(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "tool-ledger"
+            root.mkdir()
+            outside = Path(temp) / "outside.jsonl"
+            outside.write_text("", encoding="utf-8")
+            link = root / "work-1.jsonl"
+            try:
+                link.symlink_to(outside)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks are unavailable in this environment")
+            store = ToolInvocationStore(root)
+            with self.assertRaisesRegex(ValueError, "escapes configured root"):
+                store.append(__import__("core.contracts.tool_ledger", fromlist=["ToolInvocationRecord"]).ToolInvocationRecord(
+                    "inv-1", "work-1", "filesystem.read", {},
+                    ToolInvocationState.REQUESTED,
+                    __import__("core.contracts.replay", fromlist=["ReplayPolicy", "ReplayDisposition"]).ReplayPolicy(
+                        __import__("core.contracts.replay", fromlist=["ReplayDisposition"]).ReplayDisposition.SAFE,
+                        reason="read-only",
+                    ),
+                    1,
+                ))
+            self.assertEqual(outside.read_text(encoding="utf-8"), "")
+
     def test_tool_calling_persists_requested_started_completed(self):
         class Adapter:
             def __init__(self):
