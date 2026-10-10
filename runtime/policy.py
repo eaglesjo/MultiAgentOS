@@ -44,6 +44,12 @@ class ExecutionPolicy:
     ) -> bool:
         if not self.requires_approval(action, capability):
             return True
+        # Sensitive actions require a concrete execution scope. Exact equality
+        # alone is insufficient when both the grant and request omit the scope.
+        if not isinstance(work_unit_id, str) or not work_unit_id.strip():
+            return False
+        if not isinstance(session_id, str) or not session_id.strip():
+            return False
         return grant is not None and grant.is_valid(
             action=action,
             work_unit_id=work_unit_id,
