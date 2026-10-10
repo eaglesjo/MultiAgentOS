@@ -53,6 +53,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Validate agent operating-principles contract
+        run: python scripts/check_agent_operating_principles.py
+
       - name: Install package
         run: python -m pip install '.[mcp-http]'
 
