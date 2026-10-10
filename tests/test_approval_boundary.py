@@ -24,6 +24,7 @@ class ApprovalBoundaryTests(unittest.TestCase):
         self.assertTrue(grant.is_valid(action="git.commit", work_unit_id="wu-1", session_id="s-1", now=now))
         self.assertFalse(grant.is_valid(action="git.push", work_unit_id="wu-1", session_id="s-1", now=now))
         self.assertFalse(grant.is_valid(action="git.commit", work_unit_id="wu-2", session_id="s-1", now=now))
+        self.assertFalse(grant.is_valid(action="git.commit", work_unit_id="wu-1", session_id="s-2", now=now))
         self.assertFalse(grant.is_valid(action="git.commit", work_unit_id="wu-1", session_id="s-1", now=now + timedelta(minutes=6)))
 
     def test_missing_approval_blocks_side_effect_before_handler(self):
@@ -50,6 +51,27 @@ class ApprovalBoundaryTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("explicit approval required", result.error)
         self.assertEqual(calls, [])
+
+    def test_approval_without_work_unit_or_session_scope_is_rejected(self):
+        grant = ApprovalGrant(
+            approval_id="a-unscoped",
+            decision=ApprovalDecision.APPROVED,
+            action="git.commit",
+        )
+        self.assertFalse(grant.is_valid(action="git.commit", work_unit_id="wu-1", session_id="s-1"))
+        self.assertFalse(grant.is_valid(action="git.commit", work_unit_id="wu-1", session_id=None))
+        self.assertFalse(grant.is_valid(action="git.commit", work_unit_id=None, session_id="s-1"))
+
+    def test_scoped_approval_cannot_be_reused_without_matching_context(self):
+        grant = ApprovalGrant(
+            approval_id="a-scoped",
+            decision=ApprovalDecision.APPROVED,
+            action="git.commit",
+            work_unit_id="wu-1",
+            session_id="s-1",
+        )
+        self.assertFalse(grant.is_valid(action="git.commit", work_unit_id="wu-1", session_id=None))
+        self.assertFalse(grant.is_valid(action="git.commit", work_unit_id=None, session_id="s-1"))
 
     def test_valid_scoped_approval_reaches_handler(self):
         calls = []

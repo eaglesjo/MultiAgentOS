@@ -34,9 +34,12 @@ class ApprovalGrant:
             return False
         if self.action != action:
             return False
-        if self.work_unit_id is not None and self.work_unit_id != work_unit_id:
+        # Bind the grant to the execution context in both directions:
+        # a grant without a scope must not authorize a scoped request, and a
+        # scoped grant must not be reused when the corresponding context is absent.
+        if self.work_unit_id != work_unit_id:
             return False
-        if self.session_id is not None and self.session_id != session_id:
+        if self.session_id != session_id:
             return False
         if self.expires_at is None:
             return True
