@@ -9,17 +9,116 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: multiagentos-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
+      - name: Validate source identity
+        id: source
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import re
+          sha = os.environ["SOURCE_SHA"]
+          if not re.fullmatch(r"[0-9a-f]{40}", sha):
+              raise SystemExit("github.sha must be a full 40-character lowercase commit SHA")
+          print(f"Validated source SHA: {sha}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"sha={sha}\n")
+          PY
+
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
+          ref: ${{ steps.source.outputs.sha }}
           persist-credentials: false
+
+      - name: Verify checked-out source
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$SOURCE_SHA"
+          echo "Verified source SHA: $actual"
+
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6
         with:
           python-version: "3.12"
+
       - name: Install package
         run: python -m pip install '.[mcp-http]'
+
       - name: Run contract and runtime tests
+        id: tests
         run: python -m unittest discover -s tests -v
+
+      - name: Write validation evidence
+        if: always()
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+          WORKFLOW_NAME: ${{ github.workflow }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          actual = None
+          if Path(".git").exists():
+              result = subprocess.run(
+                  ["git", "rev-parse", "HEAD"],
+                  capture_output=True,
+                  text=True,
+                  check=False,
+              )
+              if result.returncode == 0:
+                  actual = result.stdout.strip()
+
+          expected = os.environ.get("SOURCE_SHA", "")
+          outcome = os.environ.get("TEST_OUTCOME") or "SKIPPED"
+          identity_verified = bool(expected and actual == expected)
+          evidence = {
+              "schema_version": 1,
+              "workflow": os.environ["WORKFLOW_NAME"],
+              "run_id": os.environ["RUN_ID"],
+              "run_attempt": int(os.environ["RUN_ATTEMPT"]),
+              "event": os.environ["EVENT_NAME"],
+              "ref": os.environ["GIT_REF"],
+              "source_sha": expected,
+              "checked_out_sha": actual,
+              "source_identity_verified": identity_verified,
+              "test_outcome": outcome,
+              "result": "PASS" if identity_verified and outcome == "success" else "NOT_ACCEPTED",
+              "recorded_at": datetime.now(timezone.utc).isoformat(),
+          }
+          Path("validation-evidence.json").write_text(
+              json.dumps(evidence, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(evidence, indent=2))
+          if not identity_verified:
+              raise SystemExit("Validation evidence source SHA does not match checkout")
+          PY
+
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: always()
+        with:
+          name: validation-evidence
+          path: validation-evidence.json
+          if-no-files-found: error
+          retention-days: 14
