@@ -76,7 +76,7 @@ class ExecutionStateStore:
         return revision
 
     def load_messages(self, work_unit_id: str) -> tuple[dict[str, object], ...]:
-        path = self.message_root / f"{work_unit_id}.jsonl"
+        path = state_file_path(self.message_root, work_unit_id, ".jsonl")
         if not path.exists():
             return ()
         return tuple(
