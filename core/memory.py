@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from core.contracts.memory import MemoryKind, ProjectMemory
 from core.security import redact_sensitive
+from core.state_paths import state_file_path
 
 
 class ProjectMemoryStore:
@@ -36,7 +37,7 @@ class ProjectMemoryStore:
             created_at=datetime.now(timezone.utc).isoformat(),
             metadata=redact_sensitive(dict(metadata or {})),
         )
-        path = self.root / "memory.jsonl"
+        path = state_file_path(self.root, "memory", ".jsonl")
         payload = {
             "memory_id": memory.memory_id,
             "kind": memory.kind.value,
@@ -52,7 +53,7 @@ class ProjectMemoryStore:
     def search(self, query: str = "", *, limit: int = 20) -> tuple[ProjectMemory, ...]:
         if limit < 1:
             raise ValueError("limit must be at least 1")
-        path = self.root / "memory.jsonl"
+        path = state_file_path(self.root, "memory", ".jsonl")
         if not path.exists():
             return ()
         needle = query.strip().casefold()
