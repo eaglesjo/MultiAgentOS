@@ -17,8 +17,8 @@ class ArtifactStore:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def save(self, artifact: ArtifactContract) -> Path:
-        artifact.validate()
         path = state_file_path(self.root, artifact.id, ".json")
+        artifact.validate()
         payload = {
             "id": artifact.id,
             "kind": artifact.kind,
