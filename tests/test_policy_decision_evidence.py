@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from core.contracts.agent_execution_runtime import ToolRequest, ToolSideEffect, ToolSpec
+from core.contracts.approval import ApprovalDecision, ApprovalGrant
 from core.contracts.execution_limits import ExecutionBudget, LimitDisposition
 from core.contracts.policy_decision import DecisionCategory, DecisionDisposition, PolicyDecision
 from core.policy_decision import PolicyDecisionStore
@@ -51,7 +52,16 @@ class PolicyDecisionEvidenceTests(unittest.TestCase):
             policy = ExecutionPolicy(require_approval_for=frozenset({"read.tool"}))
             runtime = ToolRuntime(policy, decision_store=store)
             runtime.register(ToolSpec(id="read.tool", description="read"), lambda request: "ok")
-            result = runtime.execute(ToolRequest("read.tool", work_unit_id="wu"), approved=True)
+            grant = ApprovalGrant(
+                approval_id="approval-read-tool",
+                decision=ApprovalDecision.APPROVED,
+                action="read.tool",
+                work_unit_id="wu",
+            )
+            result = runtime.execute(
+                ToolRequest("read.tool", work_unit_id="wu"),
+                approval=grant,
+            )
             self.assertTrue(result.ok)
             decisions = store.load("wu")
             self.assertEqual(decisions[-1]["category"], DecisionCategory.APPROVAL.value)
