@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from core.contracts.agent import AgentContract
 from core.contracts.execution_decision import ExecutionDecision
 from core.contracts.mcp import MCPTool, MCPToolCall, MCPToolProfile, MCPToolResult
@@ -199,3 +201,41 @@ def test_profile_denial_never_reaches_mcp():
     else:
         raise AssertionError("profile-denied MCP invocation was not rejected")
     assert client.calls == 0
+
+
+
+def test_session_bound_mcp_client_rejects_missing_or_mismatched_session():
+    for request_session_id in (None, "session-other"):
+        client = _FakeClient(_tool())
+        client.session = SimpleNamespace(id="session-bound")
+        try:
+            MCPToolProxy({"server-a": client}).call(
+                MCPToolCall(
+                    "server-a",
+                    "read_data",
+                    session_id=request_session_id,
+                )
+            )
+        except KeyError as exc:
+            assert "MCP session mismatch" in str(exc)
+        else:
+            raise AssertionError(
+                f"session mismatch was accepted: {request_session_id!r}"
+            )
+        assert client.calls == 0
+
+
+def test_session_bound_mcp_client_accepts_exact_session():
+    client = _FakeClient(_tool())
+    client.session = SimpleNamespace(id="session-bound")
+
+    result = MCPToolProxy({"server-a": client}).call(
+        MCPToolCall(
+            "server-a",
+            "read_data",
+            session_id="session-bound",
+        )
+    )
+
+    assert client.calls == 1
+    assert result.is_error is False

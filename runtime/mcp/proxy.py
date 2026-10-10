@@ -43,8 +43,11 @@ class MCPToolProxy:
         client = self.clients.get(request.server_id)
         if client is None:
             raise KeyError(f"MCP server not connected: {request.server_id}")
-        if request.session_id and (
-            client.session is None or client.session.id != request.session_id
+        active_session = client.session
+        if active_session is not None and request.session_id != active_session.id:
+            raise KeyError(f"MCP session mismatch for {request.server_id}")
+        if request.session_id is not None and (
+            active_session is None or active_session.id != request.session_id
         ):
             raise KeyError(f"MCP session mismatch for {request.server_id}")
 
