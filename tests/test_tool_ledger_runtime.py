@@ -56,7 +56,10 @@ class DurableToolLedgerRuntimeTests(unittest.TestCase):
             root.mkdir()
             outside = Path(temp) / "outside.jsonl"
             outside.write_text("", encoding="utf-8")
-            (root / "work-1.jsonl").symlink_to(outside)
+            try:
+                (root / "work-1.jsonl").symlink_to(outside)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlinks are unavailable in this environment")
             store = ToolInvocationStore(root)
             from core.contracts.replay import ReplayDisposition, ReplayPolicy
             from core.contracts.tool_ledger import ToolInvocationRecord
