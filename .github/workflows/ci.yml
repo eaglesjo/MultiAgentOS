@@ -32,7 +32,7 @@ jobs:
               raise SystemExit("github.sha must be a full 40-character lowercase commit SHA")
           print(f"Validated source SHA: {sha}")
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"sha={sha}\\n")
+              output.write(f"sha={sha}\n")
           PY
 
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -110,7 +110,7 @@ jobs:
               "recorded_at": datetime.now(timezone.utc).isoformat(),
           }
           Path("validation-evidence.json").write_text(
-              json.dumps(evidence, indent=2) + "\\n",
+              json.dumps(evidence, indent=2) + "\n",
               encoding="utf-8",
           )
           print(json.dumps(evidence, indent=2))
