@@ -71,7 +71,8 @@ class ToolRuntime:
             self._record_decision(request, DecisionCategory.CAPABILITY, DecisionDisposition.DENY, f"capability disabled: {capability}", action=item.spec.id)
             return ToolResult(item.spec.id, False, error=f"tool capability is disabled: {capability}")
         if self.policy.requires_approval(item.spec.id, capability):
-            valid = approved or self.policy.approval_valid(approval, action=item.spec.id, capability=capability, work_unit_id=request.work_unit_id, session_id=request.session_id)
+            # The legacy `approved` flag is not scoped evidence and must never bypass a grant.
+            valid = self.policy.approval_valid(approval, action=item.spec.id, capability=capability, work_unit_id=request.work_unit_id, session_id=request.session_id)
             self._record_decision(request, DecisionCategory.APPROVAL, DecisionDisposition.ALLOW if valid else DecisionDisposition.DENY, "explicit approval accepted" if valid else f"explicit approval required for: {item.spec.id}", action=item.spec.id)
             if not valid:
                 return ToolResult(item.spec.id, False, error=f"explicit approval required for: {item.spec.id}")
@@ -113,7 +114,7 @@ class ToolCallingRuntime:
         self.rate_limit = rate_limit
         self.decision_store = decision_store
 
-    def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False, start_round: int = 1, initial_cursor_sequence: int = 0, initial_conversation_revision: int = 0) -> ToolCallingExecution:
+    def execute(self, request: ModelRequest, *, model_id: str, session: SessionSpec | None = None, work_unit_id: str | None = None, granted_permissions: frozenset[str] = frozenset(), approved: bool = False, approval: ApprovalGrant | None = None, start_round: int = 1, initial_cursor_sequence: int = 0, initial_conversation_revision: int = 0) -> ToolCallingExecution:
         model = self.models[model_id]
         adapter = self.adapters[model_id]
         generate = getattr(adapter, "generate_with_tools", None)
@@ -259,7 +260,7 @@ class ToolCallingRuntime:
                     ))
                 result = self.tools.execute(
                     ToolRequest(call["tool_id"], call["arguments"], session_id=session.id if session else None, work_unit_id=work_unit_id, metadata={"call_id": call["call_id"], "invocation_id": invocation_id, "idempotency_key": idempotency_key}),
-                    granted_permissions=granted_permissions, approved=approved,
+                    granted_permissions=granted_permissions, approved=approved, approval=approval,
                 )
                 results.append(result)
                 terminal_state = ToolInvocationState.COMPLETED if result.ok else ToolInvocationState.FAILED

@@ -38,6 +38,19 @@ class ApprovalBoundaryTests(unittest.TestCase):
         self.assertIn("explicit approval required", result.error)
         self.assertEqual(calls, [])
 
+    def test_unscoped_approved_boolean_does_not_bypass_required_approval(self):
+        calls = []
+        runtime = ToolRuntime(ExecutionPolicy(allow_git_write=True))
+        runtime.register(ToolSpec("git.commit", "commit", ToolSideEffect.WRITE, frozenset({"git.write"})), lambda request: calls.append(request) or "ok")
+        result = runtime.execute(
+            ToolRequest("git.commit", {"message": "x"}, work_unit_id="wu-1", session_id="s-1"),
+            granted_permissions=frozenset({"git.write"}),
+            approved=True,
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("explicit approval required", result.error)
+        self.assertEqual(calls, [])
+
     def test_valid_scoped_approval_reaches_handler(self):
         calls = []
         runtime = ToolRuntime(ExecutionPolicy(allow_git_write=True))
