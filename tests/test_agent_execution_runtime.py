@@ -671,6 +671,13 @@ class AgentExecutionRuntimeTests(unittest.TestCase):
         })
         self.assertEqual(persisted.status, WorkStatus.FAILED)
         self.assertIn("without expected artifacts", persisted.metadata["error"])
+        mission_audit = next(
+            item for item in persisted.metadata["tool_results_audit"]
+            if item["tool_id"] == "github.actions.run_mission"
+        )
+        self.assertFalse(mission_audit["ok"])
+        self.assertIn("without expected artifacts", mission_audit["error"])
+        self.assertEqual(persisted.metadata["tool_error"], mission_audit["error"])
         self.assertEqual(adapter.calls, 3)
 
 
