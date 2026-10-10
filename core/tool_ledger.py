@@ -24,7 +24,7 @@ class ToolInvocationStore:
             not isinstance(work_unit_id, str)
             or not work_unit_id.strip()
             or work_unit_id in {".", ".."}
-            or any(char in work_unit_id for char in ("/", "\\", ":", "\\x00"))
+            or any(char in work_unit_id for char in ("/", "\\", ":", "\x00"))
         ):
             raise ValueError("invalid tool ledger work_unit_id")
         root = self.root.resolve()
