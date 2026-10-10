@@ -57,9 +57,10 @@ class PolicyDecisionEvidenceTests(unittest.TestCase):
                 decision=ApprovalDecision.APPROVED,
                 action="read.tool",
                 work_unit_id="wu",
+                session_id="session-1",
             )
             result = runtime.execute(
-                ToolRequest("read.tool", work_unit_id="wu"),
+                ToolRequest("read.tool", work_unit_id="wu", session_id="session-1"),
                 approval=grant,
             )
             self.assertTrue(result.ok)
