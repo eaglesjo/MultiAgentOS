@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from core.contracts.agent_execution_runtime import ToolRequest, ToolSideEffect, ToolSpec
 from runtime.local.filesystem import FilesystemRuntime
+from runtime.local.path_security import PathPolicy
 from runtime.local.patch import PatchRuntime
 from runtime.local.shell import PersistentShellRuntime
 from runtime.tool_calling import ToolRuntime
@@ -17,7 +18,10 @@ class BuiltinToolBindings:
     shell: PersistentShellRuntime | None = None
 
     def __post_init__(self) -> None:
-        self.filesystem = self.filesystem or FilesystemRuntime(policy=self.runtime.policy)
+        self.filesystem = self.filesystem or FilesystemRuntime(
+            policy=self.runtime.policy,
+            paths=PathPolicy(roots=(self.project_root,)),
+        )
         self.patch = self.patch or PatchRuntime(policy=self.runtime.policy)
         self.shell = self.shell or PersistentShellRuntime(self.project_root, policy=self.runtime.policy)
         self._register()
