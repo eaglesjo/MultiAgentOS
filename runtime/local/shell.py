@@ -87,6 +87,7 @@ class PersistentShellRuntime:
         )
 
     def cd(self, path: str) -> ShellState:
+        self.permissions.require("process")
         target = self.paths.resolve(path, must_exist=True)
         if not target.is_dir():
             raise NotADirectoryError(str(target))

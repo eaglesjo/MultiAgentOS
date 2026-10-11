@@ -64,6 +64,22 @@ class LocalToolRuntimeTests(unittest.TestCase):
             self.assertIn(str(child), result.stdout)
             self.assertIn("ok", result.stdout)
 
+    def test_shell_cd_requires_process_capability(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            child = root / "child"
+            child.mkdir()
+            shell = PersistentShellRuntime(
+                str(root),
+                policy=ExecutionPolicy(allow_process=False),
+                paths=PathPolicy((str(root),)),
+            )
+
+            with self.assertRaisesRegex(PermissionError, "capability is disabled: process"):
+                shell.cd("child")
+
+            self.assertEqual(shell.status().cwd, str(root.resolve()))
+
     def test_patch_checks_and_applies_unified_diff(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
